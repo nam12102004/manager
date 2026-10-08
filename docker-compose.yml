@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: debtmanager_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: debtmanager_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - debtmanager_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d debtmanager_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: debtmanager_api
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-5050}:5050"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5050
+      - DatabaseProvider=PostgreSql
+      - ConnectionStrings__PostgresConnection=Host=db;Port=5432;Database=debtmanager_db;Username=postgres;Password=postgres
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: debtmanager_frontend
+    depends_on:
+      - api
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    restart: unless-stopped
+
+  # Optional SQL Server profile (Run with: docker compose --profile mssql up)
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: debtmanager_mssql
+    profiles:
+      - mssql
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "${MSSQL_PORT:-14333}:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+volumes:
+  debtmanager_pgdata:
+  mssql_data:

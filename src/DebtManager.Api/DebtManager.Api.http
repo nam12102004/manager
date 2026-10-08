@@ -1,0 +1,6 @@
+@DebtManager.Api_HostAddress = http://localhost:5030
+
+GET {{DebtManager.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
