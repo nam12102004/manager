@@ -1,5 +1,5 @@
 import { formatVND, formatDate, formatNumber, numberToWordsVN } from './formatters';
-import { WAREHOUSE_MAP } from './constants';
+import { warehouseService } from '../services/warehouseService';
 
 /**
  * Helper to parse store & owner info safely
@@ -261,7 +261,7 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
     <div class="customer-info-box">
       <div>Khách hàng: <strong>${customerName}</strong> ${customerPhone ? ` - ${customerPhone}` : ''}</div>
       ${customerAddress ? `<div>Địa chỉ: ${customerAddress}</div>` : ''}
-      ${exportData.warehouse ? `<div>Kho xuất: <strong>${WAREHOUSE_MAP[exportData.warehouse] || exportData.warehouse}</strong></div>` : ''}
+      ${exportData.warehouse ? `<div>Kho xuất: <strong>${warehouseService.getWarehouseName(exportData.warehouse)}</strong></div>` : ''}
       ${exportData.notes ? `<div>Ghi chú: ${exportData.notes}</div>` : ''}
     </div>
 
@@ -524,7 +524,7 @@ export function generateImportHtml({ importData, ownerInfo = null, supplier = nu
     <div class="partner-info-box">
       <div>Nhà cung cấp: <strong>${supplierName}</strong> ${supplierPhone ? ` - ${supplierPhone}` : ''}</div>
       ${supplierAddress ? `<div>Địa chỉ: ${supplierAddress}</div>` : ''}
-      ${importData.warehouse ? `<div>Kho nhập: <strong>${WAREHOUSE_MAP[importData.warehouse] || importData.warehouse}</strong></div>` : ''}
+      ${importData.warehouse ? `<div>Kho nhập: <strong>${warehouseService.getWarehouseName(importData.warehouse)}</strong></div>` : ''}
       ${importData.notes ? `<div>Ghi chú: ${importData.notes}</div>` : ''}
     </div>
 

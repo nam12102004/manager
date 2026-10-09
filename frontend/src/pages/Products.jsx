@@ -611,6 +611,10 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
           </p>
         </div>
         <div className="page-actions">
+          <button className="btn btn-outline" onClick={handleOpenAddWarehouse} title="Thêm kho hàng mới vào hệ thống">
+            <Plus size={16} />
+            <span>Thêm kho</span>
+          </button>
           <button className="btn btn-outline" onClick={loadData} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Tải lại</span>
@@ -662,79 +666,27 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             </button>
           );
         })}
+
+        <button
+          className="btn btn-outline"
+          style={{
+            padding: '0.55rem 1rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            borderStyle: 'dashed',
+            color: 'var(--primary)',
+            borderColor: 'var(--primary)',
+          }}
+          onClick={handleOpenAddWarehouse}
+          title="Thêm kho hàng mới"
+        >
+          <Plus size={14} />
+          <span>Thêm kho</span>
+        </button>
       </div>
-
-      {/* OVERVIEW MODE: Warehouse Summary Cards */}
-      {isOverview && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-          {warehouses.map((wh) => {
-            const stats = getWarehouseStats(wh.id);
-            return (
-              <div
-                key={wh.id}
-                className="glass-card"
-                style={{
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  border: '1px solid var(--border-color)',
-                  position: 'relative',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
-                        {wh.name}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mã: {wh.id}</div>
-                    </div>
-
-                    <button
-                      className="btn btn-ghost btn-icon"
-                      style={{ width: '28px', height: '28px', color: 'var(--text-muted)' }}
-                      title={`Đổi tên ${wh.name}`}
-                      onClick={() => handleOpenRenameWarehouse(wh)}
-                    >
-                      <Edit3 size={14} />
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', background: 'var(--bg-tertiary)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
-                    <div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>MẶT HÀNG TỒN</div>
-                      <div className="mono" style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                        {stats.count} mã
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>TỔNG SỐ LƯỢNG</div>
-                      <div className="mono" style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)' }}>
-                        {formatNumber(stats.totalStock)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '0.875rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: '0.75rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Ước tính giá trị: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(stats.totalVal)}</strong>
-                  </div>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                    onClick={() => handleTabSelect(wh.id)}
-                  >
-                    <span>Vào kho</span>
-                    <ChevronRight size={13} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* SPECIFIC WAREHOUSE MODE: Banner Alert */}
       {!isOverview && currentWarehouseObj && (
@@ -761,14 +713,25 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleOpenRenameWarehouse(currentWarehouseObj)}
             >
               <Edit3 size={14} />
-              <span>Đổi tên kho này</span>
+              <span>Chỉnh sửa kho này</span>
             </button>
+            {currentWarehouseObj.id !== 'warehouse1' && (
+              <button
+                className="btn btn-outline btn-sm"
+                style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                onClick={() => handleOpenDeleteWarehouse(currentWarehouseObj)}
+                title="Xóa kho hàng này"
+              >
+                <Trash2 size={14} />
+                <span>Xóa kho</span>
+              </button>
+            )}
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleTabSelect('overview')}
@@ -893,14 +856,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 <th>Tên Sản Phẩm</th>
                 <th>ĐVT</th>
                 {isOverview ? (
-                  <>
-                    {warehouses.map((wh) => (
-                      <th key={wh.id} style={{ textAlign: 'right' }}>
-                        {wh.shortName || wh.name}
-                      </th>
-                    ))}
-                    <th style={{ textAlign: 'right' }}>Tổng Tồn</th>
-                  </>
+                  <th style={{ textAlign: 'right' }}>Tổng Tồn</th>
                 ) : (
                   <>
                     <th style={{ textAlign: 'right', color: 'var(--primary)', fontWeight: 800 }}>
@@ -935,21 +891,11 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                     <td>{p.uom || 'Cái'}</td>
 
                     {isOverview ? (
-                      <>
-                        {warehouses.map((wh) => {
-                          const stock = getProductStockForWarehouse(p, wh.id);
-                          return (
-                            <td key={wh.id} style={{ textAlign: 'right' }} className="mono">
-                              {formatNumber(stock)}
-                            </td>
-                          );
-                        })}
-                        <td style={{ textAlign: 'right' }}>
-                          <span className={`badge badge-${Number(p.totalStock) <= 0 ? 'danger' : 'success'} mono`} style={{ fontWeight: 700 }}>
-                            {formatNumber(p.totalStock)}
-                          </span>
-                        </td>
-                      </>
+                      <td style={{ textAlign: 'right' }}>
+                        <span className={`badge badge-${Number(p.totalStock) <= 0 ? 'danger' : 'success'} mono`} style={{ fontWeight: 700 }}>
+                          {formatNumber(p.totalStock)}
+                        </span>
+                      </td>
                     ) : (
                       <>
                         <td style={{ textAlign: 'right' }} className="mono">
@@ -1017,35 +963,12 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                   <td colSpan={3} style={{ textAlign: 'left', fontWeight: 800 }}>
                     TỔNG CỘNG ({displayedProducts.length} mặt hàng):
                   </td>
-                  {isOverview ? (
-                    <>
-                      {warehouses.map((wh) => {
-                        const whTotal = displayedProducts.reduce(
-                          (sum, p) => sum + getProductStockForWarehouse(p, wh.id),
-                          0
-                        );
-                        return (
-                          <td key={wh.id} style={{ textAlign: 'right' }} className="mono">
-                            {formatNumber(whTotal)}
-                          </td>
-                        );
-                      })}
-                      <td style={{ textAlign: 'right' }} className="mono">
-                        <span className="badge badge-primary mono" style={{ fontWeight: 800 }}>
-                          {formatNumber(summary.totalStockQty)}
-                        </span>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td style={{ textAlign: 'right' }} className="mono">
-                        <span className="badge badge-primary mono" style={{ fontWeight: 800 }}>
-                          {formatNumber(summary.totalStockQty)}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>-</td>
-                    </>
-                  )}
+                  <td style={{ textAlign: 'right' }} className="mono">
+                    <span className="badge badge-primary mono" style={{ fontWeight: 800 }}>
+                      {formatNumber(summary.totalStockQty)}
+                    </span>
+                  </td>
+                  {!isOverview && <td style={{ textAlign: 'center' }}>-</td>}
                   <td style={{ textAlign: 'right' }} className="mono" title="Tổng giá trị vốn = ∑(Tồn kho × Giá vốn)">
                     <span style={{ color: 'var(--primary)', fontWeight: 800 }}>{formatVND(summary.totalCostVal)}</span>
                   </td>
@@ -1230,60 +1153,44 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                   className="form-input mono"
                   min="0"
                   placeholder="0"
-                  value={
-                    currentWarehouseObj.id === 'warehouse2'
-                      ? formData.stockWarehouse2
-                      : currentWarehouseObj.id === 'warehouse3'
-                      ? formData.stockWarehouse3
-                      : formData.stockWarehouse1
-                  }
+                  value={formData.warehouseStocks?.[currentWarehouseObj.id] ?? ''}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    if (currentWarehouseObj.id === 'warehouse2') {
-                      setFormData({ ...formData, stockWarehouse2: val });
-                    } else if (currentWarehouseObj.id === 'warehouse3') {
-                      setFormData({ ...formData, stockWarehouse3: val });
-                    } else {
-                      setFormData({ ...formData, stockWarehouse1: val });
-                    }
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setFormData({
+                      ...formData,
+                      warehouseStocks: {
+                        ...formData.warehouseStocks,
+                        [currentWarehouseObj.id]: val,
+                      },
+                    });
                   }}
                 />
               </div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">{warehouses[0]?.name || 'Kho 1'}</label>
-                <input
-                  type="number"
-                  className="form-input mono"
-                  min="0"
-                  value={formData.stockWarehouse1}
-                  onChange={(e) => setFormData({ ...formData, stockWarehouse1: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">{warehouses[1]?.name || 'Kho 2'}</label>
-                <input
-                  type="number"
-                  className="form-input mono"
-                  min="0"
-                  value={formData.stockWarehouse2}
-                  onChange={(e) => setFormData({ ...formData, stockWarehouse2: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">{warehouses[2]?.name || 'Kho 3'}</label>
-                <input
-                  type="number"
-                  className="form-input mono"
-                  min="0"
-                  value={formData.stockWarehouse3}
-                  onChange={(e) => setFormData({ ...formData, stockWarehouse3: e.target.value })}
-                />
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+              {warehouses.map((wh) => (
+                <div key={wh.id} className="form-group">
+                  <label className="form-label">{wh.shortName || wh.name}</label>
+                  <input
+                    type="number"
+                    className="form-input mono"
+                    min="0"
+                    placeholder="0"
+                    value={formData.warehouseStocks?.[wh.id] ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Number(e.target.value);
+                      setFormData({
+                        ...formData,
+                        warehouseStocks: {
+                          ...formData.warehouseStocks,
+                          [wh.id]: val,
+                        },
+                      });
+                    }}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </form>
@@ -1617,6 +1524,87 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
           </div>
         </form>
       </Modal>
+
+      {/* Modal Thêm Kho Mới */}
+      <Modal
+        isOpen={isAddWarehouseOpen}
+        onClose={() => setIsAddWarehouseOpen(false)}
+        title="Thêm Kho Hàng Mới"
+        size="md"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setIsAddWarehouseOpen(false)} disabled={submitting}>
+              Hủy
+            </button>
+            <button className="btn btn-primary" onClick={handleAddWarehouseSubmit} disabled={submitting}>
+              {submitting ? 'Đang tạo...' : 'Tạo kho hàng'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleAddWarehouseSubmit}>
+          <div className="form-group">
+            <label className="form-label">
+              Tên Kho Đầy Đủ <span className="req">*</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="VD: Kho Đà Nẵng, Kho Cần Thơ..."
+              value={addWarehouseData.name}
+              onChange={(e) => setAddWarehouseData({ ...addWarehouseData, name: e.target.value })}
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Tên Viết Tắt (Hiển thị thẻ tab & bảng)</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="VD: Kho 4, Kho ĐN..."
+              value={addWarehouseData.shortName}
+              onChange={(e) => setAddWarehouseData({ ...addWarehouseData, shortName: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Địa Chỉ / Vị Trí Kho</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="VD: 123 Đường Số 5, P. Hòa Khánh..."
+              value={addWarehouseData.address || ''}
+              onChange={(e) => setAddWarehouseData({ ...addWarehouseData, address: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ghi Chú</label>
+            <textarea
+              className="form-textarea"
+              rows={2}
+              placeholder="Ghi chú thêm về kho..."
+              value={addWarehouseData.note || ''}
+              onChange={(e) => setAddWarehouseData({ ...addWarehouseData, note: e.target.value })}
+            />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Xác Nhận Xóa Kho */}
+      <ConfirmModal
+        isOpen={isDeleteWhConfirmOpen}
+        onClose={() => setIsDeleteWhConfirmOpen(false)}
+        onConfirm={handleConfirmDeleteWarehouse}
+        title="Xác Nhận Xóa Kho Hàng"
+        message={`Bạn có chắc chắn muốn xóa kho "${warehouseToDelete?.name || ''}" (${warehouseToDelete?.id || ''}) không? Thao tác này sẽ xóa định danh kho khỏi hệ thống.`}
+        confirmText="Xóa kho"
+        isDanger={true}
+        isLoading={submitting}
+      />
+
 
       {/* Drawer Xem Lịch Sử Sổ Kho */}
       <Drawer

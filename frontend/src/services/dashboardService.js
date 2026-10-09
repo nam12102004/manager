@@ -9,7 +9,7 @@ import {
   reportsApi,
 } from '../api/endpoints';
 import { WAREHOUSES } from '../utils/constants';
-import { warehouseService } from './warehouseService';
+import { warehouseService, getProductStockForWarehouse } from './warehouseService';
 
 /**
  * Frontend Business Logic & Service for Dashboard
@@ -54,14 +54,11 @@ export const dashboardService = {
     }
 
     // 1. Stock Computations
-    const totalStockWarehouse1 = products.reduce((acc, p) => acc + Number(p.stockWarehouse1 || 0), 0);
-    const totalStockWarehouse2 = products.reduce((acc, p) => acc + Number(p.stockWarehouse2 || 0), 0);
-    const totalStockWarehouse3 = products.reduce((acc, p) => acc + Number(p.stockWarehouse3 || 0), 0);
-    const totalAllStock = totalStockWarehouse1 + totalStockWarehouse2 + totalStockWarehouse3;
+    const totalAllStock = products.reduce((acc, p) => acc + Number(p.totalStock ?? 0), 0);
 
     // Valuation
     const totalStockValue = stockReport?.totalCostValue ?? products.reduce((acc, p) => {
-      const stock = Number(p.totalStock || (Number(p.stockWarehouse1 || 0) + Number(p.stockWarehouse2 || 0) + Number(p.stockWarehouse3 || 0)));
+      const stock = Number(p.totalStock ?? 0);
       return acc + (stock * Number(p.unitCost || 0));
     }, 0);
 
@@ -103,11 +100,7 @@ export const dashboardService = {
       let count = 0;
 
       products.forEach((p) => {
-        let whStock = 0;
-        if (wh.id === 'warehouse1') whStock = Number(p.stockWarehouse1 || 0);
-        else if (wh.id === 'warehouse2') whStock = Number(p.stockWarehouse2 || 0);
-        else if (wh.id === 'warehouse3') whStock = Number(p.stockWarehouse3 || 0);
-
+        const whStock = getProductStockForWarehouse(p, wh.id);
         if (whStock > 0) {
           stock += whStock;
           count += 1;

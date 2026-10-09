@@ -68,22 +68,12 @@ export const productService = {
     let outOfStockCount = 0;
     let lowStockCount = 0;
 
-    const warehouseTotals = {
-      kho_1: 0,
-      kho_2: 0,
-      kho_3: 0,
-    };
+    const warehouseTotals = {};
 
     products.forEach((p) => {
-      const w1 = Number(p.stockWarehouse1 || 0);
-      const w2 = Number(p.stockWarehouse2 || 0);
-      const w3 = Number(p.stockWarehouse3 || 0);
-      const total = Number(p.totalStock || (w1 + w2 + w3));
-      const cost = Number(p.unitCost || 0);
+      const total = Number(p.totalStock ?? 0);
+      const cost = Number(p.unitCost ?? 0);
 
-      warehouseTotals.kho_1 += w1;
-      warehouseTotals.kho_2 += w2;
-      warehouseTotals.kho_3 += w3;
       totalStockAll += total;
       totalValuation += total * cost;
 

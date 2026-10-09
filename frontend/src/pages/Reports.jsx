@@ -55,6 +55,14 @@ export default function Reports() {
     loadReport();
   }, [activeReportTab, timeMode, selectedMonth, selectedDate]);
 
+  useEffect(() => {
+    const handleWarehousesUpdated = () => {
+      setWarehouses(warehouseService.getWarehousesSync());
+    };
+    window.addEventListener('warehouses-updated', handleWarehousesUpdated);
+    return () => window.removeEventListener('warehouses-updated', handleWarehousesUpdated);
+  }, []);
+
   const handlePrint = () => {
     window.print();
   };
@@ -186,9 +194,11 @@ export default function Reports() {
                     <th style={{ textAlign: 'right' }}>Nhập Kỳ</th>
                     <th style={{ textAlign: 'right' }}>Xuất Kỳ</th>
                     <th style={{ textAlign: 'right' }}>Tồn Cuối</th>
-                    <th style={{ textAlign: 'right' }}>{warehouses[0]?.shortName || warehouses[0]?.name || 'Kho 1'}</th>
-                    <th style={{ textAlign: 'right' }}>{warehouses[1]?.shortName || warehouses[1]?.name || 'Kho 2'}</th>
-                    <th style={{ textAlign: 'right' }}>{warehouses[2]?.shortName || warehouses[2]?.name || 'Kho 3'}</th>
+                    {warehouses.map((wh) => (
+                      <th key={wh.id} style={{ textAlign: 'right' }}>
+                        {wh.shortName || wh.name}
+                      </th>
+                    ))}
                     <th style={{ textAlign: 'right' }}>Giá Vốn</th>
                     <th style={{ textAlign: 'right' }}>Thành Tiền</th>
                   </tr>
@@ -211,9 +221,14 @@ export default function Reports() {
                       <td style={{ textAlign: 'right', fontWeight: 800 }} className="mono">
                         {formatNumber(it.closingStock)}
                       </td>
-                      <td style={{ textAlign: 'right' }} className="mono">{formatNumber(it.warehouse1?.closingStock ?? 0)}</td>
-                      <td style={{ textAlign: 'right' }} className="mono">{formatNumber(it.warehouse2?.closingStock ?? 0)}</td>
-                      <td style={{ textAlign: 'right' }} className="mono">{formatNumber(it.warehouse3?.closingStock ?? 0)}</td>
+                      {warehouses.map((wh) => {
+                        const stockVal = it[wh.id]?.closingStock ?? (it.warehouseStocks && it.warehouseStocks[wh.id]) ?? 0;
+                        return (
+                          <td key={wh.id} style={{ textAlign: 'right' }} className="mono">
+                            {formatNumber(stockVal)}
+                          </td>
+                        );
+                      })}
                       <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.unitCost)}</td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }} className="mono">
                         {formatVND(it.totalCostValue)}

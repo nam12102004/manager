@@ -13,14 +13,13 @@ import {
   Filter,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
-import { WAREHOUSES, WAREHOUSE_MAP } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
 import SearchableSelect from '../components/common/SearchableSelect';
 import TimeFilter from '../components/common/TimeFilter';
-import { importService, warehouseService } from '../services';
+import { importService, warehouseService, getProductStockForWarehouse } from '../services';
 import { generateImportHtml, printInNewTab } from '../utils/printVoucher';
 
 export default function Imports({ initialOpenCreate = false }) {
@@ -48,15 +47,6 @@ export default function Imports({ initialOpenCreate = false }) {
 
   const [selectedImport, setSelectedImport] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // Helper to get stock of product for specific warehouse
-  const getProductStockForWarehouse = (p, whId) => {
-    if (!p) return 0;
-    if (whId === 'warehouse1') return Number(p.stockWarehouse1 || 0);
-    if (whId === 'warehouse2') return Number(p.stockWarehouse2 || 0);
-    if (whId === 'warehouse3') return Number(p.stockWarehouse3 || 0);
-    return Number(p.totalStock ?? ((p.stockWarehouse1 || 0) + (p.stockWarehouse2 || 0) + (p.stockWarehouse3 || 0)));
-  };
 
   // Create Form State
   const [createForm, setCreateForm] = useState({
@@ -125,14 +115,20 @@ export default function Imports({ initialOpenCreate = false }) {
 
   useEffect(() => {
     loadDependencies();
+    const handleWarehousesUpdated = () => {
+      setWarehouses(warehouseService.getWarehousesSync());
+    };
+    window.addEventListener('warehouses-updated', handleWarehousesUpdated);
+    return () => window.removeEventListener('warehouses-updated', handleWarehousesUpdated);
   }, []);
 
   // Open Create Modal
   const handleOpenCreate = () => {
     loadDependencies();
+    const currentWhs = warehouseService.getWarehousesSync();
     setCreateForm({
       supplierId: suppliers.length > 0 ? String(suppliers[0].id) : '',
-      warehouse: 'warehouse1',
+      warehouse: currentWhs[0]?.id || 'warehouse1',
       date: new Date().toISOString().slice(0, 10),
       discountAmount: 0,
       paidAmount: 0,
@@ -373,7 +369,7 @@ export default function Imports({ initialOpenCreate = false }) {
                   <td style={{ fontSize: '0.8125rem' }}>{formatDate(imp.createdAt || imp.date, true)}</td>
                   <td style={{ fontWeight: 600 }}>{imp.supplierName}</td>
                   <td>
-                    <span className="badge badge-neutral">{WAREHOUSE_MAP[imp.warehouse] || imp.warehouse}</span>
+                    <span className="badge badge-neutral">{warehouseService.getWarehouseName(imp.warehouse, warehouses)}</span>
                   </td>
                   <td style={{ textAlign: 'right' }} className="mono">
                     {formatVND(imp.subtotalAmount)}
@@ -546,7 +542,7 @@ export default function Imports({ initialOpenCreate = false }) {
                               .filter((p) => String(p.supplierId) === String(createForm.supplierId))
                               .map((p) => {
                                 const whStock = getProductStockForWarehouse(p, createForm.warehouse);
-                                const total = Number(p.totalStock ?? ((p.stockWarehouse1 || 0) + (p.stockWarehouse2 || 0) + (p.stockWarehouse3 || 0)));
+                                const total = Number(p.totalStock ?? 0);
                                 const targetWh = warehouses.find((w) => w.id === createForm.warehouse);
                                 const whLabel = targetWh?.shortName || targetWh?.name || 'kho này';
                                 return {
@@ -731,7 +727,7 @@ export default function Imports({ initialOpenCreate = false }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '0.8125rem' }}>Thời gian nhập: <strong>{formatDate(selectedImport.createdAt || selectedImport.date, true)}</strong></p>
-                <p style={{ fontSize: '0.8125rem' }}>Kho nhận: <strong>{WAREHOUSE_MAP[selectedImport.warehouse] || selectedImport.warehouse}</strong></p>
+                <p style={{ fontSize: '0.8125rem' }}>Kho nhận: <strong>{warehouseService.getWarehouseName(selectedImport.warehouse, warehouses)}</strong></p>
                 <span className={`badge badge-${selectedImport.status === 'cancelled' ? 'danger' : 'info'}`}>
                   {selectedImport.status === 'cancelled' ? 'Đã hủy' : 'Đã nhập kho'}
                 </span>
