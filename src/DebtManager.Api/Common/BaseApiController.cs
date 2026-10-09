@@ -7,9 +7,9 @@ namespace DebtManager.Api.Common;
 [Route("api/[controller]")]
 public abstract class BaseApiController : ControllerBase
 {
-    protected ActionResult<ApiResponse<T>> Success<T>(T data, string? message = null)
+    protected OkObjectResult Success<T>(T data, string? message = null)
         => Ok(ApiResponse<T>.Ok(data, message));
 
-    protected ActionResult<ApiResponse<T>> Created<T>(string actionName, object? routeValues, T data, string? message = null)
+    protected CreatedAtActionResult Created<T>(string actionName, object? routeValues, T data, string? message = null)
         => CreatedAtAction(actionName, routeValues, ApiResponse<T>.Ok(data, message));
 }

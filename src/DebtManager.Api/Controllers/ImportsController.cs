@@ -17,11 +17,27 @@ public class ImportsController : BaseApiController
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<ImportVoucherDto>>>> GetImports(
+    public async Task<IActionResult> GetImports(
         [FromQuery] int? supplierId,
         [FromQuery] string? month,
-        CancellationToken ct)
-        => Success(await _importService.GetImportsAsync(supplierId, month, ct));
+        [FromQuery] string? date,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
+        [FromQuery] string? q,
+        [FromQuery] int? page,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] bool all = false,
+        CancellationToken ct = default)
+    {
+        if (page.HasValue && !all)
+        {
+            var paged = await _importService.GetPagedImportsAsync(supplierId, month, date, fromDate, toDate, q, page.Value, pageSize, ct);
+            return Success(paged);
+        }
+
+        var list = await _importService.GetImportsAsync(supplierId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, ct);
+        return Success(list);
+    }
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<ApiResponse<ImportVoucherDto>>> GetById(

@@ -17,14 +17,29 @@ public class ReportService : IReportService
 
     public async Task<StockReportResponseDto> GetStockReportAsync(string? month = null, CancellationToken ct = default)
     {
-        var targetMonth = DateTime.UtcNow;
-        if (!string.IsNullOrWhiteSpace(month) && DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsed))
-        {
-            targetMonth = parsed;
-        }
+        DateTime start;
+        DateTime end;
+        string periodLabel;
 
-        var start = new DateTime(targetMonth.Year, targetMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var end = start.AddMonths(1);
+        if (!string.IsNullOrWhiteSpace(month) && DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+        {
+            start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+            end = start.AddDays(1);
+            periodLabel = $"{start.Year:D4}-{start.Month:D2}-{start.Day:D2}";
+        }
+        else if (!string.IsNullOrWhiteSpace(month) && DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+        {
+            start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            end = start.AddMonths(1);
+            periodLabel = $"{start.Year:D4}-{start.Month:D2}";
+        }
+        else
+        {
+            var now = DateTime.UtcNow;
+            start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            end = start.AddMonths(1);
+            periodLabel = $"{start.Year:D4}-{start.Month:D2}";
+        }
 
         var products = await _uow.Products.Query().ToListAsync(ct);
         var productIds = products.Select(p => p.Id).ToList();
@@ -36,7 +51,7 @@ public class ReportService : IReportService
 
         var response = new StockReportResponseDto
         {
-            Month = $"{start.Year:D4}-{start.Month:D2}",
+            Month = periodLabel,
             FromDate = start,
             ToDate = end
         };
@@ -121,14 +136,29 @@ public class ReportService : IReportService
 
     public async Task<DebtReportResponseDto> GetDebtReportAsync(string? month = null, CancellationToken ct = default)
     {
-        var targetMonth = DateTime.UtcNow;
-        if (!string.IsNullOrWhiteSpace(month) && DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsed))
-        {
-            targetMonth = parsed;
-        }
+        DateTime start;
+        DateTime end;
+        string periodLabel;
 
-        var start = new DateTime(targetMonth.Year, targetMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var end = start.AddMonths(1);
+        if (!string.IsNullOrWhiteSpace(month) && DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+        {
+            start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+            end = start.AddDays(1);
+            periodLabel = $"{start.Year:D4}-{start.Month:D2}-{start.Day:D2}";
+        }
+        else if (!string.IsNullOrWhiteSpace(month) && DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+        {
+            start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            end = start.AddMonths(1);
+            periodLabel = $"{start.Year:D4}-{start.Month:D2}";
+        }
+        else
+        {
+            var now = DateTime.UtcNow;
+            start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            end = start.AddMonths(1);
+            periodLabel = $"{start.Year:D4}-{start.Month:D2}";
+        }
 
         var customers = await _uow.Customers.Query().ToListAsync(ct);
         var suppliers = await _uow.Suppliers.Query().ToListAsync(ct);
@@ -143,7 +173,7 @@ public class ReportService : IReportService
 
         var response = new DebtReportResponseDto
         {
-            Month = $"{start.Year:D4}-{start.Month:D2}",
+            Month = periodLabel,
             FromDate = start,
             ToDate = end
         };

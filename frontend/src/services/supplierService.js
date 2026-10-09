@@ -1,4 +1,5 @@
 import { suppliersApi } from '../api/endpoints';
+import { auditService } from './auditService';
 
 /**
  * Frontend Business Logic & Service for Suppliers & Payable Debt Management
@@ -43,7 +44,14 @@ export const supplierService = {
   formatSupplierPayload(formData) {
     let phonesJson = '';
     if (Array.isArray(formData.phones)) {
-      phonesJson = JSON.stringify(formData.phones.filter(Boolean));
+      const flat = formData.phones
+        .flatMap((p) => (typeof p === 'string' ? p.split(/[,;/\n]+/) : p))
+        .map((p) => (typeof p === 'string' ? p.trim() : p))
+        .filter(Boolean);
+      phonesJson = JSON.stringify(flat);
+    } else if (typeof formData.phone === 'string' && formData.phone.trim()) {
+      const list = formData.phone.split(/[,;/\n]+/).map((p) => p.trim()).filter(Boolean);
+      phonesJson = JSON.stringify(list);
     } else if (typeof formData.phonesJson === 'string') {
       phonesJson = formData.phonesJson.trim();
     }
@@ -62,6 +70,7 @@ export const supplierService = {
       phonesJson: phonesJson || undefined,
       email: formData.email?.trim() || undefined,
       addressesJson: addressesJson || undefined,
+      region: formData.region?.trim() || undefined,
       bankAccount: formData.bankAccount?.trim() || undefined,
       bankName: formData.bankName?.trim() || undefined,
       initialDebt: formData.initialDebt ? Number(formData.initialDebt) : 0,
@@ -111,7 +120,15 @@ export const supplierService = {
       throw new Error(firstError);
     }
     const payload = this.formatSupplierPayload(data);
-    return await suppliersApi.create(payload);
+    const result = await suppliersApi.create(payload);
+    auditService.logAction({
+      action: 'CREATE',
+      entityName: 'Supplier',
+      entityId: result?.code || result?.id || 'Mới',
+      entityDisplayName: result?.name || data.name,
+      details: `Thêm nhà cung cấp mới: ${result?.name || data.name} (Mã: ${result?.code || 'NCC'})`,
+    });
+    return result;
   },
 
   async update(id, data) {
@@ -121,7 +138,15 @@ export const supplierService = {
       throw new Error(firstError);
     }
     const payload = this.formatSupplierPayload(data);
-    return await suppliersApi.update(id, payload);
+    const result = await suppliersApi.update(id, payload);
+    auditService.logAction({
+      action: 'UPDATE',
+      entityName: 'Supplier',
+      entityId: result?.code || String(id),
+      entityDisplayName: result?.name || data.name,
+      details: `Cập nhật thông tin nhà cung cấp: ${result?.name || data.name}`,
+    });
+    return result;
   },
 
   async adjustDebt(id, adjustData) {
@@ -129,10 +154,18 @@ export const supplierService = {
     if (!validation.isValid) {
       throw new Error(validation.message);
     }
-    return await suppliersApi.adjustDebt(id, adjustData);
+    const result = await suppliersApi.adjustDebt(id, adjustData);
+    auditService.logAction({
+      action: 'ADJUST_DEBT',
+      entityName: 'Supplier',
+      entityId: String(id),
+      entityDisplayName: `Nhà cung cấp #${id}`,
+      details: `Điều chỉnh công nợ NCC: ${adjustData.delta > 0 ? '+' : ''}${adjustData.delta?.toLocaleString()}₫. Lý do: ${adjustData.reason}`,
+    });
+    return result;
   },
 
-  async getDebtHistory(id) {
-    return await suppliersApi.getDebtHistory(id);
+  async getDebtHistory(id, month) {
+    return await suppliersApi.getDebtHistory(id, month);
   },
 };

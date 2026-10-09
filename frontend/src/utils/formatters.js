@@ -71,6 +71,18 @@ export function getCurrentMonthStr(date = new Date()) {
 }
 
 /**
+ * Get current year-month-day string: YYYY-MM-DD
+ * @param {Date} date 
+ * @returns {string}
+ */
+export function getCurrentDateStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Debt helper:
  * Debt > 0: Phải thu (Receivable)
  * Debt < 0: Phải trả (Payable)
@@ -186,3 +198,20 @@ export function numberToWordsVN(number) {
   result = (isNegative ? 'Âm ' : '') + result.charAt(0).toUpperCase() + result.slice(1) + ' đồng chẵn.';
   return result;
 }
+
+/**
+ * Remove Vietnamese accents and lower-case text for diacritics-insensitive instant search
+ * @param {string} str
+ * @returns {string}
+ */
+export function normalizeText(str) {
+  if (!str) return '';
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .trim();
+}
+

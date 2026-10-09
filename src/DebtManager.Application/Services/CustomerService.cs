@@ -1,3 +1,4 @@
+using DebtManager.Application.Common;
 using DebtManager.Application.Common.Exceptions;
 using DebtManager.Application.DTOs.Customers;
 using DebtManager.Application.Interfaces;
@@ -27,11 +28,89 @@ public class CustomerService : ICustomerService
             query = query.Where(c => c.Name.ToLower().Contains(s) ||
                                      c.Code.ToLower().Contains(s) ||
                                      (c.ContactName != null && c.ContactName.ToLower().Contains(s)) ||
-                                     (c.PhonesJson != null && c.PhonesJson.ToLower().Contains(s)));
+                                     (c.PhonesJson != null && c.PhonesJson.ToLower().Contains(s)) ||
+                                     (c.AddressesJson != null && c.AddressesJson.ToLower().Contains(s)) ||
+                                     (c.Email != null && c.Email.ToLower().Contains(s)) ||
+                                     (c.Region != null && c.Region.ToLower().Contains(s)));
         }
 
         var list = await query.OrderByDescending(c => c.Id).ToListAsync(ct);
         return list.Select(MapToDto).ToList();
+    }
+
+    public async Task<CustomerPagedResult> GetPagedCustomersAsync(
+        string? search = null,
+        string? region = null,
+        string? sortBy = null,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = pageSize > 0 ? pageSize : 15;
+
+        var query = _uow.Customers.Query().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(c => c.Name.ToLower().Contains(s) ||
+                                     c.Code.ToLower().Contains(s) ||
+                                     (c.ContactName != null && c.ContactName.ToLower().Contains(s)) ||
+                                     (c.PhonesJson != null && c.PhonesJson.ToLower().Contains(s)) ||
+                                     (c.AddressesJson != null && c.AddressesJson.ToLower().Contains(s)) ||
+                                     (c.Email != null && c.Email.ToLower().Contains(s)) ||
+                                     (c.Region != null && c.Region.ToLower().Contains(s)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(region))
+        {
+            var r = region.Trim();
+            if (r.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(c => string.IsNullOrEmpty(c.Region));
+            }
+            else if (!r.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+            {
+                var rLower = r.ToLower();
+                query = query.Where(c => c.Region != null && c.Region.ToLower() == rLower);
+            }
+        }
+
+        // Totals calculated on full filtered dataset before pagination
+        var totalCount = await query.CountAsync(ct);
+        var totalReceivables = await query.Where(c => c.Debt > 0).SumAsync(c => (decimal?)c.Debt, ct) ?? 0;
+        var totalPayables = await query.Where(c => c.Debt < 0).SumAsync(c => (decimal?)Math.Abs(c.Debt), ct) ?? 0;
+
+        // Sorting
+        query = sortBy switch
+        {
+            "debt_desc" => query.OrderByDescending(c => c.Debt).ThenByDescending(c => c.Id),
+            "debt_asc" => query.OrderBy(c => c.Debt).ThenByDescending(c => c.Id),
+            _ => query.OrderByDescending(c => c.Id)
+        };
+
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return new CustomerPagedResult
+        {
+            Items = items.Select(MapToDto).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalReceivables = totalReceivables,
+            TotalPayables = totalPayables
+        };
+    }
+
+    public async Task<List<string>> GetRegionsAsync(CancellationToken ct = default)
+    {
+        return await _uow.Customers.Query()
+            .Where(c => c.Region != null && c.Region != "")
+            .Select(c => c.Region!)
+            .Distinct()
+            .OrderBy(r => r)
+            .ToListAsync(ct);
     }
 
     public async Task<CustomerDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -61,6 +140,7 @@ public class CustomerService : ICustomerService
             PhonesJson = dto.PhonesJson?.Trim(),
             Email = dto.Email?.Trim(),
             AddressesJson = dto.AddressesJson?.Trim(),
+            Region = dto.Region?.Trim(),
             CreditLimit = dto.CreditLimit,
             Debt = dto.InitialDebt,
             Notes = dto.Notes?.Trim(),
@@ -105,6 +185,7 @@ public class CustomerService : ICustomerService
         customer.PhonesJson = dto.PhonesJson?.Trim();
         customer.Email = dto.Email?.Trim();
         customer.AddressesJson = dto.AddressesJson?.Trim();
+        customer.Region = dto.Region?.Trim();
         customer.CreditLimit = dto.CreditLimit;
         customer.Notes = dto.Notes?.Trim();
         customer.UpdatedAt = DateTime.UtcNow;
@@ -115,7 +196,7 @@ public class CustomerService : ICustomerService
         return MapToDto(customer);
     }
 
-    public async Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, CancellationToken ct = default)
+    public async Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, CancellationToken ct = default)
     {
         var customerExists = await _uow.Customers.Query().AnyAsync(c => c.Id == customerId, ct);
         if (!customerExists)
@@ -123,8 +204,29 @@ public class CustomerService : ICustomerService
             throw new NotFoundException($"Không tìm thấy khách hàng với ID {customerId}");
         }
 
-        var list = await _uow.CustomerDebtHistories.Query()
-            .Where(h => h.CustomerId == customerId)
+        var query = _uow.CustomerDebtHistories.Query().Where(h => h.CustomerId == customerId);
+
+        if (!string.IsNullOrWhiteSpace(month))
+        {
+            if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                var windowStart = start.AddDays(-1);
+                var windowEnd = end.AddDays(1);
+                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+            }
+            else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                var windowStart = start.AddDays(-1);
+                var windowEnd = end.AddDays(1);
+                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+            }
+        }
+
+        var list = await query
             .OrderByDescending(h => h.CreatedAt)
             .ThenByDescending(h => h.Id)
             .ToListAsync(ct);
@@ -193,6 +295,7 @@ public class CustomerService : ICustomerService
         PhonesJson = c.PhonesJson,
         Email = c.Email,
         AddressesJson = c.AddressesJson,
+        Region = c.Region,
         Debt = c.Debt,
         CreditLimit = c.CreditLimit,
         Notes = c.Notes,

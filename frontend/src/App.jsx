@@ -15,11 +15,94 @@ import Suppliers from './pages/Suppliers';
 import CashBook from './pages/CashBook';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import AuditHistory from './pages/AuditHistory';
+import Users from './pages/Users';
+
+const VALID_BASE_TABS = [
+  'dashboard',
+  'products',
+  'exports',
+  'imports',
+  'customers',
+  'suppliers',
+  'cashbook',
+  'reports',
+  'history',
+  'users',
+  'settings',
+];
+
+const isValidTab = (tab) => {
+  if (!tab) return false;
+  const base = tab.split(':')[0];
+  return VALID_BASE_TABS.includes(base);
+};
+
+const getInitialTab = () => {
+  const hash = window.location.hash.replace(/^#\/?/, '').trim();
+  if (isValidTab(hash)) {
+    return hash;
+  }
+  const savedTab = localStorage.getItem('debtmanager_active_tab');
+  if (savedTab && isValidTab(savedTab)) {
+    return savedTab;
+  }
+  return 'dashboard';
+};
 
 function AppContent() {
-  const { isAuthenticated, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { user, isAuthenticated, loading } = useAuth();
+  const [activeTab, setActiveTabState] = useState(getInitialTab);
   const [quickActionTrigger, setQuickActionTrigger] = useState(null);
+
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+
+  const setActiveTab = React.useCallback(
+    (tab) => {
+      // Role Guard: non-admin cannot access history or users
+      if (!isAdmin && (tab === 'history' || tab === 'users')) {
+        tab = 'dashboard';
+      }
+
+      if (isValidTab(tab)) {
+        setActiveTabState(tab);
+        localStorage.setItem('debtmanager_active_tab', tab);
+        if (window.location.hash.replace(/^#\/?/, '').trim() !== tab) {
+          window.location.hash = tab;
+        }
+      }
+    },
+    [isAdmin]
+  );
+
+  React.useEffect(() => {
+    // If user is not admin and activeTab is a protected route, fallback to dashboard
+    if (!isAdmin && (activeTab === 'history' || activeTab === 'users')) {
+      setActiveTab('dashboard');
+      return;
+    }
+
+    // Keep URL hash synchronized on initial mount
+    const currentHash = window.location.hash.replace(/^#\/?/, '').trim();
+    if (currentHash !== activeTab) {
+      window.location.hash = activeTab;
+    }
+    localStorage.setItem('debtmanager_active_tab', activeTab);
+
+    const handleHashChange = () => {
+      let newHash = window.location.hash.replace(/^#\/?/, '').trim();
+      if (!isAdmin && (newHash === 'history' || newHash === 'users')) {
+        newHash = 'dashboard';
+      }
+      if (isValidTab(newHash)) {
+        setActiveTabState(newHash);
+        localStorage.setItem('debtmanager_active_tab', newHash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeTab, isAdmin, setActiveTab]);
 
   if (loading) {
     return (
@@ -58,32 +141,43 @@ function AppContent() {
     }
   };
 
+  const isProductsTab = activeTab === 'products' || activeTab.startsWith('products:');
+  const selectedWarehouse = activeTab.includes(':') ? activeTab.split(':')[1] : 'overview';
+
   const getPageMeta = () => {
+    if (isProductsTab) {
+      if (selectedWarehouse === 'overview') {
+        return {
+          title: 'Tổng Quan Kho & Danh Mục Sản Phẩm',
+          subtitle: 'Xem toàn bộ tồn kho các kho, thêm kho mới và đổi tên kho',
+        };
+      }
+      return {
+        title: 'Chi Tiết Tồn Kho & Sản Phẩm',
+        subtitle: 'Quản lý, thêm và điều chỉnh tồn kho cho kho đã chọn',
+      };
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return {
           title: 'Tổng Quan Hoạt Động',
           subtitle: 'Trung tâm chỉ huy bán hàng, kho đa điểm và công nợ',
         };
-      case 'products':
-        return {
-          title: 'Danh Mục Hàng Hóa & Kho',
-          subtitle: 'Phân bổ và quản lý tồn kho tại Kho 1, Kho 2, Kho 3',
-        };
       case 'exports':
         return {
-          title: 'Bán Hàng & Phiếu Xuất',
+          title: 'Phiếu Xuất',
           subtitle: 'Lập hóa đơn xuất hàng, trừ kho và tính nợ khách',
         };
       case 'imports':
         return {
-          title: 'Mua Hàng & Phiếu Nhập',
+          title: 'Phiếu Nhập',
           subtitle: 'Nhập hàng từ nhà cung cấp, tăng tồn kho và tính nợ NCC',
         };
       case 'customers':
         return {
           title: 'Khách Hàng & Sổ Nợ',
-          subtitle: 'Theo dõi hạn mức nợ, lịch sử mua nợ và thu tiền',
+          subtitle: 'Theo dõi lịch sử mua nợ và thu tiền khách hàng',
         };
       case 'suppliers':
         return {
@@ -92,7 +186,7 @@ function AppContent() {
         };
       case 'cashbook':
         return {
-          title: 'Sổ Quỹ Thu - Chi Tiền Mặt',
+          title: 'Thu - Chi Tiền Mặt',
           subtitle: 'Quản lý dòng tiền vào/ra và tồn quỹ ròng',
         };
       case 'reports':
@@ -104,6 +198,16 @@ function AppContent() {
         return {
           title: 'Cài Đặt Cửa Hàng & VietQR',
           subtitle: 'Cấu hình thông tin in hóa đơn và thanh toán ngân hàng',
+        };
+      case 'history':
+        return {
+          title: 'Lịch Sử Chỉnh Sửa & Đăng Nhập',
+          subtitle: 'Nhật ký kiểm toán hoạt động hệ thống và lịch sử truy cập tài khoản',
+        };
+      case 'users':
+        return {
+          title: 'Quản Lý Tài Khoản & Phân Quyền',
+          subtitle: 'Quản lý người dùng, tạo tài khoản nhân viên và đổi mật khẩu',
         };
       default:
         return { title: 'DebtManager', subtitle: '' };
@@ -126,7 +230,13 @@ function AppContent() {
           onQuickAction={handleQuickAction}
         />
       )}
-      {activeTab === 'products' && <Products key={quickActionTrigger} />}
+      {isProductsTab && (
+        <Products
+          key={quickActionTrigger}
+          initialWarehouse={selectedWarehouse}
+          onWarehouseChange={(whId) => setActiveTab(`products:${whId}`)}
+        />
+      )}
       {activeTab === 'exports' && (
         <Exports
           key={quickActionTrigger}
@@ -150,6 +260,8 @@ function AppContent() {
         />
       )}
       {activeTab === 'reports' && <Reports />}
+      {activeTab === 'history' && (isAdmin ? <AuditHistory /> : <Dashboard />)}
+      {activeTab === 'users' && (isAdmin ? <Users /> : <Dashboard />)}
       {activeTab === 'settings' && <Settings />}
     </Layout>
   );

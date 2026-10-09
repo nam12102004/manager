@@ -1,20 +1,6 @@
 import React from 'react';
-import {
-  LayoutDashboard,
-  Boxes,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Users,
-  Truck,
-  WalletCards,
-  BarChart3,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Building2,
-} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { warehouseService } from '../../services';
 
 export default function Sidebar({
   activeTab,
@@ -23,26 +9,56 @@ export default function Sidebar({
   onToggleCollapse,
 }) {
   const { user, logout } = useAuth();
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+
+  const [warehouses, setWarehouses] = React.useState(() => warehouseService.getWarehousesSync());
+  const [productsExpanded, setProductsExpanded] = React.useState(true);
+
+  React.useEffect(() => {
+    warehouseService.getWarehouses().then((res) => {
+      if (res && Array.isArray(res)) setWarehouses(res);
+    });
+
+    const handleUpdate = (e) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setWarehouses(e.detail);
+      } else {
+        warehouseService.getWarehouses().then((res) => setWarehouses(res));
+      }
+    };
+
+    window.addEventListener('warehouses-updated', handleUpdate);
+    return () => window.removeEventListener('warehouses-updated', handleUpdate);
+  }, []);
+
+  const isProductsActive = activeTab === 'products' || activeTab.startsWith('products:');
+  const currentSubTab = activeTab.includes(':') ? activeTab.split(':')[1] : 'overview';
 
   const navItems = [
-    { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'products', label: 'Sản phẩm & Kho', icon: Boxes },
-    { id: 'exports', label: 'Bán hàng / Xuất', icon: ArrowUpRight },
-    { id: 'imports', label: 'Mua hàng / Nhập', icon: ArrowDownLeft },
-    { id: 'customers', label: 'Khách hàng', icon: Users },
-    { id: 'suppliers', label: 'Nhà cung cấp', icon: Truck },
-    { id: 'cashbook', label: 'Sổ quỹ Thu - Chi', icon: WalletCards },
-    { id: 'reports', label: 'Báo cáo', icon: BarChart3 },
-    { id: 'settings', label: 'Cài đặt Cửa hàng', icon: Settings },
+    { id: 'dashboard', label: 'Tổng quan' },
+    { id: 'products', label: 'Sản phẩm & Kho', hasSubmenu: true },
+    { id: 'exports', label: 'Xuất' },
+    { id: 'imports', label: 'Nhập' },
+    { id: 'customers', label: 'Khách hàng' },
+    { id: 'suppliers', label: 'Nhà cung cấp' },
+    { id: 'cashbook', label: 'Thu - Chi' },
+    { id: 'reports', label: 'Báo cáo' },
+    ...(isAdmin
+      ? [
+          { id: 'history', label: 'Lịch sử thao tác' },
+          { id: 'users', label: 'Quản lý tài khoản' },
+        ]
+      : []),
+    { id: 'settings', label: 'Cài đặt Cửa hàng' },
   ];
 
   return (
     <aside
-      className="sidebar"
+      className={`sidebar ${collapsed ? 'collapsed' : ''}`}
       style={{
         width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
-        backgroundColor: 'var(--bg-secondary)',
-        borderRight: '1px solid var(--border-color)',
+        backgroundColor: 'var(--sidebar-bg)',
+        borderRight: '1px solid var(--sidebar-border)',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width var(--transition-normal)',
@@ -61,34 +77,23 @@ export default function Sidebar({
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'space-between',
           padding: collapsed ? '0' : '0 1.25rem',
-          borderBottom: '1px solid var(--border-color)',
+          borderBottom: '1px solid var(--sidebar-border)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
-          <div
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
-            }}
-          >
-            <Building2 size={20} />
-          </div>
           {!collapsed && (
             <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-              <div style={{ fontWeight: 800, fontSize: '1.0625rem', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.0625rem', letterSpacing: '-0.02em', color: 'var(--sidebar-text-primary)' }}>
                 DebtManager
               </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--sidebar-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Kho & Công Nợ
               </div>
+            </div>
+          )}
+          {collapsed && (
+            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--sidebar-text-primary)' }}>
+              DM
             </div>
           )}
         </div>
@@ -96,11 +101,11 @@ export default function Sidebar({
         {!collapsed && (
           <button
             onClick={onToggleCollapse}
-            className="btn btn-ghost btn-icon"
-            style={{ width: '28px', height: '28px' }}
+            className="btn btn-ghost btn-sm"
+            style={{ color: 'var(--sidebar-text-muted)', padding: '2px 6px', fontSize: '0.75rem' }}
             title="Thu gọn menu"
           >
-            <ChevronLeft size={16} />
+            Thu gọn
           </button>
         )}
       </div>
@@ -117,8 +122,141 @@ export default function Sidebar({
         }}
       >
         {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isItemActive = item.id === 'products' ? isProductsActive : activeTab === item.id;
+
+          if (item.id === 'products' && item.hasSubmenu) {
+            return (
+              <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <button
+                  onClick={() => {
+                    if (collapsed) {
+                      onTabChange('products:overview');
+                    } else {
+                      setProductsExpanded(!productsExpanded);
+                      onTabChange(`products:${currentSubTab}`);
+                    }
+                  }}
+                  title={collapsed ? item.label : undefined}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    width: '100%',
+                    padding: collapsed ? '0.75rem 0' : '0.6875rem 0.875rem',
+                    justifyContent: collapsed ? 'center' : 'space-between',
+                    borderRadius: 'var(--radius-md)',
+                    border: 'none',
+                    background: isItemActive ? 'var(--sidebar-active-bg)' : 'transparent',
+                    color: isItemActive ? 'var(--sidebar-active-text)' : 'var(--sidebar-text-secondary)',
+                    fontWeight: isItemActive ? 700 : 500,
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                    position: 'relative',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {!collapsed && (
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.label}
+                      </span>
+                    )}
+                    {collapsed && (
+                      <span>SP</span>
+                    )}
+                  </div>
+
+                  {!collapsed && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--sidebar-text-muted)' }}>
+                      {productsExpanded ? '▲' : '▼'}
+                    </span>
+                  )}
+
+                  {isItemActive && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '20%',
+                        bottom: '20%',
+                        width: '3.5px',
+                        borderRadius: '0 4px 4px 0',
+                        backgroundColor: 'var(--primary)',
+                      }}
+                    />
+                  )}
+                </button>
+
+                {/* Submenu for Products & Warehouses */}
+                {!collapsed && productsExpanded && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.2rem',
+                      marginLeft: '0.75rem',
+                      paddingLeft: '0.75rem',
+                      borderLeft: '1px dashed rgba(255, 255, 255, 0.15)',
+                      marginTop: '0.1rem',
+                    }}
+                  >
+                    <button
+                      onClick={() => onTabChange('products:overview')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        padding: '0.45rem 0.65rem',
+                        borderRadius: 'var(--radius-sm)',
+                        border: 'none',
+                        background: isProductsActive && currentSubTab === 'overview' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                        color: isProductsActive && currentSubTab === 'overview' ? '#93c5fd' : 'var(--sidebar-text-muted)',
+                        fontWeight: isProductsActive && currentSubTab === 'overview' ? 700 : 500,
+                        fontSize: '0.8125rem',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all var(--transition-fast)',
+                      }}
+                    >
+                      <span>Tổng quan kho</span>
+                    </button>
+
+                    {warehouses.map((wh) => {
+                      const isWhActive = isProductsActive && currentSubTab === wh.id;
+                      return (
+                        <button
+                          key={wh.id}
+                          onClick={() => onTabChange(`products:${wh.id}`)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            width: '100%',
+                            padding: '0.45rem 0.65rem',
+                            borderRadius: 'var(--radius-sm)',
+                            border: 'none',
+                            background: isWhActive ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                            color: isWhActive ? '#93c5fd' : 'var(--sidebar-text-muted)',
+                            fontWeight: isWhActive ? 700 : 500,
+                            fontSize: '0.8125rem',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all var(--transition-fast)',
+                          }}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {wh.shortName || wh.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           return (
             <button
               key={item.id}
@@ -133,34 +271,23 @@ export default function Sidebar({
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 borderRadius: 'var(--radius-md)',
                 border: 'none',
-                background: isActive ? 'var(--primary-light)' : 'transparent',
-                color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
-                fontWeight: isActive ? 700 : 500,
+                background: isItemActive ? 'var(--sidebar-active-bg)' : 'transparent',
+                color: isItemActive ? 'var(--sidebar-active-text)' : 'var(--sidebar-text-secondary)',
+                fontWeight: isItemActive ? 700 : 500,
                 fontSize: '0.875rem',
                 cursor: 'pointer',
                 transition: 'all var(--transition-fast)',
                 position: 'relative',
               }}
-              onMouseEnter={(e) => {
-                if (!isActive) e.currentTarget.style.background = 'var(--bg-hover)';
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) e.currentTarget.style.background = 'transparent';
-              }}
             >
-              <Icon
-                size={20}
-                style={{
-                  flexShrink: 0,
-                  color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-                }}
-              />
-              {!collapsed && (
+              {!collapsed ? (
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {item.label}
                 </span>
+              ) : (
+                <span>{item.label.substring(0, 2)}</span>
               )}
-              {isActive && (
+              {isItemActive && (
                 <span
                   style={{
                     position: 'absolute',
@@ -182,7 +309,7 @@ export default function Sidebar({
       <div
         style={{
           padding: collapsed ? '0.875rem 0.25rem' : '0.875rem 1rem',
-          borderTop: '1px solid var(--border-color)',
+          borderTop: '1px solid var(--sidebar-border)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.5rem',
@@ -191,11 +318,11 @@ export default function Sidebar({
         {collapsed ? (
           <button
             onClick={onToggleCollapse}
-            className="btn btn-ghost btn-icon"
-            style={{ width: '100%', height: '36px' }}
+            className="btn btn-ghost btn-sm"
+            style={{ width: '100%', color: 'var(--sidebar-text-muted)', fontSize: '0.75rem', padding: '4px' }}
             title="Mở rộng menu"
           >
-            <ChevronRight size={18} />
+            Mở
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -205,8 +332,9 @@ export default function Sidebar({
                   width: '34px',
                   height: '34px',
                   borderRadius: 'var(--radius-full)',
-                  background: 'var(--primary-light)',
-                  color: 'var(--primary)',
+                  background: 'rgba(37, 99, 235, 0.25)',
+                  color: '#60a5fa',
+                  border: '1px solid rgba(59, 130, 246, 0.35)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -219,22 +347,32 @@ export default function Sidebar({
                 {user?.username ? user.username.charAt(0) : 'A'}
               </div>
               <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--sidebar-text-primary)' }}>
                   {user?.username || 'Admin'}
                 </div>
-                <span className="badge badge-primary" style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem' }}>
-                  {user?.role || 'admin'}
+                <span
+                  className={`badge ${isAdmin ? 'badge-primary' : 'badge-neutral'}`}
+                  style={{
+                    padding: '0.15rem 0.4rem',
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    background: isAdmin ? 'rgba(37, 99, 235, 0.2)' : 'rgba(100, 116, 139, 0.2)',
+                    color: isAdmin ? '#60a5fa' : 'var(--text-secondary)',
+                    border: `1px solid ${isAdmin ? 'rgba(59, 130, 246, 0.4)' : 'rgba(148, 163, 184, 0.3)'}`,
+                  }}
+                >
+                  {isAdmin ? 'Quản trị viên' : 'Nhân viên'}
                 </span>
               </div>
             </div>
 
             <button
               onClick={logout}
-              className="btn btn-ghost btn-icon"
-              style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
+              className="btn btn-ghost btn-sm"
+              style={{ color: '#f87171', padding: '4px 8px', fontSize: '0.75rem' }}
               title="Đăng xuất"
             >
-              <LogOut size={16} />
+              Thoát
             </button>
           </div>
         )}

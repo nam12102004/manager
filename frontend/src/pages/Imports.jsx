@@ -10,14 +10,18 @@ import {
   Building,
   Trash2,
   Printer,
+  Filter,
 } from 'lucide-react';
-import { formatVND, formatNumber, formatDate, getCurrentMonthStr } from '../utils/formatters';
+import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { WAREHOUSES, WAREHOUSE_MAP } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
-import { importService } from '../services';
+import SearchableSelect from '../components/common/SearchableSelect';
+import TimeFilter from '../components/common/TimeFilter';
+import { importService, warehouseService } from '../services';
+import { generateImportHtml, printInNewTab } from '../utils/printVoucher';
 
 export default function Imports({ initialOpenCreate = false }) {
   const notify = useNotification();
@@ -25,11 +29,17 @@ export default function Imports({ initialOpenCreate = false }) {
   const [importsList, setImportsList] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
+  const [ownerInfo, setOwnerInfo] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Filters
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
+  const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(initialOpenCreate);
@@ -38,6 +48,15 @@ export default function Imports({ initialOpenCreate = false }) {
 
   const [selectedImport, setSelectedImport] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Helper to get stock of product for specific warehouse
+  const getProductStockForWarehouse = (p, whId) => {
+    if (!p) return 0;
+    if (whId === 'warehouse1') return Number(p.stockWarehouse1 || 0);
+    if (whId === 'warehouse2') return Number(p.stockWarehouse2 || 0);
+    if (whId === 'warehouse3') return Number(p.stockWarehouse3 || 0);
+    return Number(p.totalStock ?? ((p.stockWarehouse1 || 0) + (p.stockWarehouse2 || 0) + (p.stockWarehouse3 || 0)));
+  };
 
   // Create Form State
   const [createForm, setCreateForm] = useState({
@@ -54,10 +73,20 @@ export default function Imports({ initialOpenCreate = false }) {
   const loadImports = async () => {
     setLoading(true);
     try {
-      const data = await importService.getAll({
+      const params = {
         supplierId: selectedSupplierId ? Number(selectedSupplierId) : null,
-        month: selectedMonth,
-      });
+      };
+
+      if (timeMode === 'month') {
+        params.month = selectedMonth;
+      } else if (timeMode === 'day') {
+        params.date = selectedDate;
+      } else if (timeMode === 'range') {
+        params.fromDate = fromDate;
+        params.toDate = toDate;
+      }
+
+      const data = await importService.getAll(params);
       setImportsList(data || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách phiếu nhập');
@@ -66,20 +95,33 @@ export default function Imports({ initialOpenCreate = false }) {
     }
   };
 
-  // Load Dependencies via importService
+  // Load Dependencies via importService & warehouseService
   const loadDependencies = async () => {
     try {
-      const { suppliers: supps, products: prods } = await importService.getDependencies();
+      const [{ suppliers: supps, products: prods, ownerInfo: owner }, whList] = await Promise.all([
+        importService.getDependencies(),
+        warehouseService.getWarehouses(),
+      ]);
       setSuppliers(supps || []);
       setProducts(prods || []);
+      setOwnerInfo(owner || null);
+      if (whList && Array.isArray(whList)) setWarehouses(whList);
     } catch (err) {
       console.error(err);
     }
   };
 
+  const handlePrint = (item = null) => {
+    const target = item || selectedImport;
+    if (!target) return;
+    const supp = suppliers.find((s) => s.id === target.supplierId || s.name === target.supplierName);
+    const html = generateImportHtml({ importData: target, ownerInfo, supplier: supp });
+    printInNewTab(html);
+  };
+
   useEffect(() => {
     loadImports();
-  }, [selectedSupplierId, selectedMonth]);
+  }, [selectedSupplierId, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
     loadDependencies();
@@ -87,6 +129,7 @@ export default function Imports({ initialOpenCreate = false }) {
 
   // Open Create Modal
   const handleOpenCreate = () => {
+    loadDependencies();
     setCreateForm({
       supplierId: suppliers.length > 0 ? String(suppliers[0].id) : '',
       warehouse: 'warehouse1',
@@ -232,7 +275,7 @@ export default function Imports({ initialOpenCreate = false }) {
         <div className="page-title-group">
           <h1 className="page-title">
             <ArrowDownLeft size={28} color="var(--primary)" />
-            <span>Mua Hàng & Nhập Kho</span>
+            <span>Nhập Kho</span>
           </h1>
           <p className="page-subtitle">
             Nhập hàng từ nhà cung cấp, tăng tồn kho đa điểm và ghi nhận công nợ phải trả
@@ -252,31 +295,36 @@ export default function Imports({ initialOpenCreate = false }) {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div style={{ minWidth: '220px' }}>
-          <select
-            className="form-select"
+        <div style={{ minWidth: '260px' }}>
+          <SearchableSelect
+            options={suppliers.map((s) => ({
+              id: s.id,
+              value: s.id,
+              label: s.name,
+              code: s.code,
+              phone: s.phone || '',
+              subLabel: s.phone ? `SĐT: ${s.phone}` : '',
+            }))}
             value={selectedSupplierId}
-            onChange={(e) => setSelectedSupplierId(e.target.value)}
-          >
-            <option value="">-- Tất cả nhà cung cấp --</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.code})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Calendar size={18} color="var(--text-muted)" />
-          <input
-            type="month"
-            className="form-input mono"
-            style={{ width: '160px' }}
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            onChange={(val) => setSelectedSupplierId(val)}
+            placeholder="-- Tất cả nhà cung cấp --"
+            searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
+            searchFields={['label', 'code', 'phone']}
           />
         </div>
+
+        <TimeFilter
+          mode={timeMode}
+          onModeChange={setTimeMode}
+          month={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          date={selectedDate}
+          onDateChange={setSelectedDate}
+          fromDate={fromDate}
+          onFromDateChange={setFromDate}
+          toDate={toDate}
+          onToDateChange={setToDate}
+        />
       </div>
 
       {/* Imports Table */}
@@ -284,7 +332,13 @@ export default function Imports({ initialOpenCreate = false }) {
         <EmptyState
           icon={ArrowDownLeft}
           title="Không tìm thấy phiếu nhập nào"
-          description="Chưa có phiếu nhập hàng nào trong tháng hoặc theo nhà cung cấp đã chọn."
+          description={
+            timeMode === 'day'
+              ? `Chưa có phiếu nhập hàng nào trong ngày ${selectedDate || ''} hoặc theo nhà cung cấp đã chọn.`
+              : timeMode === 'month'
+              ? `Chưa có phiếu nhập hàng nào trong tháng ${selectedMonth || ''} hoặc theo nhà cung cấp đã chọn.`
+              : 'Chưa có phiếu nhập hàng nào phù hợp với điều kiện lọc.'
+          }
           action={
             <button className="btn btn-primary btn-sm" onClick={handleOpenCreate}>
               <Plus size={15} />
@@ -298,7 +352,7 @@ export default function Imports({ initialOpenCreate = false }) {
             <thead>
               <tr>
                 <th>Số Phiếu</th>
-                <th>Ngày Nhập</th>
+                <th>Thời Gian Nhập</th>
                 <th>Nhà Cung Cấp</th>
                 <th>Kho Nhận</th>
                 <th style={{ textAlign: 'right' }}>Tiền Hàng</th>
@@ -316,7 +370,7 @@ export default function Imports({ initialOpenCreate = false }) {
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
                     {imp.voucherNumber}
                   </td>
-                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(imp.date)}</td>
+                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(imp.createdAt || imp.date, true)}</td>
                   <td style={{ fontWeight: 600 }}>{imp.supplierName}</td>
                   <td>
                     <span className="badge badge-neutral">{WAREHOUSE_MAP[imp.warehouse] || imp.warehouse}</span>
@@ -351,11 +405,19 @@ export default function Imports({ initialOpenCreate = false }) {
                       >
                         <Eye size={15} />
                       </button>
+                      <button
+                        className="btn btn-outline btn-icon"
+                        style={{ width: '32px', height: '32px' }}
+                        title="In phiếu nhập kho (Tab mới)"
+                        onClick={() => handlePrint(imp)}
+                      >
+                        <Printer size={15} />
+                      </button>
                       {imp.status !== 'cancelled' && (
                         <button
                           className="btn btn-outline btn-icon"
                           style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
-                          title="Hủy phiếu nhập (trừ tồn kho, giảm nợ NCC)"
+                          title="Hủy phiếu nhập"
                           onClick={() => handleOpenCancel(imp)}
                         >
                           <XCircle size={15} />
@@ -374,7 +436,7 @@ export default function Imports({ initialOpenCreate = false }) {
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Lập Phiếu Mua Hàng & Nhập Kho"
+        title="Lập Phiếu Nhập Kho"
         size="xl"
         footer={
           <>
@@ -393,19 +455,31 @@ export default function Imports({ initialOpenCreate = false }) {
               <label className="form-label">
                 Nhà Cung Cấp <span className="req">*</span>
               </label>
-              <select
-                className="form-select"
+              <SearchableSelect
+                options={suppliers.map((s) => ({
+                  id: s.id,
+                  value: s.id,
+                  label: s.name,
+                  code: s.code,
+                  phone: s.phone || '',
+                  debt: s.debt || 0,
+                  subLabel: `Nợ: ${formatVND(s.debt)}`,
+                }))}
                 value={createForm.supplierId}
-                onChange={(e) => setCreateForm({ ...createForm, supplierId: e.target.value })}
+                onChange={(val) => {
+                  if (val !== createForm.supplierId) {
+                    setCreateForm({ 
+                      ...createForm, 
+                      supplierId: val,
+                      items: [{ productId: '', quantity: 1, unitPrice: 0 }] 
+                    });
+                  }
+                }}
+                placeholder="-- Chọn nhà cung cấp --"
+                searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
+                searchFields={['label', 'code', 'phone']}
                 required
-              >
-                <option value="">-- Chọn nhà cung cấp --</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.code}) - Nợ hiện tại: {formatVND(s.debt)}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className="form-group">
@@ -418,7 +492,7 @@ export default function Imports({ initialOpenCreate = false }) {
                 onChange={(e) => setCreateForm({ ...createForm, warehouse: e.target.value })}
                 required
               >
-                {WAREHOUSES.map((wh) => (
+                {warehouses.map((wh) => (
                   <option key={wh.id} value={wh.id}>
                     {wh.name}
                   </option>
@@ -447,7 +521,7 @@ export default function Imports({ initialOpenCreate = false }) {
               </button>
             </div>
 
-            <div className="table-responsive">
+            <div className="table-responsive" style={{ overflow: 'visible' }}>
               <table className="data-table">
                 <thead>
                   <tr>
@@ -466,17 +540,30 @@ export default function Imports({ initialOpenCreate = false }) {
                     return (
                       <tr key={idx}>
                         <td>
-                          <select
-                            className="form-select"
+                          <SearchableSelect
+                            disabled={!createForm.supplierId}
+                            options={products
+                              .filter((p) => String(p.supplierId) === String(createForm.supplierId))
+                              .map((p) => {
+                                const whStock = getProductStockForWarehouse(p, createForm.warehouse);
+                                const total = Number(p.totalStock ?? ((p.stockWarehouse1 || 0) + (p.stockWarehouse2 || 0) + (p.stockWarehouse3 || 0)));
+                                const targetWh = warehouses.find((w) => w.id === createForm.warehouse);
+                                const whLabel = targetWh?.shortName || targetWh?.name || 'kho này';
+                                return {
+                                  id: p.id,
+                                  value: p.id,
+                                  label: p.name,
+                                  code: p.sku || p.code,
+                                  uom: p.uom || 'ĐVT',
+                                  subLabel: `ĐVT: ${p.uom || 'ĐVT'} | Tồn ${whLabel}: ${formatNumber(whStock)} (Tổng: ${formatNumber(total)}) | Giá nhập: ${formatVND(p.unitCost || 0)}`,
+                                };
+                              })}
                             value={item.productId}
-                            onChange={(e) => handleUpdateItem(idx, 'productId', e.target.value)}
-                          >
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.sku} - {p.name} ({p.uom || 'ĐVT'})
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => handleUpdateItem(idx, 'productId', val)}
+                            placeholder={createForm.supplierId ? "-- Chọn sản phẩm --" : "-- Vui lòng chọn Nhà CC --"}
+                            searchPlaceholder="Tìm theo mã SKU, tên SP..."
+                            searchFields={['label', 'code']}
+                          />
                         </td>
                         <td>
                           <input
@@ -537,7 +624,7 @@ export default function Imports({ initialOpenCreate = false }) {
           >
             <div>
               <div className="form-group">
-                <label className="form-label">Chiết Khấu Từ NCC (VNĐ)</label>
+                <label className="form-label">Chiết Khấu Từ NCC</label>
                 <input
                   type="number"
                   min="0"
@@ -623,9 +710,15 @@ export default function Imports({ initialOpenCreate = false }) {
         title={`Chi Tiết Phiếu Nhập: ${selectedImport?.voucherNumber || ''}`}
         size="lg"
         footer={
-          <button className="btn btn-primary" onClick={() => setIsDetailOpen(false)}>
-            Đóng
-          </button>
+          <>
+            <button className="btn btn-outline" onClick={() => handlePrint(selectedImport)}>
+              <Printer size={16} />
+              <span>In Phiếu Nhập</span>
+            </button>
+            <button className="btn btn-primary" onClick={() => setIsDetailOpen(false)}>
+              Đóng
+            </button>
+          </>
         }
       >
         {selectedImport && (
@@ -637,7 +730,7 @@ export default function Imports({ initialOpenCreate = false }) {
                 <p style={{ fontSize: '0.8125rem' }}>Nhà cung cấp: <strong>{selectedImport.supplierName}</strong></p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '0.8125rem' }}>Ngày nhập: <strong>{formatDate(selectedImport.date)}</strong></p>
+                <p style={{ fontSize: '0.8125rem' }}>Thời gian nhập: <strong>{formatDate(selectedImport.createdAt || selectedImport.date, true)}</strong></p>
                 <p style={{ fontSize: '0.8125rem' }}>Kho nhận: <strong>{WAREHOUSE_MAP[selectedImport.warehouse] || selectedImport.warehouse}</strong></p>
                 <span className={`badge badge-${selectedImport.status === 'cancelled' ? 'danger' : 'info'}`}>
                   {selectedImport.status === 'cancelled' ? 'Đã hủy' : 'Đã nhập kho'}

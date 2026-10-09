@@ -16,11 +16,25 @@ public class ProductsController : BaseApiController
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<ProductDto>>>> GetProducts(
+    public async Task<IActionResult> GetProducts(
         [FromQuery] string? q,
         [FromQuery] int? supplierId,
-        CancellationToken ct)
-        => Success(await _productService.GetProductsAsync(q, supplierId, ct));
+        [FromQuery] string? warehouse,
+        [FromQuery] string? sortBy,
+        [FromQuery] int? page,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] bool all = false,
+        CancellationToken ct = default)
+    {
+        if (page.HasValue && !all)
+        {
+            var paged = await _productService.GetPagedProductsAsync(q, supplierId, warehouse, sortBy, page.Value, pageSize, ct);
+            return Success(paged);
+        }
+
+        var list = await _productService.GetProductsAsync(q, supplierId, ct);
+        return Success(list);
+    }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<ProductDto>>> GetById(

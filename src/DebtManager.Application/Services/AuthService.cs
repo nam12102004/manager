@@ -45,8 +45,34 @@ public class AuthService : IAuthService
 
         if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
         {
+            try
+            {
+                await _uow.LoginHistories.AddAsync(new LoginHistory
+                {
+                    Username = request.Username.Trim(),
+                    IsSuccess = false,
+                    Note = "Sai mật khẩu hoặc tài khoản không tồn tại",
+                    LoginTime = DateTime.UtcNow
+                }, ct);
+                await _uow.SaveChangesAsync(ct);
+            }
+            catch { /* Ignore logging error */ }
+
             throw new UnauthorizedException("Tên đăng nhập hoặc mật khẩu không chính xác");
         }
+
+        try
+        {
+            await _uow.LoginHistories.AddAsync(new LoginHistory
+            {
+                Username = user.Username,
+                IsSuccess = true,
+                Note = "Đăng nhập thành công",
+                LoginTime = DateTime.UtcNow
+            }, ct);
+            await _uow.SaveChangesAsync(ct);
+        }
+        catch { /* Ignore logging error */ }
 
         return new LoginResponseDto
         {

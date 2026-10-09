@@ -105,7 +105,7 @@ export default function Dashboard({ onNavigate, onQuickAction }) {
           onClick={() => onNavigate?.('reports')}
         />
         <StatCard
-          title="CÔNG NỢ PHẢI THU (KHÁCH HÀNG)"
+          title="CÔNG NỢ PHẢI THU"
           value={formatVND(metrics.totalReceivables)}
           subtitle={`${customers.filter((c) => Number(c.debt || 0) > 0).length} khách hàng còn nợ`}
           icon={TrendingUp}
@@ -113,7 +113,7 @@ export default function Dashboard({ onNavigate, onQuickAction }) {
           onClick={() => onNavigate?.('customers')}
         />
         <StatCard
-          title="CÔNG NỢ PHẢI TRẢ (NHÀ CUNG CẤP)"
+          title="CÔNG NỢ PHẢI TRẢ"
           value={formatVND(metrics.totalPayables)}
           subtitle={`${suppliers.filter((s) => Number(s.debt || 0) < 0).length} NCC cần thanh toán`}
           icon={Building}
@@ -129,19 +129,32 @@ export default function Dashboard({ onNavigate, onQuickAction }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Boxes size={18} color="var(--primary)" />
-              <span>Phân Bổ Tồn Kho Theo 3 Kho</span>
+              <span>Danh Mục Kho & Phân Bổ Tồn Kho</span>
             </h3>
-            <button className="btn btn-ghost btn-sm" onClick={() => onNavigate?.('products')}>
-              <span>Chi tiết</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => onNavigate?.('products:overview')}>
+              <span>Xem chi tiết</span>
               <ChevronRight size={14} />
             </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {warehouseStats.map((wh, idx) => (
-              <div key={wh.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <div
+                key={wh.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.35rem',
+                  cursor: 'pointer',
+                  padding: '0.35rem',
+                  borderRadius: 'var(--radius-sm)',
+                  transition: 'background var(--transition-fast)',
+                }}
+                onClick={() => onNavigate?.(`products:${wh.id}`)}
+                title={`Bấm để xem danh mục tồn kho ${wh.name}`}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{wh.name}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>📦 {wh.name}</span>
                   <span className="mono" style={{ fontWeight: 700 }}>
                     {formatNumber(wh.stock)} ({wh.percent}%)
                   </span>
@@ -163,7 +176,9 @@ export default function Dashboard({ onNavigate, onQuickAction }) {
                           ? 'var(--primary)'
                           : idx === 1
                           ? 'var(--info)'
-                          : 'var(--purple)',
+                          : idx === 2
+                          ? 'var(--purple)'
+                          : 'var(--success)',
                       borderRadius: 'var(--radius-full)',
                       transition: 'width 0.5s ease',
                     }}
@@ -182,7 +197,7 @@ export default function Dashboard({ onNavigate, onQuickAction }) {
               <span>Dòng Tiền Thu - Chi Trong Tháng</span>
             </h3>
             <button className="btn btn-ghost btn-sm" onClick={() => onNavigate?.('cashbook')}>
-              <span>Xem sổ quỹ</span>
+              <span>Xem Thu - Chi</span>
               <ChevronRight size={14} />
             </button>
           </div>
@@ -286,7 +301,7 @@ export default function Dashboard({ onNavigate, onQuickAction }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <ArrowUpRight size={18} color="var(--primary)" />
-              <span>Phiếu Xuất Bán Hàng Gần Đây</span>
+              <span>Phiếu Xuất Gần Đây</span>
             </h3>
             <button className="btn btn-ghost btn-sm" onClick={() => onNavigate?.('exports')}>
               <span>Tất cả</span>

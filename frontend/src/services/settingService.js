@@ -1,4 +1,5 @@
 import { ownersApi } from '../api/endpoints';
+import { auditService } from './auditService';
 
 const DEFAULT_SETTINGS = {
   storeName: 'KHO HÀNG & PHÂN PHỐI TỔNG HỢP',
@@ -32,6 +33,7 @@ export const settingService = {
           bankName: parsed.bankName || DEFAULT_SETTINGS.bankName,
           bankAccount: parsed.bankAccount || DEFAULT_SETTINGS.bankAccount,
           accountHolder: parsed.accountHolder || DEFAULT_SETTINGS.accountHolder,
+          warehouses: parsed.warehouses || null,
           rawInfo: data.info,
         };
       } catch {
@@ -66,17 +68,37 @@ export const settingService = {
       throw new Error(validation.message);
     }
 
+    let existingParsed = {};
+    try {
+      const current = await ownersApi.get();
+      if (current?.info) {
+        existingParsed = JSON.parse(current.info);
+      }
+    } catch {
+      // ignore
+    }
+
     const payload = {
+      ...existingParsed,
       storeName: data.storeName.trim(),
       storePhone: data.storePhone?.trim() || '',
       storeAddress: data.storeAddress?.trim() || '',
       bankName: data.bankName?.trim() || '',
       bankAccount: data.bankAccount?.trim() || '',
       accountHolder: data.accountHolder?.trim() || '',
+      ...(data.warehouses ? { warehouses: data.warehouses } : {}),
     };
 
-    return await ownersApi.update({
+    const result = await ownersApi.update({
       info: JSON.stringify(payload),
     });
+    auditService.logAction({
+      action: 'UPDATE_SETTINGS',
+      entityName: 'Owner',
+      entityId: 'STORE-CONFIG',
+      entityDisplayName: 'Cài đặt Cửa hàng & VietQR',
+      details: `Cập nhật thông tin cửa hàng: ${payload.storeName}, TK ngân hàng: ${payload.bankName} - ${payload.bankAccount} (${payload.accountHolder})`,
+    });
+    return result;
   },
 };

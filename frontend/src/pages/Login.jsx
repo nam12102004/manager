@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Building2, Lock, User, ArrowRight, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 
@@ -96,22 +95,6 @@ export default function Login() {
       >
         {/* Brand header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div
-            style={{
-              width: '54px',
-              height: '54px',
-              margin: '0 auto 1.25rem auto',
-              borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 24px rgba(37, 99, 235, 0.4)',
-            }}
-          >
-            <Building2 size={28} />
-          </div>
           <h1 style={{ fontSize: '1.625rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: '0.375rem' }}>
             DebtManager
           </h1>
@@ -130,13 +113,9 @@ export default function Login() {
               padding: '0.75rem 1rem',
               color: '#fca5a5',
               fontSize: '0.8125rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.625rem',
               marginBottom: '1.5rem',
             }}
           >
-            <AlertCircle size={18} style={{ flexShrink: 0 }} />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -147,8 +126,7 @@ export default function Login() {
             <label className="form-label" style={{ color: '#cbd5e1' }}>
               Tên đăng nhập <span className="req">*</span>
             </label>
-            <div className="input-with-icon">
-              <User className="input-icon" size={18} />
+            <div>
               <input
                 type="text"
                 className="form-input"
@@ -171,8 +149,7 @@ export default function Login() {
             <label className="form-label" style={{ color: '#cbd5e1' }}>
               Mật khẩu <span className="req">*</span>
             </label>
-            <div className="input-with-icon">
-              <Lock className="input-icon" size={18} />
+            <div>
               <input
                 type="password"
                 className="form-input"
@@ -200,10 +177,7 @@ export default function Login() {
             {isLoading ? (
               <span>Đang kết nối...</span>
             ) : (
-              <>
-                <span>Đăng nhập hệ thống</span>
-                <ArrowRight size={18} />
-              </>
+              <span>Đăng nhập hệ thống</span>
             )}
           </button>
         </form>
@@ -217,9 +191,8 @@ export default function Login() {
             textAlign: 'center',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', color: '#94a3b8', fontSize: '0.75rem', marginBottom: '0.625rem' }}>
-            <Sparkles size={14} color="#60a5fa" />
-            <span>Tài khoản quản trị mặc định (.NET Clean Arch seed):</span>
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '0.625rem' }}>
+            <span>Tài khoản quản trị mặc định:</span>
           </div>
           <button
             type="button"
@@ -232,13 +205,9 @@ export default function Login() {
               color: '#93c5fd',
               fontSize: '0.8125rem',
               cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
               fontWeight: 600,
             }}
           >
-            <ShieldCheck size={16} />
             <span>Điền mẫu: admin / admin123</span>
           </button>
         </div>

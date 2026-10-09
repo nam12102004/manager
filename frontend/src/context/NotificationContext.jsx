@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-react';
 
 const NotificationContext = createContext(null);
 
@@ -28,26 +27,12 @@ export function NotificationProvider({ children }) {
     info: (msg, dur) => addToast('info', msg, dur),
   };
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'success':
-        return <CheckCircle2 size={20} color="var(--success)" />;
-      case 'error':
-        return <XCircle size={20} color="var(--danger)" />;
-      case 'warning':
-        return <AlertTriangle size={20} color="var(--warning)" />;
-      default:
-        return <Info size={20} color="var(--info)" />;
-    }
-  };
-
   return (
     <NotificationContext.Provider value={notify}>
       {children}
       <div className="toast-container" aria-live="polite">
         {toasts.map((toast) => (
           <div key={toast.id} className={`toast-item toast-${toast.type}`}>
-            <div style={{ flexShrink: 0, marginTop: '2px' }}>{getIcon(toast.type)}</div>
             <div style={{ flex: 1, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
               {toast.message}
             </div>
@@ -58,13 +43,12 @@ export function NotificationProvider({ children }) {
                 border: 'none',
                 color: 'var(--text-muted)',
                 cursor: 'pointer',
-                padding: '2px',
-                display: 'flex',
-                alignItems: 'center',
+                padding: '2px 6px',
+                fontSize: '0.75rem',
               }}
               title="Đóng"
             >
-              <X size={16} />
+              Đóng
             </button>
           </div>
         ))}

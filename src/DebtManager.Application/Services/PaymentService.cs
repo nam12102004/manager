@@ -1,3 +1,4 @@
+using DebtManager.Application.Common;
 using DebtManager.Application.Common.Exceptions;
 using DebtManager.Application.DTOs.Payments;
 using DebtManager.Application.Interfaces;
@@ -32,7 +33,8 @@ public class PaymentService : IPaymentService
             var s = search.Trim().ToLower();
             query = query.Where(p => p.PaymentNumber.ToLower().Contains(s) ||
                                      (p.Supplier != null && p.Supplier.Name.ToLower().Contains(s)) ||
-                                     (p.Customer != null && p.Customer.Name.ToLower().Contains(s)));
+                                     (p.Customer != null && p.Customer.Name.ToLower().Contains(s)) ||
+                                     (p.Notes != null && p.Notes.ToLower().Contains(s)));
         }
 
         var list = await query.OrderByDescending(p => p.Date)
@@ -40,6 +42,87 @@ public class PaymentService : IPaymentService
                               .ToListAsync(ct);
 
         return list.Select(MapToDto).ToList();
+    }
+
+    public async Task<PaymentPagedResult> GetPagedPaymentsAsync(
+        int? supplierId = null,
+        int? customerId = null,
+        string? search = null,
+        string? month = null,
+        string? date = null,
+        string? fromDate = null,
+        string? toDate = null,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = pageSize > 0 ? pageSize : 15;
+
+        var query = _uow.Payments.Query()
+            .Include(p => p.Supplier)
+            .Include(p => p.Customer)
+            .AsQueryable();
+
+        if (supplierId.HasValue) query = query.Where(p => p.SupplierId == supplierId.Value);
+        if (customerId.HasValue) query = query.Where(p => p.CustomerId == customerId.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(p => p.PaymentNumber.ToLower().Contains(s) ||
+                                     (p.Supplier != null && p.Supplier.Name.ToLower().Contains(s)) ||
+                                     (p.Customer != null && p.Customer.Name.ToLower().Contains(s)) ||
+                                     (p.Notes != null && p.Notes.ToLower().Contains(s)));
+        }
+
+        var effectiveDate = !string.IsNullOrWhiteSpace(date) ? date : month;
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            var start = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+            query = query.Where(p => p.Date >= start);
+        }
+
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            var end = new DateTime(pTo.Year, pTo.Month, pTo.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+            query = query.Where(p => p.Date <= end);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(effectiveDate))
+        {
+            if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                query = query.Where(p => p.Date >= start && p.Date < end);
+            }
+            else if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                query = query.Where(p => p.Date >= start && p.Date < end);
+            }
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        var totalAmount = await query.Where(p => p.Status != "cancelled").SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
+
+        var items = await query.OrderByDescending(p => p.Date)
+                               .ThenByDescending(p => p.Id)
+                               .Skip((page - 1) * pageSize)
+                               .Take(pageSize)
+                               .ToListAsync(ct);
+
+        return new PaymentPagedResult
+        {
+            Items = items.Select(MapToDto).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalAmount = totalAmount
+        };
     }
 
     public async Task<PaymentDto> GetByIdAsync(long id, CancellationToken ct = default)
@@ -67,7 +150,9 @@ public class PaymentService : IPaymentService
             var payment = new Payment
             {
                 PaymentNumber = paymentNumber,
-                Date = dto.Date ?? DateTime.UtcNow,
+                Date = dto.Date.HasValue
+                    ? (dto.Date.Value.TimeOfDay == TimeSpan.Zero ? dto.Date.Value.Date.Add(DateTime.UtcNow.TimeOfDay) : dto.Date.Value)
+                    : DateTime.UtcNow,
                 SupplierId = dto.SupplierId,
                 CustomerId = dto.CustomerId,
                 Amount = dto.Amount,

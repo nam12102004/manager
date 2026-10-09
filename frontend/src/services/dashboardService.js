@@ -9,6 +9,7 @@ import {
   reportsApi,
 } from '../api/endpoints';
 import { WAREHOUSES } from '../utils/constants';
+import { warehouseService } from './warehouseService';
 
 /**
  * Frontend Business Logic & Service for Dashboard
@@ -90,7 +91,14 @@ export const dashboardService = {
     );
 
     // 5. Warehouse breakdown
-    const warehouseStats = WAREHOUSES.map((wh) => {
+    let activeWarehouses = [];
+    try {
+      activeWarehouses = await warehouseService.getWarehouses();
+    } catch {
+      activeWarehouses = WAREHOUSES;
+    }
+
+    const warehouseStats = activeWarehouses.map((wh) => {
       let stock = 0;
       let count = 0;
 

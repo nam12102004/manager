@@ -14,15 +14,20 @@ import {
   CheckCircle,
   DollarSign,
   Printer,
+  ArrowDownLeft,
+  ArrowUpRight,
 } from 'lucide-react';
-import { formatVND, formatDate, getCurrentMonthStr } from '../utils/formatters';
+import { formatVND, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
 import StatCard from '../components/common/StatCard';
+import SearchBar from '../components/common/SearchBar';
+import TimeFilter from '../components/common/TimeFilter';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
+import SearchableSelect from '../components/common/SearchableSelect';
 import { cashBookService } from '../services';
 
 export default function CashBook({ initialOpenReceipt = false, initialOpenPayment = false }) {
@@ -37,6 +42,11 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
   const [loading, setLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
+  const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   // Modals state
   const [isCreateReceiptOpen, setIsCreateReceiptOpen] = useState(initialOpenReceipt);
@@ -83,7 +93,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
       setSuppliers(deps?.suppliers || []);
       setOwnerInfo(deps?.ownerInfo || null);
     } catch (err) {
-      notify.error(err.message || 'Không thể tải sổ quỹ');
+      notify.error(err.message || 'Không thể tải dữ liệu thu chi');
     } finally {
       setLoading(false);
     }
@@ -93,8 +103,50 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
     loadData();
   }, [searchQuery]);
 
-  // Compute Cashflow Totals via Service Logic Layer
-  const { totalReceipts, totalPayments, netFund } = cashBookService.calculateCashFlowStats(receipts, payments);
+  // Filter receipts by date/month/range
+  const filteredReceipts = React.useMemo(() => {
+    return receipts.filter((r) => {
+      if (timeMode === 'all') return true;
+      const rDate = r.date ? r.date.slice(0, 10) : '';
+      if (!rDate) return true;
+      if (timeMode === 'month') {
+        return rDate.startsWith(selectedMonth);
+      }
+      if (timeMode === 'day') {
+        return rDate === selectedDate;
+      }
+      if (timeMode === 'range') {
+        if (fromDate && rDate < fromDate) return false;
+        if (toDate && rDate > toDate) return false;
+        return true;
+      }
+      return true;
+    });
+  }, [receipts, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+
+  // Filter payments by date/month/range
+  const filteredPayments = React.useMemo(() => {
+    return payments.filter((p) => {
+      if (timeMode === 'all') return true;
+      const pDate = p.date ? p.date.slice(0, 10) : '';
+      if (!pDate) return true;
+      if (timeMode === 'month') {
+        return pDate.startsWith(selectedMonth);
+      }
+      if (timeMode === 'day') {
+        return pDate === selectedDate;
+      }
+      if (timeMode === 'range') {
+        if (fromDate && pDate < fromDate) return false;
+        if (toDate && pDate > toDate) return false;
+        return true;
+      }
+      return true;
+    });
+  }, [payments, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+
+  // Compute Cashflow Totals on filtered lists
+  const { totalReceipts, totalPayments, netFund } = cashBookService.calculateCashFlowStats(filteredReceipts, filteredPayments);
 
   // Open Create Receipt
   const handleOpenCreateReceipt = () => {
@@ -199,7 +251,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
         <div className="page-title-group">
           <h1 className="page-title">
             <WalletCards size={28} color="var(--primary)" />
-            <span>Sổ Quỹ Thu - Chi (Cash Book)</span>
+            <span>Thu - Chi</span>
           </h1>
           <p className="page-subtitle">
             Theo dõi dòng tiền thu tiền khách, chi trả nhà cung cấp và tồn quỹ tiền mặt/ngân hàng
@@ -226,14 +278,14 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
         <StatCard
           title="TỔNG THU TIỀN VÀO QUỸ"
           value={formatVND(totalReceipts)}
-          subtitle={`${receipts.length} lượt phiếu thu`}
+          subtitle={`${filteredReceipts.length} lượt phiếu thu`}
           icon={Receipt}
           color="success"
         />
         <StatCard
           title="TỔNG CHI TIỀN TỪ QUỸ"
           value={formatVND(totalPayments)}
-          subtitle={`${payments.filter((p) => p.status !== 'cancelled').length} lượt phiếu chi`}
+          subtitle={`${filteredPayments.filter((p) => p.status !== 'cancelled').length} lượt phiếu chi`}
           icon={CreditCard}
           color="danger"
         />
@@ -246,6 +298,30 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
         />
       </div>
 
+      {/* Filter Bar with Search & TimeFilter */}
+      <div className="filter-bar">
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Tìm theo số phiếu, tên đối tác, ghi chú..."
+          debounceMs={0}
+          style={{ flex: 1, minWidth: '280px' }}
+        />
+
+        <TimeFilter
+          mode={timeMode}
+          onModeChange={setTimeMode}
+          month={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          date={selectedDate}
+          onDateChange={setSelectedDate}
+          fromDate={fromDate}
+          onFromDateChange={setFromDate}
+          toDate={toDate}
+          onToDateChange={setToDate}
+        />
+      </div>
+
       {/* Sub Tabs Toggle */}
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
         <button
@@ -253,24 +329,30 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           onClick={() => setActiveSubTab('receipts')}
         >
           <Receipt size={16} />
-          <span>Phiếu Thu ({receipts.length})</span>
+          <span>Phiếu Thu ({filteredReceipts.length})</span>
         </button>
         <button
           className={`btn ${activeSubTab === 'payments' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setActiveSubTab('payments')}
         >
           <CreditCard size={16} />
-          <span>Phiếu Chi ({payments.length})</span>
+          <span>Phiếu Chi ({filteredPayments.length})</span>
         </button>
       </div>
 
       {/* Content based on subTab */}
       {activeSubTab === 'receipts' ? (
-        receipts.length === 0 && !loading ? (
+        filteredReceipts.length === 0 && !loading ? (
           <EmptyState
             icon={Receipt}
             title="Chưa có phiếu thu nào"
-            description="Lập phiếu thu khi khách hàng thanh toán tiền nợ hoặc hoàn tiền."
+            description={
+              timeMode === 'day'
+                ? `Không có phiếu thu nào trong ngày ${selectedDate || ''}.`
+                : timeMode === 'month'
+                ? `Không có phiếu thu nào trong tháng ${selectedMonth || ''}.`
+                : 'Lập phiếu thu khi khách hàng thanh toán tiền nợ hoặc hoàn tiền.'
+            }
             action={
               <button className="btn btn-success btn-sm" onClick={handleOpenCreateReceipt}>
                 <Plus size={15} />
@@ -284,7 +366,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
               <thead>
                 <tr>
                   <th>Số Phiếu Thu</th>
-                  <th>Ngày Thu</th>
+                  <th>Thời Gian Thu</th>
                   <th>Người Nộp Tiền</th>
                   <th>Phương Thức</th>
                   <th style={{ textAlign: 'right' }}>Số Tiền Thu</th>
@@ -293,7 +375,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                 </tr>
               </thead>
               <tbody>
-                {receipts.map((r) => {
+                {filteredReceipts.map((r) => {
                   const partnerName = r.customerName
                     ? `Khách: ${r.customerName}`
                     : r.supplierName
@@ -306,7 +388,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                       <td className="mono" style={{ fontWeight: 700, color: 'var(--success)' }}>
                         {r.receiptNumber}
                       </td>
-                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.date, true)}</td>
+                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt || r.date, true)}</td>
                       <td style={{ fontWeight: 600 }}>{partnerName}</td>
                       <td>
                         <span className="badge badge-neutral">{methodObj?.label || r.method || 'Tiền mặt'}</span>
@@ -330,7 +412,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                         <button
                           className="btn btn-ghost btn-icon"
                           style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
-                          title="Xóa phiếu thu này (hoàn trả nợ)"
+                          title="Xóa phiếu thu này"
                           onClick={() => handleOpenDelete(r, 'receipt')}
                         >
                           <Trash2 size={15} />
@@ -344,11 +426,17 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           </div>
         )
       ) : (
-        payments.length === 0 && !loading ? (
+        filteredPayments.length === 0 && !loading ? (
           <EmptyState
             icon={CreditCard}
             title="Chưa có phiếu chi nào"
-            description="Lập phiếu chi khi thanh toán tiền nợ cho nhà cung cấp hoặc hoàn tiền khách hàng."
+            description={
+              timeMode === 'day'
+                ? `Không có phiếu chi nào trong ngày ${selectedDate || ''}.`
+                : timeMode === 'month'
+                ? `Không có phiếu chi nào trong tháng ${selectedMonth || ''}.`
+                : 'Lập phiếu chi khi thanh toán tiền nợ cho nhà cung cấp hoặc hoàn tiền khách hàng.'
+            }
             action={
               <button className="btn btn-warning btn-sm" onClick={handleOpenCreatePayment}>
                 <Plus size={15} />
@@ -362,7 +450,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
               <thead>
                 <tr>
                   <th>Số Phiếu Chi</th>
-                  <th>Ngày Chi</th>
+                  <th>Thời Gian Chi</th>
                   <th>Người Nhận Tiền</th>
                   <th>Phương Thức</th>
                   <th style={{ textAlign: 'right' }}>Số Tiền Chi</th>
@@ -372,7 +460,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => {
+                {filteredPayments.map((p) => {
                   const partnerName = p.supplierName
                     ? `NCC: ${p.supplierName}`
                     : p.customerName
@@ -385,7 +473,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                       <td className="mono" style={{ fontWeight: 700, color: 'var(--danger)' }}>
                         {p.paymentNumber}
                       </td>
-                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.date, true)}</td>
+                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.createdAt || p.date, true)}</td>
                       <td style={{ fontWeight: 600 }}>{partnerName}</td>
                       <td>
                         <span className="badge badge-neutral">{methodObj?.label || p.method || 'Tiền mặt'}</span>
@@ -468,7 +556,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                   checked={receiptForm.partnerType === 'supplier'}
                   onChange={() => setReceiptForm({ ...receiptForm, partnerType: 'supplier', partnerId: suppliers[0]?.id || '' })}
                 />
-                <span>Nhà Cung Cấp (Hoàn tiền)</span>
+                <span>Nhà Cung Cấp</span>
               </label>
             </div>
           </div>
@@ -477,29 +565,39 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
             <label className="form-label">
               Chọn {receiptForm.partnerType === 'customer' ? 'Khách Hàng' : 'Nhà Cung Cấp'} <span className="req">*</span>
             </label>
-            <select
-              className="form-select"
+            <SearchableSelect
+              options={
+                receiptForm.partnerType === 'customer'
+                  ? customers.map((c) => ({
+                      id: c.id,
+                      value: c.id,
+                      label: c.name,
+                      code: c.code,
+                      phone: c.phone || '',
+                      debt: c.debt || 0,
+                      subLabel: `Nợ: ${formatVND(c.debt)}`,
+                    }))
+                  : suppliers.map((s) => ({
+                      id: s.id,
+                      value: s.id,
+                      label: s.name,
+                      code: s.code,
+                      phone: s.phone || '',
+                      subLabel: s.phone ? `SĐT: ${s.phone}` : '',
+                    }))
+              }
               value={receiptForm.partnerId}
-              onChange={(e) => setReceiptForm({ ...receiptForm, partnerId: e.target.value })}
+              onChange={(val) => setReceiptForm({ ...receiptForm, partnerId: val })}
+              placeholder={`-- Chọn ${receiptForm.partnerType === 'customer' ? 'khách hàng' : 'nhà cung cấp'} --`}
+              searchPlaceholder="Tìm theo tên, mã, SĐT..."
+              searchFields={['label', 'code', 'phone']}
               required
-            >
-              {receiptForm.partnerType === 'customer'
-                ? customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code}) - Nợ: {formatVND(c.debt)}
-                    </option>
-                  ))
-                : suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.code})
-                    </option>
-                  ))}
-            </select>
+            />
           </div>
 
           <div className="form-group">
             <label className="form-label">
-              Số Tiền Thu (VNĐ) <span className="req">*</span>
+              Số Tiền Thu <span className="req">*</span>
             </label>
             <input
               type="number"
@@ -580,7 +678,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                   checked={paymentForm.partnerType === 'customer'}
                   onChange={() => setPaymentForm({ ...paymentForm, partnerType: 'customer', partnerId: customers[0]?.id || '' })}
                 />
-                <span>Khách Hàng (Hoàn tiền)</span>
+                <span>Khách Hàng</span>
               </label>
             </div>
           </div>
@@ -589,29 +687,38 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
             <label className="form-label">
               Chọn {paymentForm.partnerType === 'supplier' ? 'Nhà Cung Cấp' : 'Khách Hàng'} <span className="req">*</span>
             </label>
-            <select
-              className="form-select"
+            <SearchableSelect
+              options={
+                paymentForm.partnerType === 'supplier'
+                  ? suppliers.map((s) => ({
+                      id: s.id,
+                      value: s.id,
+                      label: s.name,
+                      code: s.code,
+                      phone: s.phone || '',
+                      subLabel: `Nợ cần trả: ${formatVND(s.debt < 0 ? Math.abs(s.debt) : 0)}${s.phone ? ` | SĐT: ${s.phone}` : ''}`,
+                    }))
+                  : customers.map((c) => ({
+                      id: c.id,
+                      value: c.id,
+                      label: c.name,
+                      code: c.code,
+                      phone: c.phone || '',
+                      subLabel: c.phone ? `SĐT: ${c.phone}` : '',
+                    }))
+              }
               value={paymentForm.partnerId}
-              onChange={(e) => setPaymentForm({ ...paymentForm, partnerId: e.target.value })}
+              onChange={(val) => setPaymentForm({ ...paymentForm, partnerId: val })}
+              placeholder={`-- Chọn ${paymentForm.partnerType === 'supplier' ? 'nhà cung cấp' : 'khách hàng'} --`}
+              searchPlaceholder="Tìm theo tên, mã, SĐT..."
+              searchFields={['label', 'code', 'phone']}
               required
-            >
-              {paymentForm.partnerType === 'supplier'
-                ? suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.code}) - Nợ cần trả: {formatVND(s.debt < 0 ? Math.abs(s.debt) : 0)}
-                    </option>
-                  ))
-                : customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code})
-                    </option>
-                  ))}
-            </select>
+            />
           </div>
 
           <div className="form-group">
             <label className="form-label">
-              Số Tiền Chi (VNĐ) <span className="req">*</span>
+              Số Tiền Chi <span className="req">*</span>
             </label>
             <input
               type="number"

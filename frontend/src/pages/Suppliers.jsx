@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Truck,
   Plus,
@@ -13,16 +13,32 @@ import {
   Building,
   AlertCircle,
   Printer,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  MapPinned,
 } from 'lucide-react';
-import { formatVND, formatDate, getDebtStatus, parseJsonList } from '../utils/formatters';
+import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { DEBT_ADJUST_REASONS, PAYMENT_METHODS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import SearchBar from '../components/common/SearchBar';
+import SearchableSelect from '../components/common/SearchableSelect';
+import SortDropdown from '../components/common/SortDropdown';
+import TimeFilter from '../components/common/TimeFilter';
 import Modal from '../components/common/Modal';
 import Drawer from '../components/common/Drawer';
 import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import { supplierService, cashBookService, settingService } from '../services';
+
+const SUPPLIER_SORT_OPTIONS = [
+  { value: 'default', label: 'Sắp xếp: Mặc định' },
+  { value: 'payable_desc', label: 'Phải trả (Nợ NCC): Nhiều nhất → Ít nhất' },
+  { value: 'payable_asc', label: 'Phải trả (Nợ NCC): Ít nhất → Nhiều nhất' },
+  { value: 'receivable_desc', label: 'Phải thu (Ứng trước): Nhiều nhất → Ít nhất' },
+  { value: 'receivable_asc', label: 'Phải thu (Ứng trước): Ít nhất → Nhiều nhất' },
+];
 
 export default function Suppliers() {
   const notify = useNotification();
@@ -30,6 +46,9 @@ export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('ALL');
+  const [sortBy, setSortBy] = useState('default');
+  const regionTabsRef = useRef(null);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -43,6 +62,9 @@ export default function Suppliers() {
 
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [debtHistoryRecords, setDebtHistoryRecords] = useState([]);
+  const [historyTimeMode, setHistoryTimeMode] = useState('month'); // 'month' | 'day'
+  const [historyMonth, setHistoryMonth] = useState(getCurrentMonthStr());
+  const [historyDate, setHistoryDate] = useState(getCurrentDateStr());
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Form states
@@ -53,12 +75,96 @@ export default function Suppliers() {
     phone: '',
     email: '',
     address: '',
+    region: '',
     bankAccount: '',
     taxNumber: '',
     initialDebt: 0,
-    creditLimit: 0,
     notes: '',
   });
+
+  // Extract unique regions list
+  const regionOptions = useMemo(() => {
+    const set = new Set();
+    suppliers.forEach((s) => {
+      if (s.region && s.region.trim()) set.add(s.region.trim());
+    });
+    return Array.from(set).map((r) => ({ id: r, value: r, label: r }));
+  }, [suppliers]);
+
+  const allRegions = useMemo(() => {
+    const set = new Set();
+    suppliers.forEach((s) => {
+      if (s.region && s.region.trim()) set.add(s.region.trim());
+    });
+    return Array.from(set);
+  }, [suppliers]);
+
+  // Filter suppliers by selected region & real-time search query
+  const filteredSuppliers = useMemo(() => {
+    let list = suppliers;
+    if (selectedRegion === 'NONE') {
+      list = list.filter((s) => !s.region || !s.region.trim());
+    } else if (selectedRegion !== 'ALL') {
+      list = list.filter((s) => (s.region || '').trim().toLowerCase() === selectedRegion.trim().toLowerCase());
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      const q = normalizeText(searchQuery.trim());
+      list = list.filter((s) => {
+        const name = normalizeText(s.name || '');
+        const code = normalizeText(s.code || '');
+        const contact = normalizeText(s.contactName || '');
+        const phone = normalizeText(parseJsonList(s.phonesJson) || '');
+        const email = normalizeText(s.email || '');
+        const address = normalizeText(parseJsonList(s.addressesJson) || '');
+        const region = normalizeText(s.region || '');
+        const bankAccount = normalizeText(s.bankAccount || '');
+        return (
+          name.includes(q) ||
+          code.includes(q) ||
+          contact.includes(q) ||
+          phone.includes(q) ||
+          email.includes(q) ||
+          address.includes(q) ||
+          region.includes(q) ||
+          bankAccount.includes(q)
+        );
+      });
+    }
+
+    return list;
+  }, [suppliers, selectedRegion, searchQuery]);
+
+  // Sort filtered suppliers based on selected numeric debt metric
+  const sortedSuppliers = useMemo(() => {
+    let list = [...filteredSuppliers];
+    if (sortBy === 'payable_desc') {
+      list.sort((a, b) => {
+        const payA = Number(a.debt || 0) < 0 ? Math.abs(Number(a.debt || 0)) : 0;
+        const payB = Number(b.debt || 0) < 0 ? Math.abs(Number(b.debt || 0)) : 0;
+        return payB - payA;
+      });
+    } else if (sortBy === 'payable_asc') {
+      list.sort((a, b) => {
+        const payA = Number(a.debt || 0) < 0 ? Math.abs(Number(a.debt || 0)) : 0;
+        const payB = Number(b.debt || 0) < 0 ? Math.abs(Number(b.debt || 0)) : 0;
+        return payA - payB;
+      });
+    } else if (sortBy === 'receivable_desc') {
+      list.sort((a, b) => {
+        const recA = Number(a.debt || 0) > 0 ? Number(a.debt || 0) : 0;
+        const recB = Number(b.debt || 0) > 0 ? Number(b.debt || 0) : 0;
+        return recB - recA;
+      });
+    } else if (sortBy === 'receivable_asc') {
+      list.sort((a, b) => {
+        const recA = Number(a.debt || 0) > 0 ? Number(a.debt || 0) : 0;
+        const recB = Number(b.debt || 0) > 0 ? Number(b.debt || 0) : 0;
+        return recA - recB;
+      });
+    }
+    return list;
+  }, [filteredSuppliers, sortBy]);
 
   const [adjustData, setAdjustData] = useState({
     mode: 'delta',
@@ -76,12 +182,11 @@ export default function Suppliers() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // Load Suppliers
   // Load Suppliers via supplierService
   const loadSuppliers = async () => {
     setLoading(true);
     try {
-      const data = await supplierService.getAll({ q: searchQuery });
+      const data = await supplierService.getAll();
       setSuppliers(data || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách nhà cung cấp');
@@ -93,7 +198,7 @@ export default function Suppliers() {
   useEffect(() => {
     loadSuppliers();
     settingService.getSettings().then((res) => setOwnerInfo(res)).catch(() => {});
-  }, [searchQuery]);
+  }, []);
 
   // Open Create
   const handleOpenCreate = () => {
@@ -104,10 +209,10 @@ export default function Suppliers() {
       phone: '',
       email: '',
       address: '',
+      region: '',
       bankAccount: '',
       taxNumber: '',
       initialDebt: 0,
-      creditLimit: 0,
       notes: '',
     });
     setIsCreateOpen(true);
@@ -122,9 +227,9 @@ export default function Suppliers() {
       phone: parseJsonList(supplier.phonesJson) || '',
       email: supplier.email || '',
       address: parseJsonList(supplier.addressesJson) || '',
+      region: supplier.region || '',
       bankAccount: supplier.bankAccount || '',
       taxNumber: supplier.taxNumber || '',
-      creditLimit: supplier.creditLimit || 0,
       notes: supplier.notes || '',
     });
     setIsEditOpen(true);
@@ -147,9 +252,14 @@ export default function Suppliers() {
   const handleOpenHistory = async (supplier) => {
     setSelectedSupplier(supplier);
     setIsHistoryOpen(true);
+    const targetPeriod = historyTimeMode === 'day' ? historyDate : historyMonth;
+    loadDebtHistory(supplier.id, targetPeriod);
+  };
+
+  const loadDebtHistory = async (supplierId, period) => {
     setHistoryLoading(true);
     try {
-      const records = await supplierService.getDebtHistory(supplier.id);
+      const records = await supplierService.getDebtHistory(supplierId, period);
       setDebtHistoryRecords(records || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải lịch sử sổ nợ NCC');
@@ -174,9 +284,10 @@ export default function Suppliers() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const phoneList = formData.phone ? formData.phone.split(/[,;/\n]+/).map((p) => p.trim()).filter(Boolean) : [];
       await supplierService.create({
         ...formData,
-        phones: formData.phone.trim() ? [formData.phone.trim()] : [],
+        phones: phoneList,
         addresses: formData.address.trim() ? [formData.address.trim()] : [],
       });
       notify.success('Thêm nhà cung cấp thành công!');
@@ -194,9 +305,10 @@ export default function Suppliers() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const phoneList = formData.phone ? formData.phone.split(/[,;/\n]+/).map((p) => p.trim()).filter(Boolean) : [];
       await supplierService.update(selectedSupplier.id, {
         ...formData,
-        phones: formData.phone.trim() ? [formData.phone.trim()] : [],
+        phones: phoneList,
         addresses: formData.address.trim() ? [formData.address.trim()] : [],
       });
       notify.success('Cập nhật nhà cung cấp thành công!');
@@ -273,8 +385,17 @@ export default function Suppliers() {
     }
   };
 
-  // Total Payables & Receivables via supplierService
-  const { totalPayables, totalReceivables } = supplierService.calculateSupplierSummary(suppliers);
+  // Total Payables & Receivables via supplierService from filteredSuppliers
+  const { totalPayables, totalReceivables } = useMemo(() => {
+    return supplierService.calculateSupplierSummary(filteredSuppliers);
+  }, [filteredSuppliers]);
+
+  const scrollTabs = (direction) => {
+    if (regionTabsRef.current) {
+      const scrollAmount = direction === 'left' ? -220 : 220;
+      regionTabsRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div>
@@ -301,24 +422,31 @@ export default function Suppliers() {
         </div>
       </div>
 
-      {/* Filter Bar with 2-way Debt Totals */}
+      {/* Filter Bar with 2-way Debt Totals & Sorting */}
       <div className="filter-bar">
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Tìm theo tên NCC, mã NCC, SĐT, STK ngân hàng, MST..."
-          style={{ flex: 1, minWidth: '300px' }}
+          placeholder="Tìm theo tên NCC, mã NCC, SĐT, STK ngân hàng..."
+          style={{ flex: 1, minWidth: '280px' }}
+        />
+
+        <SortDropdown
+          value={sortBy}
+          onChange={setSortBy}
+          options={SUPPLIER_SORT_OPTIONS}
+          style={{ minWidth: '240px' }}
         />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải trả (Mình nợ NCC):</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải trả:</span>
             <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--warning-text)' }}>
               {formatVND(totalPayables)}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải thu (Mình nộp trước):</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải thu:</span>
             <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--info-text)' }}>
               {formatVND(totalReceivables)}
             </span>
@@ -326,17 +454,234 @@ export default function Suppliers() {
         </div>
       </div>
 
+      {/* Region Tabs Strip (Excel-like Sheet Tabs Bar) */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: '#f8fafc',
+          border: '1px solid var(--border-color, #e2e8f0)',
+          borderRadius: 'var(--radius, 8px) var(--radius, 8px) 0 0',
+          marginBottom: 0,
+          position: 'relative',
+          userSelect: 'none',
+        }}
+      >
+        {/* Left Menu / Hamburger Icon */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0.6rem 0.75rem',
+            color: 'var(--text-muted, #64748b)',
+            borderRight: '1px solid var(--border-color, #e2e8f0)',
+            backgroundColor: '#ffffff',
+            flexShrink: 0,
+          }}
+          title="Danh sách khu vực"
+        >
+          <Menu size={16} />
+        </div>
+
+        {/* Scroll Left Button */}
+        <button
+          type="button"
+          onClick={() => scrollTabs('left')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '100%',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-muted, #64748b)',
+            padding: '0 4px',
+            flexShrink: 0,
+          }}
+          title="Cuộn sang trái"
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        {/* Scrollable Tabs Container */}
+        <div
+          ref={regionTabsRef}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            scrollbarWidth: 'thin',
+            WebkitOverflowScrolling: 'touch',
+            flex: 1,
+            gap: '2px',
+          }}
+          onWheel={(e) => {
+            if (regionTabsRef.current && e.deltaY !== 0) {
+              regionTabsRef.current.scrollLeft += e.deltaY;
+            }
+          }}
+        >
+          {/* Tab 1: Tổng */}
+          <button
+            type="button"
+            onClick={() => setSelectedRegion('ALL')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '0.65rem 1rem',
+              fontSize: '0.875rem',
+              fontWeight: selectedRegion === 'ALL' ? 700 : 500,
+              color: selectedRegion === 'ALL' ? '#0f172a' : '#64748b',
+              backgroundColor: selectedRegion === 'ALL' ? '#ffffff' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              borderBottom: selectedRegion === 'ALL' ? '3px solid #16a34a' : '3px solid transparent',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+            }}
+          >
+            <span>Tổng</span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '1px 6px',
+                borderRadius: '10px',
+                backgroundColor: selectedRegion === 'ALL' ? '#dcfce7' : '#e2e8f0',
+                color: selectedRegion === 'ALL' ? '#166534' : '#475569',
+                fontWeight: 600,
+              }}
+            >
+              {suppliers.length}
+            </span>
+          </button>
+
+          {/* Dynamic Region Tabs */}
+          {allRegions.map((region) => {
+            const count = suppliers.filter((s) => (s.region || '').trim() === region.trim()).length;
+            const isSelected = selectedRegion === region;
+            return (
+              <button
+                key={region}
+                type="button"
+                onClick={() => setSelectedRegion(region)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '0.65rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  color: isSelected ? '#0f172a' : '#475569',
+                  backgroundColor: isSelected ? '#ffffff' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderBottom: isSelected ? '3px solid #16a34a' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span>{region}</span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    backgroundColor: isSelected ? '#dcfce7' : '#e2e8f0',
+                    color: isSelected ? '#166534' : '#475569',
+                    fontWeight: 600,
+                  }}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Tab for suppliers without region if any */}
+          {suppliers.some((s) => !s.region || !s.region.trim()) && (
+            <button
+              type="button"
+              onClick={() => setSelectedRegion('NONE')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.65rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: selectedRegion === 'NONE' ? 700 : 500,
+                color: selectedRegion === 'NONE' ? '#0f172a' : '#64748b',
+                backgroundColor: selectedRegion === 'NONE' ? '#ffffff' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderBottom: selectedRegion === 'NONE' ? '3px solid #16a34a' : '3px solid transparent',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+                fontStyle: 'italic',
+              }}
+            >
+              <span>Chưa phân khu vực</span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: selectedRegion === 'NONE' ? '#dcfce7' : '#e2e8f0',
+                  color: selectedRegion === 'NONE' ? '#166534' : '#475569',
+                  fontWeight: 600,
+                }}
+              >
+                {suppliers.filter((s) => !s.region || !s.region.trim()).length}
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* Scroll Right Button */}
+        <button
+          type="button"
+          onClick={() => scrollTabs('right')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '100%',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-muted, #64748b)',
+            padding: '0 4px',
+            flexShrink: 0,
+          }}
+          title="Cuộn sang phải"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
       {/* Suppliers Table */}
-      {suppliers.length === 0 && !loading ? (
+      {sortedSuppliers.length === 0 && !loading ? (
         <EmptyState
           icon={Truck}
-          title="Không tìm thấy nhà cung cấp"
-          description="Chưa có nhà cung cấp nào được lưu hoặc không có kết quả phù hợp với từ khóa tìm kiếm."
+          title={selectedRegion !== 'ALL' ? `Không có nhà cung cấp thuộc khu vực "${selectedRegion}"` : "Không tìm thấy nhà cung cấp"}
+          description={selectedRegion !== 'ALL' ? 'Bạn có thể chọn khu vực khác hoặc chuyển về "Tổng".' : "Chưa có nhà cung cấp nào được lưu hoặc không có kết quả phù hợp với từ khóa tìm kiếm."}
           action={
-            <button className="btn btn-primary btn-sm" onClick={handleOpenCreate}>
-              <Plus size={15} />
-              <span>Thêm nhà cung cấp ngay</span>
-            </button>
+            selectedRegion !== 'ALL' ? (
+              <button className="btn btn-outline btn-sm" onClick={() => setSelectedRegion('ALL')}>
+                <span>Xem tất cả khu vực</span>
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" onClick={handleOpenCreate}>
+                <Plus size={15} />
+                <span>Thêm nhà cung cấp ngay</span>
+              </button>
+            )
           }
         />
       ) : (
@@ -346,16 +691,16 @@ export default function Suppliers() {
               <tr>
                 <th>Mã NCC</th>
                 <th>Tên Nhà Cung Cấp</th>
-                <th>Liên Hệ / SĐT</th>
+                <th>Khu Vực</th>
+                <th>Số Điện Thoại</th>
                 <th>Ngân Hàng & STK</th>
-                <th>Mã Số Thuế</th>
-                <th style={{ textAlign: 'right' }}>Phải Trả (Mình nợ NCC)</th>
-                <th style={{ textAlign: 'right' }}>Phải Thu (Mình nộp trước)</th>
+                <th style={{ textAlign: 'right' }}>Phải Trả</th>
+                <th style={{ textAlign: 'right' }}>Phải Thu</th>
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
               </tr>
             </thead>
             <tbody>
-              {suppliers.map((s) => {
+              {sortedSuppliers.map((s) => {
                 return (
                   <tr key={s.id}>
                     <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
@@ -371,12 +716,35 @@ export default function Suppliers() {
                       )}
                     </td>
                     <td>
-                      <div>{s.contactName || '—'}</div>
-                      {s.phonesJson && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '2px' }}>
-                          <Phone size={12} />
-                          <span>{parseJsonList(s.phonesJson)}</span>
+                      {s.region ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: '#f1f5f9',
+                            color: '#334155',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <MapPin size={12} color="var(--primary)" />
+                          <span>{s.region}</span>
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      {s.phonesJson ? (
+                        <div style={{ fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Phone size={13} color="var(--primary)" />
+                          <span className="mono">{parseJsonList(s.phonesJson)}</span>
                         </div>
+                      ) : (
+                        '—'
                       )}
                     </td>
                     <td style={{ fontSize: '0.8125rem' }}>
@@ -387,9 +755,6 @@ export default function Suppliers() {
                       ) : (
                         '—'
                       )}
-                    </td>
-                    <td className="mono" style={{ fontSize: '0.8125rem' }}>
-                      {s.taxNumber || '—'}
                     </td>
                     {/* Cột 1: Phải Trả (Mình nợ nhà cung cấp) */}
                     <td style={{ textAlign: 'right' }}>
@@ -411,7 +776,7 @@ export default function Suppliers() {
                       {s.debt > 0 ? (
                         <div>
                           <span className="mono" style={{ fontWeight: 800, color: 'var(--info-text)' }}>
-                            +{formatVND(s.debt)}
+                            {formatVND(s.debt)}
                           </span>
                           <div style={{ fontSize: '0.6875rem', color: 'var(--info-text)', marginTop: '2px', fontWeight: 600 }}>
                             Đã nộp trước
@@ -486,7 +851,7 @@ export default function Suppliers() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">
-                Mã NCC <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Tự sinh nếu bỏ trống)</span>
+                Mã NCC
               </label>
               <input
                 type="text"
@@ -511,23 +876,12 @@ export default function Suppliers() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Người liên hệ</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="VD: Chị Thúy"
-                value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Số điện thoại</label>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Số điện thoại (Nhập nhiều số cách nhau bởi phẩy hoặc /)</label>
               <input
                 type="text"
                 className="form-input mono"
-                placeholder="VD: 0912345678"
+                placeholder="VD: 0912345678, 0987654321"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
@@ -556,13 +910,14 @@ export default function Suppliers() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Mã số thuế</label>
-              <input
-                type="text"
-                className="form-input mono"
-                placeholder="VD: 0312345678"
-                value={formData.taxNumber}
-                onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })}
+              <label className="form-label">Khu Vực</label>
+              <SearchableSelect
+                allowCustom={true}
+                options={regionOptions}
+                value={formData.region}
+                onChange={(val) => setFormData({ ...formData, region: val })}
+                placeholder="-- Chọn hoặc gõ khu vực mới --"
+                searchPlaceholder="Tìm hoặc gõ khu vực mới..."
               />
             </div>
 
@@ -580,27 +935,14 @@ export default function Suppliers() {
 
           <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Dư nợ ban đầu (- nếu mình nợ NCC, + nếu NCC nợ mình)</label>
-              <input
-                type="number"
-                className="form-input mono"
-                value={formData.initialDebt}
-                onChange={(e) => setFormData({ ...formData, initialDebt: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Hạn mức nợ NCC cho phép (0 = không giới hạn)</label>
-              <input
-                type="number"
-                className="form-input mono"
-                min="0"
-                value={formData.creditLimit}
-                onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value })}
-              />
-            </div>
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label">Dư nợ ban đầu</label>
+            <input
+              type="number"
+              className="form-input mono"
+              value={formData.initialDebt}
+              onChange={(e) => setFormData({ ...formData, initialDebt: e.target.value })}
+            />
           </div>
 
           <div className="form-group">
@@ -647,21 +989,12 @@ export default function Suppliers() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Người liên hệ</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Số điện thoại</label>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Số điện thoại (Nhập nhiều số cách nhau bởi phẩy hoặc /)</label>
               <input
                 type="text"
                 className="form-input mono"
+                placeholder="VD: 0912345678, 0987654321"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
@@ -688,23 +1021,14 @@ export default function Suppliers() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Mã số thuế</label>
-              <input
-                type="text"
-                className="form-input mono"
-                value={formData.taxNumber}
-                onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Hạn mức nợ</label>
-              <input
-                type="number"
-                className="form-input mono"
-                min="0"
-                value={formData.creditLimit}
-                onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value })}
+              <label className="form-label">Khu Vực</label>
+              <SearchableSelect
+                allowCustom={true}
+                options={regionOptions}
+                value={formData.region}
+                onChange={(val) => setFormData({ ...formData, region: val })}
+                placeholder="-- Chọn hoặc gõ khu vực mới --"
+                searchPlaceholder="Tìm hoặc gõ khu vực mới..."
               />
             </div>
 
@@ -777,7 +1101,7 @@ export default function Suppliers() {
                   checked={adjustData.mode === 'delta'}
                   onChange={() => setAdjustData({ ...adjustData, mode: 'delta' })}
                 />
-                <span>Tăng / Giảm độ lệch (+/-)</span>
+                <span>Tăng / Giảm độ lệch</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem' }}>
                 <input
@@ -795,7 +1119,7 @@ export default function Suppliers() {
           {adjustData.mode === 'delta' ? (
             <div className="form-group">
               <label className="form-label">
-                Độ lệch (+ làm giảm nợ phải trả về 0, - làm tăng nợ phải trả)
+                Độ lệch
               </label>
               <input
                 type="number"
@@ -808,7 +1132,7 @@ export default function Suppliers() {
             </div>
           ) : (
             <div className="form-group">
-              <label className="form-label">Số Nợ Mới Thiết Lập (VNĐ)</label>
+              <label className="form-label">Số Nợ Mới Thiết Lập</label>
               <input
                 type="number"
                 step="any"
@@ -880,7 +1204,7 @@ export default function Suppliers() {
 
           <div className="form-group">
             <label className="form-label">
-              Số Tiền Chi (VNĐ) <span className="req">*</span>
+              Số Tiền Chi <span className="req">*</span>
             </label>
             <input
               type="number"
@@ -927,6 +1251,31 @@ export default function Suppliers() {
         subtitle={`Mã NCC: ${selectedSupplier?.code || ''} | Dư nợ hiện tại: ${formatVND(selectedSupplier?.debt || 0)}`}
         width="680px"
       >
+        <div style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <TimeFilter
+            mode={historyTimeMode}
+            onModeChange={(newMode) => {
+              setHistoryTimeMode(newMode);
+              if (selectedSupplier) {
+                const p = newMode === 'day' ? historyDate : historyMonth;
+                loadDebtHistory(selectedSupplier.id, p);
+              }
+            }}
+            month={historyMonth}
+            onMonthChange={(m) => {
+              setHistoryMonth(m);
+              if (selectedSupplier) loadDebtHistory(selectedSupplier.id, m);
+            }}
+            date={historyDate}
+            onDateChange={(d) => {
+              setHistoryDate(d);
+              if (selectedSupplier) loadDebtHistory(selectedSupplier.id, d);
+            }}
+            showAll={false}
+            showRange={false}
+          />
+        </div>
+
         {historyLoading ? (
           <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
             Đang tải dữ liệu sổ nợ NCC...
@@ -935,7 +1284,11 @@ export default function Suppliers() {
           <EmptyState
             icon={History}
             title="Chưa có lịch sử công nợ"
-            description="Nhà cung cấp này chưa có giao dịch nhập nợ, thanh toán hoặc điều chỉnh nào."
+            description={
+              historyTimeMode === 'day'
+                ? `Không có giao dịch công nợ nào trong ngày ${historyDate}.`
+                : `Không có giao dịch công nợ nào trong tháng ${historyMonth}.`
+            }
           />
         ) : (
           <div className="table-responsive">
@@ -958,20 +1311,20 @@ export default function Suppliers() {
                       <td>
                         <span className="badge badge-primary">
                           {r.sourceType === 'import'
-                            ? 'Mua hàng (Nhập)'
+                            ? 'Nhập'
                             : r.sourceType === 'payment'
                             ? 'Chi tiền'
                             : 'Điều chỉnh'}
                         </span>
                       </td>
                       <td style={{ textAlign: 'right' }} className="mono">
-                        {formatVND(r.beforeDebt)}
+                        {formatVND(Math.abs(r.beforeDebt))}
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }} className="mono">
-                        {Number(r.delta || 0) > 0 ? `+${formatVND(r.delta)}` : formatVND(r.delta)}
+                        {formatVND(Math.abs(r.delta))}
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }} className="mono">
-                        {formatVND(r.afterDebt)}
+                        {formatVND(Math.abs(r.afterDebt))}
                       </td>
                       <td style={{ fontSize: '0.8125rem' }}>{r.reason || r.note || '—'}</td>
                     </tr>

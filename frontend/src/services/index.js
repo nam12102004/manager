@@ -11,3 +11,7 @@ export { reportService } from './reportService';
 export { dashboardService } from './dashboardService';
 export { settingService } from './settingService';
 export { authService } from './authService';
+export { auditService } from './auditService';
+export { userService } from './userService';
+export { warehouseService, getProductStockForWarehouse } from './warehouseService';
+

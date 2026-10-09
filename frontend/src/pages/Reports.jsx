@@ -13,17 +13,21 @@ import {
   Building,
   Users,
 } from 'lucide-react';
-import { formatVND, formatNumber, formatDate, getCurrentMonthStr } from '../utils/formatters';
+import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { useNotification } from '../context/NotificationContext';
 import StatCard from '../components/common/StatCard';
 import EmptyState from '../components/common/EmptyState';
-import { reportService } from '../services';
+import TimeFilter from '../components/common/TimeFilter';
+import { reportService, warehouseService } from '../services';
 
 export default function Reports() {
   const notify = useNotification();
 
   const [activeReportTab, setActiveReportTab] = useState('stock'); // 'stock' | 'debts'
+  const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
+  const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
+  const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
   const [loading, setLoading] = useState(false);
 
   const [stockReport, setStockReport] = useState(null);
@@ -32,11 +36,12 @@ export default function Reports() {
   const loadReport = async () => {
     setLoading(true);
     try {
+      const period = timeMode === 'day' ? selectedDate : selectedMonth;
       if (activeReportTab === 'stock') {
-        const data = await reportService.getStockReport(selectedMonth);
+        const data = await reportService.getStockReport(period);
         setStockReport(data || null);
       } else {
-        const data = await reportService.getDebtReport(selectedMonth);
+        const data = await reportService.getDebtReport(period);
         setDebtReport(data || null);
       }
     } catch (err) {
@@ -48,7 +53,7 @@ export default function Reports() {
 
   useEffect(() => {
     loadReport();
-  }, [activeReportTab, selectedMonth]);
+  }, [activeReportTab, timeMode, selectedMonth, selectedDate]);
 
   const handlePrint = () => {
     window.print();
@@ -57,11 +62,12 @@ export default function Reports() {
   // Export CSV via reportService
   const handleExportCSV = () => {
     try {
+      const period = timeMode === 'day' ? selectedDate : selectedMonth;
       if (activeReportTab === 'stock') {
-        reportService.exportStockReportCSV(stockReport, selectedMonth);
+        reportService.exportStockReportCSV(stockReport, period);
         notify.success('Xuất file báo cáo tồn kho thành công!');
       } else {
-        reportService.exportDebtReportCSV(debtReport, selectedMonth);
+        reportService.exportDebtReportCSV(debtReport, period);
         notify.success('Xuất file báo cáo công nợ thành công!');
       }
     } catch (err) {
@@ -100,16 +106,18 @@ export default function Reports() {
 
       {/* Filter and Tab controls */}
       <div className="filter-bar">
-        {/* Month Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Calendar size={18} color="var(--primary)" />
+        {/* Time Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Kỳ Báo Cáo:</span>
-          <input
-            type="month"
-            className="form-input mono"
-            style={{ width: '170px' }}
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+          <TimeFilter
+            mode={timeMode}
+            onModeChange={setTimeMode}
+            month={selectedMonth}
+            onMonthChange={setSelectedMonth}
+            date={selectedDate}
+            onDateChange={setSelectedDate}
+            showAll={false}
+            showRange={false}
           />
         </div>
 
@@ -178,11 +186,11 @@ export default function Reports() {
                     <th style={{ textAlign: 'right' }}>Nhập Kỳ</th>
                     <th style={{ textAlign: 'right' }}>Xuất Kỳ</th>
                     <th style={{ textAlign: 'right' }}>Tồn Cuối</th>
-                    <th style={{ textAlign: 'right' }}>Kho 1</th>
-                    <th style={{ textAlign: 'right' }}>Kho 2</th>
-                    <th style={{ textAlign: 'right' }}>Kho 3</th>
+                    <th style={{ textAlign: 'right' }}>{warehouses[0]?.shortName || warehouses[0]?.name || 'Kho 1'}</th>
+                    <th style={{ textAlign: 'right' }}>{warehouses[1]?.shortName || warehouses[1]?.name || 'Kho 2'}</th>
+                    <th style={{ textAlign: 'right' }}>{warehouses[2]?.shortName || warehouses[2]?.name || 'Kho 3'}</th>
                     <th style={{ textAlign: 'right' }}>Giá Vốn</th>
-                    <th style={{ textAlign: 'right' }}>Thành Tiền (Vốn)</th>
+                    <th style={{ textAlign: 'right' }}>Thành Tiền</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -272,8 +280,8 @@ export default function Reports() {
                     <th style={{ textAlign: 'right' }}>Phát Sinh Tăng</th>
                     <th style={{ textAlign: 'right' }}>Phát Sinh Giảm</th>
                     <th style={{ textAlign: 'right' }}>Dư Nợ Cuối Kỳ</th>
-                    <th style={{ textAlign: 'right' }}>Phải Thu (Khách nợ / Nộp trước NCC)</th>
-                    <th style={{ textAlign: 'right' }}>Phải Trả (Nợ NCC / KH gửi trước)</th>
+                    <th style={{ textAlign: 'right' }}>Phải Thu</th>
+                    <th style={{ textAlign: 'right' }}>Phải Trả</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,19 +296,19 @@ export default function Reports() {
                           {it.partnerType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.openingDebt)}</td>
+                      <td style={{ textAlign: 'right' }} className="mono">{formatVND(Math.abs(it.openingDebt))}</td>
                       <td style={{ textAlign: 'right', color: 'var(--danger)' }} className="mono">
-                        +{formatVND(it.increaseDebt)}
+                        {formatVND(Math.abs(it.increaseDebt))}
                       </td>
                       <td style={{ textAlign: 'right', color: 'var(--success)' }} className="mono">
-                        -{formatVND(it.decreaseDebt)}
+                        {formatVND(Math.abs(it.decreaseDebt))}
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 800 }} className="mono">
-                        {formatVND(it.closingDebt)}
+                        {formatVND(Math.abs(it.closingDebt))}
                       </td>
                       <td style={{ textAlign: 'right' }} className="mono">
                         <div style={{ fontWeight: it.receivable > 0 ? 700 : 400, color: it.receivable > 0 ? (it.partnerType === 'customer' ? 'var(--danger)' : 'var(--info-text)') : 'var(--text-muted)' }}>
-                          {it.receivable > 0 ? `+${formatVND(it.receivable)}` : '0 ₫'}
+                          {it.receivable > 0 ? formatVND(it.receivable) : '0 ₫'}
                         </div>
                         {it.receivable > 0 && (
                           <div style={{ fontSize: '0.72rem', color: it.partnerType === 'customer' ? 'var(--danger)' : 'var(--info-text)', fontWeight: 600, marginTop: '2px' }}>

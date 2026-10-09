@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Printer, Check, X } from 'lucide-react';
 import Modal from './Modal';
 import { formatVND, formatDate, numberToWordsVN } from '../../utils/formatters';
-import { printVoucherViaIframe } from '../../utils/printVoucher';
+import { generateVoucherHtml, printInNewTab } from '../../utils/printVoucher';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function PrintVoucherModal({
@@ -22,7 +21,9 @@ export default function PrintVoucherModal({
   const formCode = isReceipt ? 'Mẫu số 01 - TT' : 'Mẫu số 02 - TT';
   const voucherNum = isReceipt ? (voucher.receiptNumber || voucher.id) : (voucher.paymentNumber || voucher.id);
 
-  const vDate = voucher.date ? new Date(voucher.date) : new Date();
+  const vDate = voucher.createdAt ? new Date(voucher.createdAt) : (voucher.date ? new Date(voucher.date) : new Date());
+  const hours = String(vDate.getHours()).padStart(2, '0');
+  const minutes = String(vDate.getMinutes()).padStart(2, '0');
   const day = String(vDate.getDate()).padStart(2, '0');
   const month = String(vDate.getMonth() + 1).padStart(2, '0');
   const year = vDate.getFullYear();
@@ -67,16 +68,15 @@ export default function PrintVoucherModal({
     ? 'Quẹt thẻ' 
     : 'Tiền mặt';
 
-  const handlePrint = async () => {
-    setPrinting(true);
+  const handlePrint = () => {
     try {
-      await printVoucherViaIframe({ voucher, type, ownerInfo });
-      notify.success(`Đã gửi lệnh in cho ${voucherNum}`);
+      const html = generateVoucherHtml({ voucher, type, ownerInfo });
+      printInNewTab(html);
+      notify.success(`Đã mở tab in cho ${voucherNum}`);
+      onClose();
     } catch (err) {
       console.error('Print error:', err);
-      notify.error('Không thể kích hoạt hộp thoại in');
-    } finally {
-      setPrinting(false);
+      notify.error('Không thể mở trang in');
     }
   };
 
@@ -96,7 +96,6 @@ export default function PrintVoucherModal({
               Đóng
             </button>
             <button className="btn btn-primary" onClick={handlePrint} disabled={printing}>
-              <Printer size={16} />
               <span>{printing ? 'Đang mở máy in...' : 'In Phiếu'}</span>
             </button>
           </div>
@@ -140,7 +139,7 @@ export default function PrintVoucherModal({
             {title}
           </div>
           <div style={{ fontSize: '11pt', fontStyle: 'italic', marginTop: '2px', color: '#475569' }}>
-            Ngày {day} tháng {month} năm {year}
+            Ngày {day} tháng {month} năm {year} ({hours}:{minutes})
           </div>
         </div>
 

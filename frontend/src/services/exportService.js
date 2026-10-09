@@ -1,4 +1,5 @@
 import { exportsApi, customersApi, productsApi, ownersApi } from '../api/endpoints';
+import { auditService } from './auditService';
 
 /**
  * Frontend Business Logic & Service for Export Vouchers (Bán hàng, Xuất kho & Ghi nợ)
@@ -120,15 +121,39 @@ export const exportService = {
       throw new Error(firstError);
     }
     const payload = this.formatExportPayload(formData);
-    return await exportsApi.create(payload);
+    const result = await exportsApi.create(payload);
+    auditService.logAction({
+      action: 'CREATE',
+      entityName: 'ExportVoucher',
+      entityId: result?.voucherNumber || result?.id || 'Mới',
+      entityDisplayName: `Phiếu xuất #${result?.voucherNumber || result?.id}`,
+      details: `Lập phiếu bán hàng xuất kho, Tổng tiền: ${(result?.totalSale || formData.totalSale || 0).toLocaleString()}₫`,
+    });
+    return result;
   },
 
   async updateStatus(id, action) {
-    return await exportsApi.updateStatus(id, action);
+    const result = await exportsApi.updateStatus(id, action);
+    auditService.logAction({
+      action: action === 'cancel' ? 'CANCEL' : 'STATUS_CHANGE',
+      entityName: 'ExportVoucher',
+      entityId: String(id),
+      entityDisplayName: `Phiếu xuất #${id}`,
+      details: `${action === 'cancel' ? 'Hủy' : 'Đổi trạng thái'} phiếu xuất #${id}`,
+    });
+    return result;
   },
 
   async delete(id) {
-    return await exportsApi.delete(id);
+    const result = await exportsApi.delete(id);
+    auditService.logAction({
+      action: 'DELETE',
+      entityName: 'ExportVoucher',
+      entityId: String(id),
+      entityDisplayName: `Phiếu xuất #${id}`,
+      details: `Xóa vĩnh viễn phiếu xuất #${id}`,
+    });
+    return result;
   },
 
   async getDependencies() {

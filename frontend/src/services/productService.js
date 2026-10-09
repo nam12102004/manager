@@ -1,4 +1,5 @@
 import { productsApi, suppliersApi } from '../api/endpoints';
+import { auditService } from './auditService';
 
 /**
  * Frontend Business Logic & Service for Products & Inventory Management
@@ -118,7 +119,15 @@ export const productService = {
       const firstError = Object.values(validation.errors)[0];
       throw new Error(firstError);
     }
-    return await productsApi.create(data);
+    const result = await productsApi.create(data);
+    auditService.logAction({
+      action: 'CREATE',
+      entityName: 'Product',
+      entityId: result?.sku || result?.id || 'Mới',
+      entityDisplayName: result?.name || data.name,
+      details: `Thêm sản phẩm mới: ${result?.name || data.name} (SKU: ${result?.sku || data.sku || 'Tự sinh'})`,
+    });
+    return result;
   },
 
   async update(id, data) {
@@ -127,7 +136,15 @@ export const productService = {
       const firstError = Object.values(validation.errors)[0];
       throw new Error(firstError);
     }
-    return await productsApi.update(id, data);
+    const result = await productsApi.update(id, data);
+    auditService.logAction({
+      action: 'UPDATE',
+      entityName: 'Product',
+      entityId: result?.sku || String(id),
+      entityDisplayName: result?.name || data.name,
+      details: `Cập nhật thông tin sản phẩm: ${result?.name || data.name}`,
+    });
+    return result;
   },
 
   async adjustStock(id, adjustData) {
@@ -135,7 +152,15 @@ export const productService = {
     if (!validation.isValid) {
       throw new Error(validation.message);
     }
-    return await productsApi.adjustStock(id, adjustData);
+    const result = await productsApi.adjustStock(id, adjustData);
+    auditService.logAction({
+      action: 'ADJUST_STOCK',
+      entityName: 'Product',
+      entityId: String(id),
+      entityDisplayName: `Sản phẩm #${id}`,
+      details: `Điều chỉnh tồn kho (${adjustData.warehouse || 'Kho'}): Lượng đổi ${adjustData.delta > 0 ? '+' : ''}${adjustData.delta}. Lý do: ${adjustData.reason || 'Kiểm kê kho'}`,
+    });
+    return result;
   },
 
   async getStockHistory(id, month) {

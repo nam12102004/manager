@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Users,
   Plus,
@@ -14,16 +14,29 @@ import {
   AlertCircle,
   TrendingUp,
   Printer,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  MapPinned,
 } from 'lucide-react';
-import { formatVND, formatDate, getDebtStatus, parseJsonList } from '../utils/formatters';
+import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { DEBT_ADJUST_REASONS, PAYMENT_METHODS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import SearchBar from '../components/common/SearchBar';
+import SearchableSelect from '../components/common/SearchableSelect';
+import SortDropdown from '../components/common/SortDropdown';
+import TimeFilter from '../components/common/TimeFilter';
 import Modal from '../components/common/Modal';
 import Drawer from '../components/common/Drawer';
 import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
-import { customerService, cashBookService } from '../services';
+import { customerService, cashBookService, settingService } from '../services';
+
+const CUSTOMER_SORT_OPTIONS = [
+  { value: 'default', label: 'Sắp xếp: Mặc định' },
+  { value: 'debt_desc', label: 'Công nợ: Nợ nhiều nhất → Ít nhất' },
+  { value: 'debt_asc', label: 'Công nợ: Nợ ít nhất → Nhiều nhất' },
+];
 
 export default function Customers({ onQuickAction }) {
   const notify = useNotification();
@@ -31,6 +44,9 @@ export default function Customers({ onQuickAction }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('ALL'); // 'ALL' or specific region string
+  const [sortBy, setSortBy] = useState('default');
+  const regionTabsRef = useRef(null);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -44,6 +60,9 @@ export default function Customers({ onQuickAction }) {
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [debtHistoryRecords, setDebtHistoryRecords] = useState([]);
+  const [historyTimeMode, setHistoryTimeMode] = useState('month'); // 'month' | 'day'
+  const [historyMonth, setHistoryMonth] = useState(getCurrentMonthStr());
+  const [historyDate, setHistoryDate] = useState(getCurrentDateStr());
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Form states
@@ -54,10 +73,72 @@ export default function Customers({ onQuickAction }) {
     phone: '',
     email: '',
     address: '',
+    region: '',
     initialDebt: 0,
-    creditLimit: 0,
     notes: '',
   });
+
+  // Extract unique regions list
+  const regionOptions = useMemo(() => {
+    const set = new Set();
+    customers.forEach((c) => {
+      if (c.region && c.region.trim()) set.add(c.region.trim());
+    });
+    return Array.from(set).map((r) => ({ id: r, value: r, label: r }));
+  }, [customers]);
+
+  const allRegions = useMemo(() => {
+    const set = new Set();
+    customers.forEach((c) => {
+      if (c.region && c.region.trim()) set.add(c.region.trim());
+    });
+    return Array.from(set);
+  }, [customers]);
+
+  // Filter customers by selected region & real-time search query
+  const filteredCustomers = useMemo(() => {
+    let list = customers;
+    if (selectedRegion === 'NONE') {
+      list = list.filter((c) => !c.region || !c.region.trim());
+    } else if (selectedRegion !== 'ALL') {
+      list = list.filter((c) => (c.region || '').trim().toLowerCase() === selectedRegion.trim().toLowerCase());
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      const q = normalizeText(searchQuery.trim());
+      list = list.filter((c) => {
+        const name = normalizeText(c.name || '');
+        const code = normalizeText(c.code || '');
+        const contact = normalizeText(c.contactName || '');
+        const phone = normalizeText(parseJsonList(c.phonesJson) || '');
+        const email = normalizeText(c.email || '');
+        const address = normalizeText(parseJsonList(c.addressesJson) || '');
+        const region = normalizeText(c.region || '');
+        return (
+          name.includes(q) ||
+          code.includes(q) ||
+          contact.includes(q) ||
+          phone.includes(q) ||
+          email.includes(q) ||
+          address.includes(q) ||
+          region.includes(q)
+        );
+      });
+    }
+
+    return list;
+  }, [customers, selectedRegion, searchQuery]);
+
+  // Sort filtered customers based on selected numeric debt metric
+  const sortedCustomers = useMemo(() => {
+    let list = [...filteredCustomers];
+    if (sortBy === 'debt_desc') {
+      list.sort((a, b) => Number(b.debt || 0) - Number(a.debt || 0));
+    } else if (sortBy === 'debt_asc') {
+      list.sort((a, b) => Number(a.debt || 0) - Number(b.debt || 0));
+    }
+    return list;
+  }, [filteredCustomers, sortBy]);
 
   const [adjustData, setAdjustData] = useState({
     mode: 'delta', // 'delta' or 'newDebt'
@@ -79,7 +160,7 @@ export default function Customers({ onQuickAction }) {
   const loadCustomers = async () => {
     setLoading(true);
     try {
-      const data = await customerService.getAll({ q: searchQuery });
+      const data = await customerService.getAll();
       setCustomers(data || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách khách hàng');
@@ -90,8 +171,8 @@ export default function Customers({ onQuickAction }) {
 
   useEffect(() => {
     loadCustomers();
-    ownersApi.get().then((res) => setOwnerInfo(res)).catch(() => {});
-  }, [searchQuery]);
+    settingService.getSettings().then((res) => setOwnerInfo(res)).catch(() => {});
+  }, []);
 
   // Open Create
   const handleOpenCreate = () => {
@@ -102,8 +183,8 @@ export default function Customers({ onQuickAction }) {
       phone: '',
       email: '',
       address: '',
+      region: '',
       initialDebt: 0,
-      creditLimit: 0,
       notes: '',
     });
     setIsCreateOpen(true);
@@ -118,7 +199,7 @@ export default function Customers({ onQuickAction }) {
       phone: parseJsonList(customer.phonesJson) || '',
       email: customer.email || '',
       address: parseJsonList(customer.addressesJson) || '',
-      creditLimit: customer.creditLimit || 0,
+      region: customer.region || '',
       notes: customer.notes || '',
     });
     setIsEditOpen(true);
@@ -141,9 +222,14 @@ export default function Customers({ onQuickAction }) {
   const handleOpenHistory = async (customer) => {
     setSelectedCustomer(customer);
     setIsHistoryOpen(true);
+    const targetPeriod = historyTimeMode === 'day' ? historyDate : historyMonth;
+    loadDebtHistory(customer.id, targetPeriod);
+  };
+
+  const loadDebtHistory = async (customerId, period) => {
     setHistoryLoading(true);
     try {
-      const records = await customerService.getDebtHistory(customer.id);
+      const records = await customerService.getDebtHistory(customerId, period);
       setDebtHistoryRecords(records || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải lịch sử sổ nợ');
@@ -168,9 +254,10 @@ export default function Customers({ onQuickAction }) {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const phoneList = formData.phone ? formData.phone.split(/[,;/\n]+/).map((p) => p.trim()).filter(Boolean) : [];
       await customerService.create({
         ...formData,
-        phones: formData.phone.trim() ? [formData.phone.trim()] : [],
+        phones: phoneList,
         addresses: formData.address.trim() ? [formData.address.trim()] : [],
       });
       notify.success('Thêm khách hàng thành công!');
@@ -188,9 +275,10 @@ export default function Customers({ onQuickAction }) {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const phoneList = formData.phone ? formData.phone.split(/[,;/\n]+/).map((p) => p.trim()).filter(Boolean) : [];
       await customerService.update(selectedCustomer.id, {
         ...formData,
-        phones: formData.phone.trim() ? [formData.phone.trim()] : [],
+        phones: phoneList,
         addresses: formData.address.trim() ? [formData.address.trim()] : [],
       });
       notify.success('Cập nhật khách hàng thành công!');
@@ -260,9 +348,17 @@ export default function Customers({ onQuickAction }) {
     }
   };
 
-  // Totals via Service Logic Layer
-  // Totals via Service Logic Layer
-  const { totalReceivables, totalPayables, debtCustomerCount, overLimitCount } = customerService.calculateCustomerSummary(customers);
+  // Totals calculated from filteredCustomers
+  const { totalReceivables, totalPayables, debtCustomerCount } = useMemo(() => {
+    return customerService.calculateCustomerSummary(filteredCustomers);
+  }, [filteredCustomers]);
+
+  const scrollTabs = (direction) => {
+    if (regionTabsRef.current) {
+      const scrollAmount = direction === 'left' ? -220 : 220;
+      regionTabsRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div>
@@ -274,7 +370,7 @@ export default function Customers({ onQuickAction }) {
             <span>Quản Lý Khách Hàng & Công Nợ</span>
           </h1>
           <p className="page-subtitle">
-            Theo dõi danh sách khách hàng, hạn mức tín dụng và sổ nợ hai chiều
+            Theo dõi danh sách khách hàng và sổ nợ hai chiều
           </p>
         </div>
         <div className="page-actions">
@@ -289,24 +385,31 @@ export default function Customers({ onQuickAction }) {
         </div>
       </div>
 
-      {/* Filter Bar with 2-way Debt Totals */}
+      {/* Filter Bar with 2-way Debt Totals & Sorting */}
       <div className="filter-bar">
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Tìm theo tên khách, mã KH, số điện thoại, email..."
-          style={{ flex: 1, minWidth: '300px' }}
+          style={{ flex: 1, minWidth: '280px' }}
+        />
+
+        <SortDropdown
+          value={sortBy}
+          onChange={setSortBy}
+          options={CUSTOMER_SORT_OPTIONS}
+          style={{ minWidth: '240px' }}
         />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải thu (Khách nợ):</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải thu:</span>
             <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--danger)' }}>
               {formatVND(totalReceivables)}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải trả (KH gửi trước):</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải trả:</span>
             <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--success)' }}>
               {formatVND(totalPayables)}
             </span>
@@ -314,38 +417,253 @@ export default function Customers({ onQuickAction }) {
         </div>
       </div>
 
+      {/* Region Tabs Strip (Excel-like Sheet Tabs Bar) */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: '#f8fafc',
+          border: '1px solid var(--border-color, #e2e8f0)',
+          borderRadius: 'var(--radius, 8px) var(--radius, 8px) 0 0',
+          marginBottom: 0,
+          position: 'relative',
+          userSelect: 'none',
+        }}
+      >
+        {/* Left Menu / Hamburger Icon */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0.6rem 0.75rem',
+            color: 'var(--text-muted, #64748b)',
+            borderRight: '1px solid var(--border-color, #e2e8f0)',
+            backgroundColor: '#ffffff',
+            flexShrink: 0,
+          }}
+          title="Danh sách khu vực"
+        >
+          <Menu size={16} />
+        </div>
+
+        {/* Scroll Left Button */}
+        <button
+          type="button"
+          onClick={() => scrollTabs('left')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '100%',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-muted, #64748b)',
+            padding: '0 4px',
+            flexShrink: 0,
+          }}
+          title="Cuộn sang trái"
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        {/* Scrollable Tabs Container */}
+        <div
+          ref={regionTabsRef}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            scrollbarWidth: 'thin',
+            WebkitOverflowScrolling: 'touch',
+            flex: 1,
+            gap: '2px',
+          }}
+          onWheel={(e) => {
+            if (regionTabsRef.current && e.deltaY !== 0) {
+              regionTabsRef.current.scrollLeft += e.deltaY;
+            }
+          }}
+        >
+          {/* Tab 1: Công nợ tổng (Tất cả) */}
+          <button
+            type="button"
+            onClick={() => setSelectedRegion('ALL')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '0.65rem 1rem',
+              fontSize: '0.875rem',
+              fontWeight: selectedRegion === 'ALL' ? 700 : 500,
+              color: selectedRegion === 'ALL' ? '#0f172a' : '#64748b',
+              backgroundColor: selectedRegion === 'ALL' ? '#ffffff' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              borderBottom: selectedRegion === 'ALL' ? '3px solid #16a34a' : '3px solid transparent',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+            }}
+          >
+            <span>Tổng</span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '1px 6px',
+                borderRadius: '10px',
+                backgroundColor: selectedRegion === 'ALL' ? '#dcfce7' : '#e2e8f0',
+                color: selectedRegion === 'ALL' ? '#166534' : '#475569',
+                fontWeight: 600,
+              }}
+            >
+              {customers.length}
+            </span>
+          </button>
+
+          {/* Dynamic Region Tabs */}
+          {allRegions.map((region) => {
+            const count = customers.filter((c) => (c.region || '').trim() === region.trim()).length;
+            const isSelected = selectedRegion === region;
+            return (
+              <button
+                key={region}
+                type="button"
+                onClick={() => setSelectedRegion(region)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '0.65rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  color: isSelected ? '#0f172a' : '#475569',
+                  backgroundColor: isSelected ? '#ffffff' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderBottom: isSelected ? '3px solid #16a34a' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span>{region}</span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    backgroundColor: isSelected ? '#dcfce7' : '#e2e8f0',
+                    color: isSelected ? '#166534' : '#475569',
+                    fontWeight: 600,
+                  }}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Tab for customers without region if any */}
+          {customers.some((c) => !c.region || !c.region.trim()) && (
+            <button
+              type="button"
+              onClick={() => setSelectedRegion('NONE')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.65rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: selectedRegion === 'NONE' ? 700 : 500,
+                color: selectedRegion === 'NONE' ? '#0f172a' : '#64748b',
+                backgroundColor: selectedRegion === 'NONE' ? '#ffffff' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderBottom: selectedRegion === 'NONE' ? '3px solid #16a34a' : '3px solid transparent',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+                fontStyle: 'italic',
+              }}
+            >
+              <span>Chưa phân khu vực</span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: selectedRegion === 'NONE' ? '#dcfce7' : '#e2e8f0',
+                  color: selectedRegion === 'NONE' ? '#166534' : '#475569',
+                  fontWeight: 600,
+                }}
+              >
+                {customers.filter((c) => !c.region || !c.region.trim()).length}
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* Scroll Right Button */}
+        <button
+          type="button"
+          onClick={() => scrollTabs('right')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '100%',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-muted, #64748b)',
+            padding: '0 4px',
+            flexShrink: 0,
+          }}
+          title="Cuộn sang phải"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
       {/* Customers Table */}
-      {customers.length === 0 && !loading ? (
+      {sortedCustomers.length === 0 && !loading ? (
         <EmptyState
           icon={Users}
-          title="Không tìm thấy khách hàng"
-          description="Chưa có khách hàng nào được tạo hoặc không có kết quả phù hợp với từ khóa tìm kiếm."
+          title={selectedRegion !== 'ALL' ? `Không có khách hàng thuộc khu vực "${selectedRegion}"` : "Không tìm thấy khách hàng"}
+          description={selectedRegion !== 'ALL' ? 'Bạn có thể chọn khu vực khác hoặc chuyển về "Công nợ tổng".' : "Chưa có khách hàng nào được tạo hoặc không có kết quả phù hợp."}
           action={
-            <button className="btn btn-primary btn-sm" onClick={handleOpenCreate}>
-              <Plus size={15} />
-              <span>Thêm khách hàng ngay</span>
-            </button>
+            selectedRegion !== 'ALL' ? (
+              <button className="btn btn-outline btn-sm" onClick={() => setSelectedRegion('ALL')}>
+                <span>Xem tất cả khu vực</span>
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" onClick={handleOpenCreate}>
+                <Plus size={15} />
+                <span>Thêm khách hàng ngay</span>
+              </button>
+            )
           }
         />
       ) : (
-        <div className="table-responsive">
+        <div className="table-responsive" style={{ borderTop: 'none', borderRadius: '0 0 var(--radius, 8px) var(--radius, 8px)' }}>
           <table className="data-table">
             <thead>
               <tr>
                 <th>Mã KH</th>
                 <th>Tên Khách Hàng</th>
-                <th>Người Liên Hệ / SĐT</th>
+                <th>Khu Vực</th>
+                <th>Số Điện Thoại</th>
                 <th>Địa Chỉ</th>
-                <th style={{ textAlign: 'right' }}>Phải Thu (Khách nợ)</th>
-                <th style={{ textAlign: 'right' }}>Phải Trả (KH gửi trước)</th>
-                <th style={{ textAlign: 'right' }}>Hạn Mức Nợ</th>
+                <th style={{ textAlign: 'right' }}>Phải Thu</th>
+                <th style={{ textAlign: 'right' }}>Phải Trả</th>
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => {
-                const isOverLimit = Number(c.creditLimit || 0) > 0 && Number(c.debt || 0) > Number(c.creditLimit || 0);
-
+              {sortedCustomers.map((c) => {
                 return (
                   <tr key={c.id}>
                     <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
@@ -361,12 +679,36 @@ export default function Customers({ onQuickAction }) {
                       )}
                     </td>
                     <td>
-                      <div>{c.contactName || '—'}</div>
-                      {c.phonesJson && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '2px' }}>
-                          <Phone size={12} />
-                          <span>{parseJsonList(c.phonesJson)}</span>
+                      {c.region ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '2px 8px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            borderRadius: '4px',
+                            backgroundColor: '#eff6ff',
+                            color: '#1e40af',
+                            border: '1px solid #bfdbfe',
+                          }}
+                        >
+                          <MapPinned size={11} />
+                          <span>{c.region}</span>
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      {c.phonesJson ? (
+                        <div style={{ fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Phone size={13} color="var(--primary)" />
+                          <span className="mono">{parseJsonList(c.phonesJson)}</span>
                         </div>
+                      ) : (
+                        '—'
                       )}
                     </td>
                     <td style={{ fontSize: '0.8125rem', maxWidth: '240px' }}>
@@ -386,15 +728,8 @@ export default function Customers({ onQuickAction }) {
                       {c.debt > 0 ? (
                         <div>
                           <span className="mono" style={{ fontWeight: 800, color: 'var(--danger)' }}>
-                            +{formatVND(c.debt)}
+                            {formatVND(c.debt)}
                           </span>
-                          {isOverLimit && (
-                            <div>
-                              <span className="badge badge-danger" style={{ fontSize: '0.6875rem', marginTop: '2px' }}>
-                                Vượt hạn mức
-                              </span>
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
@@ -414,9 +749,6 @@ export default function Customers({ onQuickAction }) {
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
                       )}
-                    </td>
-                    <td style={{ textAlign: 'right' }} className="mono">
-                      {Number(c.creditLimit || 0) > 0 ? formatVND(c.creditLimit) : 'Không giới hạn'}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
@@ -483,7 +815,7 @@ export default function Customers({ onQuickAction }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">
-                Mã Khách Hàng <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Tự sinh nếu bỏ trống)</span>
+                Mã Khách Hàng
               </label>
               <input
                 type="text"
@@ -509,22 +841,11 @@ export default function Customers({ onQuickAction }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Người liên hệ</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="VD: Anh Minh"
-                value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Số điện thoại</label>
+              <label className="form-label">Số điện thoại (Nhập nhiều số cách nhau bởi phẩy hoặc /)</label>
               <input
                 type="text"
                 className="form-input mono"
-                placeholder="VD: 0987654321"
+                placeholder="VD: 0987654321, 0912345678"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
@@ -538,6 +859,18 @@ export default function Customers({ onQuickAction }) {
                 placeholder="VD: khachhang@gmail.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Khu Vực</label>
+              <SearchableSelect
+                allowCustom={true}
+                options={regionOptions}
+                value={formData.region}
+                onChange={(val) => setFormData({ ...formData, region: val })}
+                placeholder="-- Chọn hoặc gõ khu vực mới --"
+                searchPlaceholder="Tìm hoặc gõ khu vực mới..."
               />
             </div>
 
@@ -556,30 +889,17 @@ export default function Customers({ onQuickAction }) {
           <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
 
           <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.875rem' }}>
-            Thiết Lập Công Nợ Ban Đầu & Hạn Mức (VNĐ)
+            Thiết Lập Công Nợ Ban Đầu
           </h4>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Dư nợ ban đầu (+ nếu khách nợ, - nếu khách trả trước)</label>
-              <input
-                type="number"
-                className="form-input mono"
-                value={formData.initialDebt}
-                onChange={(e) => setFormData({ ...formData, initialDebt: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Hạn mức nợ tối đa (0 = không giới hạn)</label>
-              <input
-                type="number"
-                className="form-input mono"
-                min="0"
-                value={formData.creditLimit}
-                onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value })}
-              />
-            </div>
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label">Dư nợ ban đầu</label>
+            <input
+              type="number"
+              className="form-input mono"
+              value={formData.initialDebt}
+              onChange={(e) => setFormData({ ...formData, initialDebt: e.target.value })}
+            />
           </div>
 
           <div className="form-group">
@@ -627,21 +947,12 @@ export default function Customers({ onQuickAction }) {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Người liên hệ</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Số điện thoại</label>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Số điện thoại (Nhập nhiều số cách nhau bởi phẩy hoặc /)</label>
               <input
                 type="text"
                 className="form-input mono"
+                placeholder="VD: 0987654321, 0912345678"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
@@ -658,13 +969,14 @@ export default function Customers({ onQuickAction }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Hạn mức nợ (0 = không giới hạn)</label>
-              <input
-                type="number"
-                className="form-input mono"
-                min="0"
-                value={formData.creditLimit}
-                onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value })}
+              <label className="form-label">Khu Vực</label>
+              <SearchableSelect
+                allowCustom={true}
+                options={regionOptions}
+                value={formData.region}
+                onChange={(val) => setFormData({ ...formData, region: val })}
+                placeholder="-- Chọn hoặc gõ khu vực mới --"
+                searchPlaceholder="Tìm hoặc gõ khu vực mới..."
               />
             </div>
 
@@ -722,7 +1034,7 @@ export default function Customers({ onQuickAction }) {
           >
             <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Nợ hiện tại của khách:</span>
             <span className="mono" style={{ fontSize: '1.125rem', fontWeight: 800 }}>
-              {formatVND(selectedCustomer?.debt || 0)}
+              {formatVND(Math.abs(selectedCustomer?.debt || 0))}
             </span>
           </div>
 
@@ -737,7 +1049,7 @@ export default function Customers({ onQuickAction }) {
                   checked={adjustData.mode === 'delta'}
                   onChange={() => setAdjustData({ ...adjustData, mode: 'delta' })}
                 />
-                <span>Tăng / Giảm độ lệch (+/-)</span>
+                <span>Tăng / Giảm độ lệch</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem' }}>
                 <input
@@ -755,7 +1067,7 @@ export default function Customers({ onQuickAction }) {
           {adjustData.mode === 'delta' ? (
             <div className="form-group">
               <label className="form-label">
-                Độ Lệch Công Nợ (+ nếu tăng nợ phải thu, - nếu giảm nợ)
+                Độ Lệch Công Nợ
               </label>
               <input
                 type="number"
@@ -769,7 +1081,7 @@ export default function Customers({ onQuickAction }) {
             </div>
           ) : (
             <div className="form-group">
-              <label className="form-label">Số Nợ Mới Thiết Lập (VNĐ)</label>
+              <label className="form-label">Số Nợ Mới Thiết Lập</label>
               <input
                 type="number"
                 step="any"
@@ -837,12 +1149,12 @@ export default function Customers({ onQuickAction }) {
               fontSize: '0.875rem',
             }}
           >
-            Số nợ hiện tại cần thu: <strong>{formatVND(selectedCustomer?.debt || 0)}</strong>
+            Số nợ hiện tại cần thu: <strong>{formatVND(Math.abs(selectedCustomer?.debt || 0))}</strong>
           </div>
 
           <div className="form-group">
             <label className="form-label">
-              Số Tiền Thu (VNĐ) <span className="req">*</span>
+              Số Tiền Thu <span className="req">*</span>
             </label>
             <input
               type="number"
@@ -889,6 +1201,31 @@ export default function Customers({ onQuickAction }) {
         subtitle={`Mã KH: ${selectedCustomer?.code || ''} | Dư nợ hiện tại: ${formatVND(selectedCustomer?.debt || 0)}`}
         width="680px"
       >
+        <div style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <TimeFilter
+            mode={historyTimeMode}
+            onModeChange={(newMode) => {
+              setHistoryTimeMode(newMode);
+              if (selectedCustomer) {
+                const p = newMode === 'day' ? historyDate : historyMonth;
+                loadDebtHistory(selectedCustomer.id, p);
+              }
+            }}
+            month={historyMonth}
+            onMonthChange={(m) => {
+              setHistoryMonth(m);
+              if (selectedCustomer) loadDebtHistory(selectedCustomer.id, m);
+            }}
+            date={historyDate}
+            onDateChange={(d) => {
+              setHistoryDate(d);
+              if (selectedCustomer) loadDebtHistory(selectedCustomer.id, d);
+            }}
+            showAll={false}
+            showRange={false}
+          />
+        </div>
+
         {historyLoading ? (
           <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
             Đang tải dữ liệu sổ nợ...
@@ -897,7 +1234,11 @@ export default function Customers({ onQuickAction }) {
           <EmptyState
             icon={History}
             title="Chưa có lịch sử công nợ"
-            description="Khách hàng này chưa có giao dịch mua nợ, thanh toán hoặc điều chỉnh nào."
+            description={
+              historyTimeMode === 'day'
+                ? `Không có giao dịch công nợ nào trong ngày ${historyDate}.`
+                : `Không có giao dịch công nợ nào trong tháng ${historyMonth}.`
+            }
           />
         ) : (
           <div className="table-responsive">
@@ -921,14 +1262,14 @@ export default function Customers({ onQuickAction }) {
                       <td>
                         <span className={`badge badge-${isIncrease ? 'danger' : 'success'}`}>
                           {r.sourceType === 'export'
-                            ? 'Bán hàng (Xuất)'
+                            ? 'Xuất'
                             : r.sourceType === 'receipt'
                             ? 'Thu tiền'
                             : 'Điều chỉnh'}
                         </span>
                       </td>
                       <td style={{ textAlign: 'right' }} className="mono">
-                        {formatVND(r.beforeDebt)}
+                        {formatVND(Math.abs(r.beforeDebt))}
                       </td>
                       <td
                         style={{
@@ -938,10 +1279,10 @@ export default function Customers({ onQuickAction }) {
                         }}
                         className="mono"
                       >
-                        {isIncrease ? `+${formatVND(r.delta)}` : formatVND(r.delta)}
+                        {formatVND(Math.abs(r.delta))}
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }} className="mono">
-                        {formatVND(r.afterDebt)}
+                        {formatVND(Math.abs(r.afterDebt))}
                       </td>
                       <td style={{ fontSize: '0.8125rem' }}>{r.reason || r.note || '—'}</td>
                     </tr>

@@ -9,6 +9,7 @@ public class SupplierDto
     public string? PhonesJson { get; set; }
     public string? Email { get; set; }
     public string? AddressesJson { get; set; }
+    public string? Region { get; set; }
     public decimal Debt { get; set; }
     public decimal CreditLimit { get; set; }
     public string? BankAccount { get; set; }
@@ -26,6 +27,7 @@ public class CreateSupplierDto
     public string? PhonesJson { get; set; }
     public string? Email { get; set; }
     public string? AddressesJson { get; set; }
+    public string? Region { get; set; }
     public decimal CreditLimit { get; set; } = 0;
     public decimal InitialDebt { get; set; } = 0;
     public string? BankAccount { get; set; }
@@ -40,6 +42,7 @@ public class UpdateSupplierDto
     public string? PhonesJson { get; set; }
     public string? Email { get; set; }
     public string? AddressesJson { get; set; }
+    public string? Region { get; set; }
     public decimal CreditLimit { get; set; }
     public string? BankAccount { get; set; }
     public string? TaxNumber { get; set; }

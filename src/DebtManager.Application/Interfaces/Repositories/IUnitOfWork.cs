@@ -18,6 +18,8 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IRepository<Receipt> Receipts { get; }
     IRepository<Payment> Payments { get; }
     IRepository<Owner> Owners { get; }
+    IRepository<AuditLog> AuditLogs { get; }
+    IRepository<LoginHistory> LoginHistories { get; }
 
     IRepository<T> Repository<T>() where T : class;
 

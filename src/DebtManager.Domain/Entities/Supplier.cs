@@ -9,6 +9,7 @@ public class Supplier
     public string? PhonesJson { get; set; }
     public string? Email { get; set; }
     public string? AddressesJson { get; set; }
+    public string? Region { get; set; }
     public decimal Debt { get; set; } = 0;
     public decimal CreditLimit { get; set; } = 0;
     public string? BankAccount { get; set; }

@@ -9,6 +9,7 @@ public class CustomerDto
     public string? PhonesJson { get; set; }
     public string? Email { get; set; }
     public string? AddressesJson { get; set; }
+    public string? Region { get; set; }
     public decimal Debt { get; set; }
     public decimal CreditLimit { get; set; }
     public string? Notes { get; set; }
@@ -24,6 +25,7 @@ public class CreateCustomerDto
     public string? PhonesJson { get; set; }
     public string? Email { get; set; }
     public string? AddressesJson { get; set; }
+    public string? Region { get; set; }
     public decimal CreditLimit { get; set; } = 0;
     public decimal InitialDebt { get; set; } = 0;
     public string? Notes { get; set; }
@@ -36,6 +38,7 @@ public class UpdateCustomerDto
     public string? PhonesJson { get; set; }
     public string? Email { get; set; }
     public string? AddressesJson { get; set; }
+    public string? Region { get; set; }
     public decimal CreditLimit { get; set; }
     public string? Notes { get; set; }
 }

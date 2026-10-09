@@ -23,6 +23,8 @@ public class DebtManagerDbContext : DbContext
     public DbSet<Receipt> Receipts => Set<Receipt>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Owner> Owners => Set<Owner>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,6 +51,7 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
             entity.Property(e => e.ContactName).HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.Region).HasMaxLength(100);
             entity.Property(e => e.Debt).HasPrecision(18, 2).HasDefaultValue(0);
             entity.Property(e => e.CreditLimit).HasPrecision(18, 2).HasDefaultValue(0);
             entity.Property(e => e.Notes).HasMaxLength(1000);
@@ -64,6 +67,7 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
             entity.Property(e => e.ContactName).HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.Region).HasMaxLength(100);
             entity.Property(e => e.Debt).HasPrecision(18, 2).HasDefaultValue(0);
             entity.Property(e => e.CreditLimit).HasPrecision(18, 2).HasDefaultValue(0);
             entity.Property(e => e.BankAccount).HasMaxLength(100);
@@ -90,6 +94,7 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.StockWarehouse1).HasPrecision(18, 3).HasDefaultValue(0);
             entity.Property(e => e.StockWarehouse2).HasPrecision(18, 3).HasDefaultValue(0);
             entity.Property(e => e.StockWarehouse3).HasPrecision(18, 3).HasDefaultValue(0);
+            entity.Property(e => e.WarehouseStocks).HasColumnType("text");
             entity.Property(e => e.TotalStock).HasPrecision(18, 3).HasDefaultValue(0);
             entity.Property(e => e.ReorderPoint).HasPrecision(18, 3).HasDefaultValue(0);
 
@@ -318,6 +323,35 @@ public class DebtManagerDbContext : DbContext
             entity.ToTable("Owners");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Info).HasMaxLength(500).IsRequired();
+        });
+
+        // 12. AuditLogs
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("AuditLogs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Action).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.EntityName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EntityId).HasMaxLength(100);
+            entity.Property(e => e.EntityDisplayName).HasMaxLength(255);
+            entity.Property(e => e.Username).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.IpAddress).HasMaxLength(100);
+            entity.Property(e => e.Details).HasMaxLength(4000);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.EntityName);
+        });
+
+        // 13. LoginHistories
+        modelBuilder.Entity<LoginHistory>(entity =>
+        {
+            entity.ToTable("LoginHistories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Username).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.IpAddress).HasMaxLength(100);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.Property(e => e.Device).HasMaxLength(100);
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.HasIndex(e => e.LoginTime);
         });
     }
 }

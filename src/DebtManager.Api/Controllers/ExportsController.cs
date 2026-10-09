@@ -16,11 +16,27 @@ public class ExportsController : BaseApiController
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<ExportVoucherDto>>>> GetExports(
+    public async Task<IActionResult> GetExports(
         [FromQuery] int? customerId,
         [FromQuery] string? month,
-        CancellationToken ct)
-        => Success(await _exportService.GetExportsAsync(customerId, month, ct));
+        [FromQuery] string? date,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
+        [FromQuery] string? q,
+        [FromQuery] int? page,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] bool all = false,
+        CancellationToken ct = default)
+    {
+        if (page.HasValue && !all)
+        {
+            var paged = await _exportService.GetPagedExportsAsync(customerId, month, date, fromDate, toDate, q, page.Value, pageSize, ct);
+            return Success(paged);
+        }
+
+        var list = await _exportService.GetExportsAsync(customerId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, ct);
+        return Success(list);
+    }
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<ApiResponse<ExportVoucherDto>>> GetById(

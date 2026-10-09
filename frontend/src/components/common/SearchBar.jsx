@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
 
 export default function SearchBar({
   value = '',
@@ -30,8 +29,7 @@ export default function SearchBar({
   };
 
   return (
-    <div className="input-with-icon input-with-action" style={{ minWidth: '260px', ...style }}>
-      <Search className="input-icon" size={18} />
+    <div className="input-with-action" style={{ minWidth: '260px', position: 'relative', ...style }}>
       <input
         type="text"
         className="form-input"
@@ -40,8 +38,14 @@ export default function SearchBar({
         onChange={(e) => setInternalValue(e.target.value)}
       />
       {internalValue && (
-        <button className="clear-btn" onClick={handleClear} type="button" title="Xóa tìm kiếm">
-          <X size={16} />
+        <button 
+          className="clear-btn" 
+          onClick={handleClear} 
+          type="button" 
+          title="Xóa tìm kiếm"
+          style={{ fontSize: '0.75rem', padding: '2px 6px', right: '8px' }}
+        >
+          Xóa
         </button>
       )}
     </div>

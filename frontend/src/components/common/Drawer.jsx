@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
 
 export default function Drawer({
   isOpen,
@@ -45,12 +44,12 @@ export default function Drawer({
             )}
           </div>
           <button
-            className="btn btn-ghost btn-icon"
+            className="btn btn-ghost"
             onClick={onClose}
             aria-label="Đóng"
             title="Đóng (ESC)"
           >
-            <X size={20} />
+            Đóng
           </button>
         </div>
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>

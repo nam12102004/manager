@@ -152,7 +152,7 @@ export default function Settings() {
             </h3>
 
             <div className="form-group">
-              <label className="form-label">Ngân Hàng (Mã BIN hoặc Viết Tắt)</label>
+              <label className="form-label">Ngân Hàng</label>
               <input
                 type="text"
                 className="form-input mono"
@@ -175,7 +175,7 @@ export default function Settings() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Tên Chủ Tài Khoản (Không Dấu)</label>
+              <label className="form-label">Tên Chủ Tài Khoản</label>
               <input
                 type="text"
                 className="form-input mono"
@@ -203,7 +203,7 @@ export default function Settings() {
           <div className="glass-card" style={{ padding: '1.75rem', textAlign: 'center' }}>
             <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
               <QrCode size={20} color="var(--primary)" />
-              <span>Mã QR Chuyển Khoản Nhanh (VietQR)</span>
+              <span>Mã QR Chuyển Khoản Nhanh</span>
             </h3>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
               Khách hàng có thể quét mã này bằng bất kỳ ứng dụng ngân hàng nào để thanh toán tiền hàng.
@@ -233,7 +233,7 @@ export default function Settings() {
             <div style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
               <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{accountHolder}</div>
               <div className="mono" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                {bankAccount} ({bankName})
+                {bankAccount} - {bankName}
               </div>
             </div>
           </div>
@@ -241,7 +241,7 @@ export default function Settings() {
           {/* Quick Info Box */}
           <div className="glass-card" style={{ padding: '1.5rem' }}>
             <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-              Kiến Trúc & Quy Ước Hệ Thống (.NET Clean Architecture)
+              Kiến Trúc & Quy Ước Hệ Thống
             </h4>
             <ul style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '1.25rem' }}>
               <li>

@@ -1,3 +1,4 @@
+using DebtManager.Application.Common;
 using DebtManager.Application.Common.Exceptions;
 using DebtManager.Application.DTOs.Suppliers;
 using DebtManager.Application.Interfaces;
@@ -27,11 +28,89 @@ public class SupplierService : ISupplierService
             query = query.Where(sup => sup.Name.ToLower().Contains(s) ||
                                        sup.Code.ToLower().Contains(s) ||
                                        (sup.ContactName != null && sup.ContactName.ToLower().Contains(s)) ||
-                                       (sup.PhonesJson != null && sup.PhonesJson.ToLower().Contains(s)));
+                                       (sup.PhonesJson != null && sup.PhonesJson.ToLower().Contains(s)) ||
+                                       (sup.AddressesJson != null && sup.AddressesJson.ToLower().Contains(s)) ||
+                                       (sup.Email != null && sup.Email.ToLower().Contains(s)) ||
+                                       (sup.BankAccount != null && sup.BankAccount.ToLower().Contains(s)) ||
+                                       (sup.Region != null && sup.Region.ToLower().Contains(s)));
         }
 
         var list = await query.OrderByDescending(sup => sup.Id).ToListAsync(ct);
         return list.Select(MapToDto).ToList();
+    }
+
+    public async Task<SupplierPagedResult> GetPagedSuppliersAsync(
+        string? search = null,
+        string? region = null,
+        string? sortBy = null,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = pageSize > 0 ? pageSize : 15;
+
+        var query = _uow.Suppliers.Query().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(sup => sup.Name.ToLower().Contains(s) ||
+                                       sup.Code.ToLower().Contains(s) ||
+                                       (sup.ContactName != null && sup.ContactName.ToLower().Contains(s)) ||
+                                       (sup.PhonesJson != null && sup.PhonesJson.ToLower().Contains(s)) ||
+                                       (sup.AddressesJson != null && sup.AddressesJson.ToLower().Contains(s)) ||
+                                       (sup.Email != null && sup.Email.ToLower().Contains(s)) ||
+                                       (sup.BankAccount != null && sup.BankAccount.ToLower().Contains(s)) ||
+                                       (sup.Region != null && sup.Region.ToLower().Contains(s)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(region))
+        {
+            var r = region.Trim();
+            if (r.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(sup => string.IsNullOrEmpty(sup.Region));
+            }
+            else if (!r.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+            {
+                var rLower = r.ToLower();
+                query = query.Where(sup => sup.Region != null && sup.Region.ToLower() == rLower);
+            }
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        var totalReceivables = await query.Where(sup => sup.Debt > 0).SumAsync(sup => (decimal?)sup.Debt, ct) ?? 0;
+        var totalPayables = await query.Where(sup => sup.Debt < 0).SumAsync(sup => (decimal?)Math.Abs(sup.Debt), ct) ?? 0;
+
+        query = sortBy switch
+        {
+            "payable_desc" => query.OrderBy(sup => sup.Debt).ThenByDescending(sup => sup.Id),
+            "payable_asc" => query.OrderByDescending(sup => sup.Debt).ThenByDescending(sup => sup.Id),
+            _ => query.OrderByDescending(sup => sup.Id)
+        };
+
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return new SupplierPagedResult
+        {
+            Items = items.Select(MapToDto).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalReceivables = totalReceivables,
+            TotalPayables = totalPayables
+        };
+    }
+
+    public async Task<List<string>> GetRegionsAsync(CancellationToken ct = default)
+    {
+        return await _uow.Suppliers.Query()
+            .Where(sup => sup.Region != null && sup.Region != "")
+            .Select(sup => sup.Region!)
+            .Distinct()
+            .OrderBy(r => r)
+            .ToListAsync(ct);
     }
 
     public async Task<SupplierDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -61,6 +140,7 @@ public class SupplierService : ISupplierService
             PhonesJson = dto.PhonesJson?.Trim(),
             Email = dto.Email?.Trim(),
             AddressesJson = dto.AddressesJson?.Trim(),
+            Region = dto.Region?.Trim(),
             CreditLimit = dto.CreditLimit,
             Debt = dto.InitialDebt,
             BankAccount = dto.BankAccount?.Trim(),
@@ -107,6 +187,7 @@ public class SupplierService : ISupplierService
         supplier.PhonesJson = dto.PhonesJson?.Trim();
         supplier.Email = dto.Email?.Trim();
         supplier.AddressesJson = dto.AddressesJson?.Trim();
+        supplier.Region = dto.Region?.Trim();
         supplier.CreditLimit = dto.CreditLimit;
         supplier.BankAccount = dto.BankAccount?.Trim();
         supplier.TaxNumber = dto.TaxNumber?.Trim();
@@ -119,7 +200,7 @@ public class SupplierService : ISupplierService
         return MapToDto(supplier);
     }
 
-    public async Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, CancellationToken ct = default)
+    public async Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, CancellationToken ct = default)
     {
         var supplierExists = await _uow.Suppliers.Query().AnyAsync(s => s.Id == supplierId, ct);
         if (!supplierExists)
@@ -127,8 +208,29 @@ public class SupplierService : ISupplierService
             throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {supplierId}");
         }
 
-        var list = await _uow.SupplierDebtHistories.Query()
-            .Where(h => h.SupplierId == supplierId)
+        var query = _uow.SupplierDebtHistories.Query().Where(h => h.SupplierId == supplierId);
+
+        if (!string.IsNullOrWhiteSpace(month))
+        {
+            if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                var windowStart = start.AddDays(-1);
+                var windowEnd = end.AddDays(1);
+                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+            }
+            else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                var windowStart = start.AddDays(-1);
+                var windowEnd = end.AddDays(1);
+                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+            }
+        }
+
+        var list = await query
             .OrderByDescending(h => h.CreatedAt)
             .ThenByDescending(h => h.Id)
             .ToListAsync(ct);
@@ -197,6 +299,7 @@ public class SupplierService : ISupplierService
         PhonesJson = s.PhonesJson,
         Email = s.Email,
         AddressesJson = s.AddressesJson,
+        Region = s.Region,
         Debt = s.Debt,
         CreditLimit = s.CreditLimit,
         BankAccount = s.BankAccount,

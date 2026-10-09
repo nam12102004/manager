@@ -1,4 +1,5 @@
 import { receiptsApi, paymentsApi, customersApi, suppliersApi, ownersApi } from '../api/endpoints';
+import { auditService } from './auditService';
 
 /**
  * Frontend Business Logic & Service for Cash Book (Thu - Chi & Sổ Quỹ)
@@ -102,11 +103,27 @@ export const cashBookService = {
       date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
     };
 
-    return await receiptsApi.create(payload);
+    const result = await receiptsApi.create(payload);
+    auditService.logAction({
+      action: 'CREATE',
+      entityName: 'Receipt',
+      entityId: result?.receiptNumber || result?.id || 'Mới',
+      entityDisplayName: `Phiếu thu #${result?.receiptNumber || result?.id}`,
+      details: `Lập phiếu thu tiền: ${Number(formData.amount).toLocaleString()}₫ (Hình thức: ${formData.method === 'bank_transfer' ? 'Chuyển khoản' : 'Tiền mặt'})`,
+    });
+    return result;
   },
 
   async deleteReceipt(id) {
-    return await receiptsApi.delete(id);
+    const result = await receiptsApi.delete(id);
+    auditService.logAction({
+      action: 'DELETE',
+      entityName: 'Receipt',
+      entityId: String(id),
+      entityDisplayName: `Phiếu thu #${id}`,
+      details: `Xóa phiếu thu tiền #${id}`,
+    });
+    return result;
   },
 
   // ================= Payment API Wrappers =================
@@ -133,15 +150,39 @@ export const cashBookService = {
       date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
     };
 
-    return await paymentsApi.create(payload);
+    const result = await paymentsApi.create(payload);
+    auditService.logAction({
+      action: 'CREATE',
+      entityName: 'Payment',
+      entityId: result?.paymentNumber || result?.id || 'Mới',
+      entityDisplayName: `Phiếu chi #${result?.paymentNumber || result?.id}`,
+      details: `Lập phiếu chi tiền: ${Number(formData.amount).toLocaleString()}₫ (Hình thức: ${formData.method === 'bank_transfer' ? 'Chuyển khoản' : 'Tiền mặt'})`,
+    });
+    return result;
   },
 
   async updatePaymentStatus(id, action) {
-    return await paymentsApi.updateStatus(id, action);
+    const result = await paymentsApi.updateStatus(id, action);
+    auditService.logAction({
+      action: action === 'cancel' ? 'CANCEL' : 'STATUS_CHANGE',
+      entityName: 'Payment',
+      entityId: String(id),
+      entityDisplayName: `Phiếu chi #${id}`,
+      details: `${action === 'cancel' ? 'Hủy' : 'Đổi trạng thái'} phiếu chi #${id}`,
+    });
+    return result;
   },
 
   async deletePayment(id) {
-    return await paymentsApi.delete(id);
+    const result = await paymentsApi.delete(id);
+    auditService.logAction({
+      action: 'DELETE',
+      entityName: 'Payment',
+      entityId: String(id),
+      entityDisplayName: `Phiếu chi #${id}`,
+      details: `Xóa vĩnh viễn phiếu chi #${id}`,
+    });
+    return result;
   },
 
   async getDependencies() {

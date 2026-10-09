@@ -17,12 +17,28 @@ public class PaymentsController : BaseApiController
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<PaymentDto>>>> GetPayments(
+    public async Task<IActionResult> GetPayments(
         [FromQuery] int? supplierId,
         [FromQuery] int? customerId,
         [FromQuery] string? q,
-        CancellationToken ct)
-        => Success(await _paymentService.GetPaymentsAsync(supplierId, customerId, q, ct));
+        [FromQuery] string? month,
+        [FromQuery] string? date,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
+        [FromQuery] int? page,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] bool all = false,
+        CancellationToken ct = default)
+    {
+        if (page.HasValue && !all)
+        {
+            var paged = await _paymentService.GetPagedPaymentsAsync(supplierId, customerId, q, month, date, fromDate, toDate, page.Value, pageSize, ct);
+            return Success(paged);
+        }
+
+        var list = await _paymentService.GetPaymentsAsync(supplierId, customerId, q, ct);
+        return Success(list);
+    }
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<ApiResponse<PaymentDto>>> GetById(

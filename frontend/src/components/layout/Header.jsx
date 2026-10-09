@@ -1,5 +1,4 @@
 import React from 'react';
-import { Sun, Moon, PlusCircle, ArrowUpRight, ArrowDownLeft, Receipt, Bell, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -50,34 +49,31 @@ export default function Header({
           title="Hệ thống quản lý tồn kho đa điểm"
         >
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--success)' }} />
-          <span>Kho đa điểm (Kho 1, 2, 3)</span>
+          <span>Kho đa điểm</span>
         </div>
 
-        {/* Quick Actions Dropdown / Buttons */}
-        {onQuickAction && (
+        {/* Quick Actions Dropdown / Buttons (hidden when on products/warehouse tab) */}
+        {onQuickAction && !pageTitle?.toLowerCase().includes('kho') && !pageTitle?.toLowerCase().includes('sản phẩm') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button
               onClick={() => onQuickAction('new-export')}
               className="btn btn-primary btn-sm"
-              title="Tạo phiếu bán hàng mới"
+              title="Tạo phiếu xuất mới"
             >
-              <ArrowUpRight size={15} />
-              <span>Bán hàng</span>
+              <span>Xuất</span>
             </button>
             <button
               onClick={() => onQuickAction('new-import')}
               className="btn btn-outline btn-sm"
-              title="Tạo phiếu nhập hàng mới"
+              title="Tạo phiếu nhập mới"
             >
-              <ArrowDownLeft size={15} />
-              <span>Nhập hàng</span>
+              <span>Nhập</span>
             </button>
             <button
               onClick={() => onQuickAction('new-receipt')}
               className="btn btn-outline btn-sm"
               title="Lập phiếu thu tiền"
             >
-              <Receipt size={15} />
               <span>Thu tiền</span>
             </button>
           </div>
@@ -88,11 +84,10 @@ export default function Header({
         {/* Theme Toggle Button */}
         <button
           onClick={toggleTheme}
-          className="btn btn-outline btn-icon"
-          style={{ width: '36px', height: '36px' }}
+          className="btn btn-outline btn-sm"
           title={isDark ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}
         >
-          {isDark ? <Sun size={18} color="var(--warning)" /> : <Moon size={18} color="var(--primary)" />}
+          <span>{isDark ? 'Giao diện Sáng' : 'Giao diện Tối'}</span>
         </button>
       </div>
     </header>

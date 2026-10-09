@@ -14,7 +14,8 @@ export const authApi = {
 // 2. Customers API
 // ==========================================
 export const customersApi = {
-  getAll: async (q = '') => {
+  getAll: async (params = '') => {
+    const q = typeof params === 'string' ? params : (params?.q || undefined);
     const res = await api.get('/customers', { params: { q: q || undefined } });
     return res.data; // List<CustomerDto>
   },
@@ -30,8 +31,8 @@ export const customersApi = {
     const res = await api.put(`/customers/${id}`, data);
     return res.data; // CustomerDto
   },
-  getDebtHistory: async (id) => {
-    const res = await api.get(`/customers/${id}/debt-history`);
+  getDebtHistory: async (id, month) => {
+    const res = await api.get(`/customers/${id}/debt-history`, { params: { month: month || undefined } });
     return res.data; // List<CustomerDebtHistoryDto>
   },
   adjustDebt: async (id, data) => {
@@ -44,7 +45,8 @@ export const customersApi = {
 // 3. Suppliers API
 // ==========================================
 export const suppliersApi = {
-  getAll: async (q = '') => {
+  getAll: async (params = '') => {
+    const q = typeof params === 'string' ? params : (params?.q || undefined);
     const res = await api.get('/suppliers', { params: { q: q || undefined } });
     return res.data; // List<SupplierDto>
   },
@@ -60,8 +62,8 @@ export const suppliersApi = {
     const res = await api.put(`/suppliers/${id}`, data);
     return res.data; // SupplierDto
   },
-  getDebtHistory: async (id) => {
-    const res = await api.get(`/suppliers/${id}/debt-history`);
+  getDebtHistory: async (id, month) => {
+    const res = await api.get(`/suppliers/${id}/debt-history`, { params: { month: month || undefined } });
     return res.data; // List<SupplierDebtHistoryDto>
   },
   adjustDebt: async (id, data) => {
@@ -109,10 +111,13 @@ export const productsApi = {
 // 5. Exports API (Bán hàng / Xuất kho)
 // ==========================================
 export const exportsApi = {
-  getAll: async ({ customerId = null, month = '' } = {}) => {
+  getAll: async ({ customerId = null, month = '', date = '', fromDate = '', toDate = '' } = {}) => {
     const params = {};
     if (customerId) params.customerId = customerId;
-    if (month) params.month = month;
+    if (date) params.date = date;
+    else if (month) params.month = month;
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
     const res = await api.get('/exports', { params });
     return res.data; // List<ExportVoucherDto>
   },
@@ -138,10 +143,13 @@ export const exportsApi = {
 // 6. Imports API (Mua hàng / Nhập kho)
 // ==========================================
 export const importsApi = {
-  getAll: async ({ supplierId = null, month = '' } = {}) => {
+  getAll: async ({ supplierId = null, month = '', date = '', fromDate = '', toDate = '' } = {}) => {
     const params = {};
     if (supplierId) params.supplierId = supplierId;
-    if (month) params.month = month;
+    if (date) params.date = date;
+    else if (month) params.month = month;
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
     const res = await api.get('/imports', { params });
     return res.data; // List<ImportVoucherDto>
   },
@@ -250,3 +258,56 @@ export const ownersApi = {
     return res.data; // OwnerDto
   },
 };
+
+// ==========================================
+// 11. Audit & Login History API
+// ==========================================
+export const auditApi = {
+  getLogs: async (params = {}) => {
+    const res = await api.get('/audit-logs', { params });
+    return res.data; // List<AuditLogDto>
+  },
+  createLog: async (data) => {
+    const res = await api.post('/audit-logs', data);
+    return res.data; // AuditLogDto
+  },
+  getLoginHistory: async (params = {}) => {
+    const res = await api.get('/audit-logs/login-history', { params });
+    return res.data; // List<LoginHistoryDto>
+  },
+  createLoginHistory: async (data) => {
+    const res = await api.post('/audit-logs/login-history', data);
+    return res.data; // LoginHistoryDto
+  },
+};
+
+// ==========================================
+// 12. Users API (Quản lý tài khoản & Phân quyền)
+// ==========================================
+export const usersApi = {
+  getAll: async () => {
+    const res = await api.get('/users');
+    return res.data; // List<UserDto>
+  },
+  getById: async (id) => {
+    const res = await api.get(`/users/${id}`);
+    return res.data; // UserDto
+  },
+  create: async (data) => {
+    const res = await api.post('/users', data);
+    return res.data; // UserDto
+  },
+  changePassword: async (id, newPassword) => {
+    const res = await api.put(`/users/${id}/password`, { newPassword });
+    return res.data; // boolean
+  },
+  updateRole: async (id, role) => {
+    const res = await api.put(`/users/${id}/role`, { role });
+    return res.data; // boolean
+  },
+  delete: async (id) => {
+    const res = await api.delete(`/users/${id}`);
+    return res.data; // boolean
+  },
+};
+

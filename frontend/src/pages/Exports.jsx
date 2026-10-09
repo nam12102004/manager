@@ -13,14 +13,18 @@ import {
   CheckCircle,
   AlertCircle,
   Package,
+  Filter,
 } from 'lucide-react';
-import { formatVND, formatNumber, formatDate, getCurrentMonthStr } from '../utils/formatters';
+import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { WAREHOUSES, WAREHOUSE_MAP } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
-import { exportService } from '../services';
+import SearchableSelect from '../components/common/SearchableSelect';
+import TimeFilter from '../components/common/TimeFilter';
+import { exportService, warehouseService } from '../services';
+import { generateExportHtml, printInNewTab } from '../utils/printVoucher';
 
 export default function Exports({ initialOpenCreate = false }) {
   const notify = useNotification();
@@ -28,12 +32,17 @@ export default function Exports({ initialOpenCreate = false }) {
   const [exportsList, setExportsList] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
   const [ownerInfo, setOwnerInfo] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Filters
+  // Time & Customer Filters
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
+  const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(initialOpenCreate);
@@ -42,6 +51,15 @@ export default function Exports({ initialOpenCreate = false }) {
 
   const [selectedExport, setSelectedExport] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Helper to get stock of product for specific warehouse
+  const getProductStockForWarehouse = (p, whId) => {
+    if (!p) return 0;
+    if (whId === 'warehouse1') return Number(p.stockWarehouse1 || 0);
+    if (whId === 'warehouse2') return Number(p.stockWarehouse2 || 0);
+    if (whId === 'warehouse3') return Number(p.stockWarehouse3 || 0);
+    return Number(p.totalStock ?? ((p.stockWarehouse1 || 0) + (p.stockWarehouse2 || 0) + (p.stockWarehouse3 || 0)));
+  };
 
   // Create Form State
   const [createForm, setCreateForm] = useState({
@@ -59,10 +77,20 @@ export default function Exports({ initialOpenCreate = false }) {
   const loadExports = async () => {
     setLoading(true);
     try {
-      const data = await exportService.getAll({
+      const params = {
         customerId: selectedCustomerId ? Number(selectedCustomerId) : null,
-        month: selectedMonth,
-      });
+      };
+
+      if (timeMode === 'month') {
+        params.month = selectedMonth;
+      } else if (timeMode === 'day') {
+        params.date = selectedDate;
+      } else if (timeMode === 'range') {
+        params.fromDate = fromDate;
+        params.toDate = toDate;
+      }
+
+      const data = await exportService.getAll(params);
       setExportsList(data || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách phiếu xuất');
@@ -74,10 +102,14 @@ export default function Exports({ initialOpenCreate = false }) {
   // Load Customers & Products & Owner via exportService
   const loadDependencies = async () => {
     try {
-      const { customers: custs, products: prods, ownerInfo: owner } = await exportService.getDependencies();
+      const [{ customers: custs, products: prods, ownerInfo: owner }, whList] = await Promise.all([
+        exportService.getDependencies(),
+        warehouseService.getWarehouses(),
+      ]);
       setCustomers(custs || []);
       setProducts(prods || []);
       setOwnerInfo(owner || null);
+      if (whList && Array.isArray(whList)) setWarehouses(whList);
     } catch (err) {
       console.error(err);
     }
@@ -85,7 +117,7 @@ export default function Exports({ initialOpenCreate = false }) {
 
   useEffect(() => {
     loadExports();
-  }, [selectedCustomerId, selectedMonth]);
+  }, [selectedCustomerId, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
     loadDependencies();
@@ -93,6 +125,7 @@ export default function Exports({ initialOpenCreate = false }) {
 
   // Open Create
   const handleOpenCreate = () => {
+    loadDependencies();
     setCreateForm({
       customerId: customers.length > 0 ? String(customers[0].id) : '',
       warehouse: 'warehouse1',
@@ -105,7 +138,7 @@ export default function Exports({ initialOpenCreate = false }) {
         {
           productId: products.length > 0 ? products[0].id : '',
           quantity: 1,
-          salePrice: products.length > 0 ? products[0].retailPrice : 0,
+          salePrice: products.length > 0 ? (products[0].retailPrice || products[0].salePrice || 0) : 0,
         },
       ],
     });
@@ -221,8 +254,12 @@ export default function Exports({ initialOpenCreate = false }) {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (item = null) => {
+    const target = item || selectedExport;
+    if (!target) return;
+    const cust = customers.find((c) => c.id === target.customerId || c.name === target.customerName);
+    const html = generateExportHtml({ exportData: target, ownerInfo, customer: cust });
+    printInNewTab(html);
   };
 
   return (
@@ -232,10 +269,10 @@ export default function Exports({ initialOpenCreate = false }) {
         <div className="page-title-group">
           <h1 className="page-title">
             <ArrowUpRight size={28} color="var(--primary)" />
-            <span>Bán Hàng & Xuất Kho</span>
+            <span>Xuất Kho</span>
           </h1>
           <p className="page-subtitle">
-            Lập phiếu xuất bán, trừ tồn kho đa điểm và ghi nhận công nợ khách hàng
+            Lập phiếu xuất hàng, trừ tồn kho đa điểm và ghi nhận công nợ khách hàng
           </p>
         </div>
         <div className="page-actions">
@@ -252,31 +289,36 @@ export default function Exports({ initialOpenCreate = false }) {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div style={{ minWidth: '220px' }}>
-          <select
-            className="form-select"
+        <div style={{ minWidth: '260px' }}>
+          <SearchableSelect
+            options={customers.map((c) => ({
+              id: c.id,
+              value: c.id,
+              label: c.name,
+              code: c.code,
+              phone: c.phone || '',
+              subLabel: c.phone ? `SĐT: ${c.phone}` : '',
+            }))}
             value={selectedCustomerId}
-            onChange={(e) => setSelectedCustomerId(e.target.value)}
-          >
-            <option value="">-- Tất cả khách hàng --</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.code})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Calendar size={18} color="var(--text-muted)" />
-          <input
-            type="month"
-            className="form-input mono"
-            style={{ width: '160px' }}
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            onChange={(val) => setSelectedCustomerId(val)}
+            placeholder="-- Tất cả khách hàng --"
+            searchPlaceholder="Tìm theo tên, mã KH, SĐT..."
+            searchFields={['label', 'code', 'phone']}
           />
         </div>
+
+        <TimeFilter
+          mode={timeMode}
+          onModeChange={setTimeMode}
+          month={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          date={selectedDate}
+          onDateChange={setSelectedDate}
+          fromDate={fromDate}
+          onFromDateChange={setFromDate}
+          toDate={toDate}
+          onToDateChange={setToDate}
+        />
       </div>
 
       {/* Exports Table */}
@@ -284,7 +326,13 @@ export default function Exports({ initialOpenCreate = false }) {
         <EmptyState
           icon={ArrowUpRight}
           title="Không tìm thấy phiếu xuất nào"
-          description="Chưa có phiếu xuất bán nào trong tháng hoặc theo khách hàng đã chọn."
+          description={
+            timeMode === 'day'
+              ? `Chưa có phiếu xuất bán nào trong ngày ${selectedDate || ''} hoặc theo khách hàng đã chọn.`
+              : timeMode === 'month'
+              ? `Chưa có phiếu xuất bán nào trong tháng ${selectedMonth || ''} hoặc theo khách hàng đã chọn.`
+              : 'Chưa có phiếu xuất bán nào phù hợp với điều kiện lọc.'
+          }
           action={
             <button className="btn btn-primary btn-sm" onClick={handleOpenCreate}>
               <Plus size={15} />
@@ -298,7 +346,7 @@ export default function Exports({ initialOpenCreate = false }) {
             <thead>
               <tr>
                 <th>Số Phiếu</th>
-                <th>Ngày Lập</th>
+                <th>Thời Gian Lập</th>
                 <th>Khách Hàng</th>
                 <th>Kho Xuất</th>
                 <th style={{ textAlign: 'right' }}>Tiền Hàng</th>
@@ -316,7 +364,7 @@ export default function Exports({ initialOpenCreate = false }) {
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
                     {exp.voucherNumber}
                   </td>
-                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(exp.date)}</td>
+                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(exp.createdAt || exp.date, true)}</td>
                   <td style={{ fontWeight: 600 }}>{exp.customerName}</td>
                   <td>
                     <span className="badge badge-neutral">{WAREHOUSE_MAP[exp.warehouse] || exp.warehouse}</span>
@@ -346,16 +394,24 @@ export default function Exports({ initialOpenCreate = false }) {
                       <button
                         className="btn btn-outline btn-icon"
                         style={{ width: '32px', height: '32px' }}
-                        title="Xem chi tiết & In phiếu"
+                        title="Xem chi tiết"
                         onClick={() => handleOpenDetail(exp)}
                       >
                         <Eye size={15} />
+                      </button>
+                      <button
+                        className="btn btn-outline btn-icon"
+                        style={{ width: '32px', height: '32px' }}
+                        title="In phiếu xuất kho (Tab mới)"
+                        onClick={() => handlePrint(exp)}
+                      >
+                        <Printer size={15} />
                       </button>
                       {exp.status !== 'cancelled' && (
                         <button
                           className="btn btn-outline btn-icon"
                           style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
-                          title="Hủy phiếu xuất này (hoàn kho, trừ nợ)"
+                          title="Hủy phiếu xuất này"
                           onClick={() => handleOpenCancel(exp)}
                         >
                           <XCircle size={15} />
@@ -374,7 +430,7 @@ export default function Exports({ initialOpenCreate = false }) {
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Lập Phiếu Xuất Bán Hàng (Bán Buôn / Lẻ)"
+        title="Lập Phiếu Xuất Kho"
         size="xl"
         footer={
           <>
@@ -394,23 +450,26 @@ export default function Exports({ initialOpenCreate = false }) {
               <label className="form-label">
                 Khách Hàng <span className="req">*</span>
               </label>
-              <select
-                className="form-select"
+              <SearchableSelect
+                options={customers.map((c) => ({
+                  id: c.id,
+                  value: c.id,
+                  label: c.name,
+                  code: c.code,
+                  phone: c.phone || '',
+                  debt: c.debt || 0,
+                  subLabel: `Dư nợ: ${formatVND(c.debt)}`,
+                }))}
                 value={createForm.customerId}
-                onChange={(e) => setCreateForm({ ...createForm, customerId: e.target.value })}
+                onChange={(val) => setCreateForm({ ...createForm, customerId: val })}
+                placeholder="-- Chọn khách hàng --"
+                searchPlaceholder="Tìm theo tên, mã KH, SĐT..."
+                searchFields={['label', 'code', 'phone']}
                 required
-              >
-                <option value="">-- Chọn khách hàng --</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code}) - Dư nợ: {formatVND(c.debt)}
-                  </option>
-                ))}
-              </select>
+              />
               {selectedCustomerObj && (
                 <div style={{ fontSize: '0.75rem', marginTop: '4px', color: 'var(--text-secondary)' }}>
                   Nợ hiện tại: <strong>{formatVND(selectedCustomerObj.debt)}</strong>
-                  {selectedCustomerObj.creditLimit > 0 && ` | Hạn mức: ${formatVND(selectedCustomerObj.creditLimit)}`}
                 </div>
               )}
             </div>
@@ -425,7 +484,7 @@ export default function Exports({ initialOpenCreate = false }) {
                 onChange={(e) => setCreateForm({ ...createForm, warehouse: e.target.value })}
                 required
               >
-                {WAREHOUSES.map((wh) => (
+                {warehouses.map((wh) => (
                   <option key={wh.id} value={wh.id}>
                     {wh.name}
                   </option>
@@ -454,7 +513,7 @@ export default function Exports({ initialOpenCreate = false }) {
               </button>
             </div>
 
-            <div className="table-responsive">
+            <div className="table-responsive" style={{ overflow: 'visible' }}>
               <table className="data-table">
                 <thead>
                   <tr>
@@ -469,13 +528,7 @@ export default function Exports({ initialOpenCreate = false }) {
                 <tbody>
                   {createForm.items.map((item, idx) => {
                     const prod = products.find((p) => p.id === Number(item.productId));
-                    const currentWhStock = prod
-                      ? createForm.warehouse === 'warehouse1'
-                        ? prod.stockWarehouse1
-                        : createForm.warehouse === 'warehouse2'
-                        ? prod.stockWarehouse2
-                        : prod.stockWarehouse3
-                      : 0;
+                    const currentWhStock = getProductStockForWarehouse(prod, createForm.warehouse);
 
                     const lineTotal = Number(item.quantity || 0) * Number(item.salePrice || 0);
                     const isOutOfStock = currentWhStock < Number(item.quantity || 0);
@@ -483,17 +536,27 @@ export default function Exports({ initialOpenCreate = false }) {
                     return (
                       <tr key={idx}>
                         <td>
-                          <select
-                            className="form-select"
+                          <SearchableSelect
+                            options={products.map((p) => {
+                              const whStock = getProductStockForWarehouse(p, createForm.warehouse);
+                              const total = Number(p.totalStock ?? ((p.stockWarehouse1 || 0) + (p.stockWarehouse2 || 0) + (p.stockWarehouse3 || 0)));
+                              const targetWh = warehouses.find((w) => w.id === createForm.warehouse);
+                              const whLabel = targetWh?.shortName || targetWh?.name || 'kho này';
+                              return {
+                                id: p.id,
+                                value: p.id,
+                                label: p.name,
+                                code: p.sku || p.code,
+                                uom: p.uom || 'ĐVT',
+                                subLabel: `Tồn ${whLabel}: ${formatNumber(whStock)} (Tổng: ${formatNumber(total)}) | Giá bán: ${formatVND(p.retailPrice || p.salePrice || 0)}`,
+                              };
+                            })}
                             value={item.productId}
-                            onChange={(e) => handleUpdateItem(idx, 'productId', e.target.value)}
-                          >
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.sku} - {p.name}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => handleUpdateItem(idx, 'productId', val)}
+                            placeholder="-- Chọn sản phẩm --"
+                            searchPlaceholder="Tìm theo mã SKU, tên SP..."
+                            searchFields={['label', 'code']}
+                          />
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           <span className={`badge badge-${isOutOfStock ? 'danger' : 'neutral'} mono`}>
@@ -568,8 +631,8 @@ export default function Exports({ initialOpenCreate = false }) {
                     value={createForm.discountType}
                     onChange={(e) => setCreateForm({ ...createForm, discountType: e.target.value })}
                   >
-                    <option value="amount">Tiền mặt (₫)</option>
-                    <option value="percent">Phần trăm (%)</option>
+                    <option value="amount">Tiền mặt</option>
+                    <option value="percent">Phần trăm</option>
                   </select>
                   <input
                     type="number"
@@ -649,7 +712,7 @@ export default function Exports({ initialOpenCreate = false }) {
 
               {unpaidAmount > 0 && selectedCustomerObj && (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                  (Dư nợ mới dự kiến của khách: {formatVND(projectedCustDebt)})
+                  Dư nợ mới dự kiến của khách: {formatVND(projectedCustDebt)}
                 </div>
               )}
             </div>
@@ -665,9 +728,9 @@ export default function Exports({ initialOpenCreate = false }) {
         size="lg"
         footer={
           <>
-            <button className="btn btn-outline" onClick={handlePrint}>
+            <button className="btn btn-outline" onClick={() => handlePrint(selectedExport)}>
               <Printer size={16} />
-              <span>In Hóa Đơn</span>
+              <span>In Phiếu Xuất Kho</span>
             </button>
             <button className="btn btn-primary" onClick={() => setIsDetailOpen(false)}>
               Đóng
@@ -685,7 +748,7 @@ export default function Exports({ initialOpenCreate = false }) {
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Mã phiếu: <strong>{selectedExport.voucherNumber}</strong></p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '0.8125rem' }}>Ngày lập: <strong>{formatDate(selectedExport.date)}</strong></p>
+                <p style={{ fontSize: '0.8125rem' }}>Thời gian lập: <strong>{formatDate(selectedExport.createdAt || selectedExport.date, true)}</strong></p>
                 <p style={{ fontSize: '0.8125rem' }}>Kho xuất: <strong>{WAREHOUSE_MAP[selectedExport.warehouse] || selectedExport.warehouse}</strong></p>
                 <span className={`badge badge-${selectedExport.status === 'cancelled' ? 'danger' : 'success'}`}>
                   {selectedExport.status === 'cancelled' ? 'Đã hủy' : 'Hoạt động'}

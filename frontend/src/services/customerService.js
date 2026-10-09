@@ -1,5 +1,6 @@
 import { customersApi } from '../api/endpoints';
 import { parseJsonList } from '../utils/formatters';
+import { auditService } from './auditService';
 
 /**
  * Frontend Business Logic & Service for Customer & Debt Management
@@ -12,9 +13,6 @@ export const customerService = {
     const errors = {};
     if (!formData.name || !formData.name.trim()) {
       errors.name = 'Tên khách hàng không được để trống';
-    }
-    if (formData.creditLimit !== undefined && formData.creditLimit !== '' && Number(formData.creditLimit) < 0) {
-      errors.creditLimit = 'Hạn mức công nợ không được âm';
     }
     if (formData.email && formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,7 +45,14 @@ export const customerService = {
   formatCustomerPayload(formData) {
     let phonesJson = '';
     if (Array.isArray(formData.phones)) {
-      phonesJson = JSON.stringify(formData.phones.filter(Boolean));
+      const flat = formData.phones
+        .flatMap((p) => (typeof p === 'string' ? p.split(/[,;/\n]+/) : p))
+        .map((p) => (typeof p === 'string' ? p.trim() : p))
+        .filter(Boolean);
+      phonesJson = JSON.stringify(flat);
+    } else if (typeof formData.phone === 'string' && formData.phone.trim()) {
+      const list = formData.phone.split(/[,;/\n]+/).map((p) => p.trim()).filter(Boolean);
+      phonesJson = JSON.stringify(list);
     } else if (typeof formData.phonesJson === 'string') {
       phonesJson = formData.phonesJson.trim();
     }
@@ -66,7 +71,8 @@ export const customerService = {
       phonesJson: phonesJson || undefined,
       email: formData.email?.trim() || undefined,
       addressesJson: addressesJson || undefined,
-      creditLimit: formData.creditLimit ? Number(formData.creditLimit) : 0,
+      region: formData.region?.trim() || undefined,
+      creditLimit: 0,
       initialDebt: formData.initialDebt ? Number(formData.initialDebt) : 0,
       notes: formData.notes?.trim() || undefined,
     };
@@ -79,18 +85,13 @@ export const customerService = {
     let totalReceivables = 0;
     let totalPayables = 0;
     let debtCustomerCount = 0;
-    let overLimitCount = 0;
 
     customers.forEach((c) => {
       const debt = Number(c.debt || 0);
-      const limit = Number(c.creditLimit || 0);
 
       if (debt > 0) {
         totalReceivables += debt;
         debtCustomerCount += 1;
-        if (limit > 0 && debt > limit) {
-          overLimitCount += 1;
-        }
       } else if (debt < 0) {
         totalPayables += Math.abs(debt);
       }
@@ -101,36 +102,6 @@ export const customerService = {
       totalReceivables,
       totalPayables,
       debtCustomerCount,
-      overLimitCount,
-    };
-  },
-
-  /**
-   * Check credit limit safety
-   */
-  checkCreditLimitRisk(currentDebt, additionalDebt, creditLimit) {
-    const debt = Number(currentDebt || 0) + Number(additionalDebt || 0);
-    const limit = Number(creditLimit || 0);
-
-    if (limit <= 0) return { status: 'unlimited', message: 'Không giới hạn hạn mức' };
-    if (debt > limit) {
-      return {
-        status: 'danger',
-        message: `Vượt hạn mức nợ cho phép (${debt.toLocaleString()} / ${limit.toLocaleString()} ₫)`,
-        percent: Math.round((debt / limit) * 100),
-      };
-    }
-    if (debt >= limit * 0.8) {
-      return {
-        status: 'warning',
-        message: `Cảnh báo: Đã đạt ${Math.round((debt / limit) * 100)}% hạn mức nợ`,
-        percent: Math.round((debt / limit) * 100),
-      };
-    }
-    return {
-      status: 'safe',
-      message: 'Trong giới hạn an toàn',
-      percent: Math.round((debt / limit) * 100),
     };
   },
 
@@ -150,7 +121,15 @@ export const customerService = {
       throw new Error(firstError);
     }
     const payload = this.formatCustomerPayload(data);
-    return await customersApi.create(payload);
+    const result = await customersApi.create(payload);
+    auditService.logAction({
+      action: 'CREATE',
+      entityName: 'Customer',
+      entityId: result?.code || result?.id || 'Mới',
+      entityDisplayName: result?.name || data.name,
+      details: `Tạo mới khách hàng: ${result?.name || data.name}`,
+    });
+    return result;
   },
 
   async update(id, data) {
@@ -160,7 +139,15 @@ export const customerService = {
       throw new Error(firstError);
     }
     const payload = this.formatCustomerPayload(data);
-    return await customersApi.update(id, payload);
+    const result = await customersApi.update(id, payload);
+    auditService.logAction({
+      action: 'UPDATE',
+      entityName: 'Customer',
+      entityId: result?.code || String(id),
+      entityDisplayName: result?.name || data.name,
+      details: `Cập nhật thông tin khách hàng: ${result?.name || data.name}`,
+    });
+    return result;
   },
 
   async adjustDebt(id, adjustData) {
@@ -168,10 +155,18 @@ export const customerService = {
     if (!validation.isValid) {
       throw new Error(validation.message);
     }
-    return await customersApi.adjustDebt(id, adjustData);
+    const result = await customersApi.adjustDebt(id, adjustData);
+    auditService.logAction({
+      action: 'ADJUST_DEBT',
+      entityName: 'Customer',
+      entityId: String(id),
+      entityDisplayName: `Khách hàng #${id}`,
+      details: `Điều chỉnh công nợ: ${adjustData.delta > 0 ? '+' : ''}${adjustData.delta?.toLocaleString()}₫. Lý do: ${adjustData.reason}`,
+    });
+    return result;
   },
 
-  async getDebtHistory(id) {
-    return await customersApi.getDebtHistory(id);
+  async getDebtHistory(id, month) {
+    return await customersApi.getDebtHistory(id, month);
   },
 };

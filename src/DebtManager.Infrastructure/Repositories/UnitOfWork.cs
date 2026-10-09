@@ -28,6 +28,8 @@ public class UnitOfWork : IUnitOfWork
         Receipts = new Repository<Receipt>(_context);
         Payments = new Repository<Payment>(_context);
         Owners = new Repository<Owner>(_context);
+        AuditLogs = new Repository<AuditLog>(_context);
+        LoginHistories = new Repository<LoginHistory>(_context);
     }
 
     public IRepository<User> Users { get; }
@@ -44,6 +46,8 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Receipt> Receipts { get; }
     public IRepository<Payment> Payments { get; }
     public IRepository<Owner> Owners { get; }
+    public IRepository<AuditLog> AuditLogs { get; }
+    public IRepository<LoginHistory> LoginHistories { get; }
 
     public IRepository<T> Repository<T>() where T : class
     {

@@ -16,10 +16,28 @@ public class CustomersController : BaseApiController
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<CustomerDto>>>> GetCustomers(
+    public async Task<IActionResult> GetCustomers(
         [FromQuery] string? q,
-        CancellationToken ct)
-        => Success(await _customerService.GetCustomersAsync(q, ct));
+        [FromQuery] string? region,
+        [FromQuery] string? sortBy,
+        [FromQuery] int? page,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] bool all = false,
+        CancellationToken ct = default)
+    {
+        if (page.HasValue && !all)
+        {
+            var paged = await _customerService.GetPagedCustomersAsync(q, region, sortBy, page.Value, pageSize, ct);
+            return Success(paged);
+        }
+
+        var list = await _customerService.GetCustomersAsync(q, ct);
+        return Success(list);
+    }
+
+    [HttpGet("regions")]
+    public async Task<ActionResult<ApiResponse<List<string>>>> GetRegions(CancellationToken ct)
+        => Success(await _customerService.GetRegionsAsync(ct));
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<CustomerDto>>> GetById(
@@ -46,8 +64,9 @@ public class CustomersController : BaseApiController
     [HttpGet("{id:int}/debt-history")]
     public async Task<ActionResult<ApiResponse<List<CustomerDebtHistoryDto>>>> GetDebtHistory(
         int id,
+        [FromQuery] string? month,
         CancellationToken ct)
-        => Success(await _customerService.GetDebtHistoryAsync(id, ct));
+        => Success(await _customerService.GetDebtHistoryAsync(id, month, ct));
 
     [HttpPost("{id:int}/debt-adjust")]
     public async Task<ActionResult<ApiResponse<bool>>> AdjustDebt(

@@ -16,10 +16,28 @@ public class SuppliersController : BaseApiController
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<SupplierDto>>>> GetSuppliers(
+    public async Task<IActionResult> GetSuppliers(
         [FromQuery] string? q,
-        CancellationToken ct)
-        => Success(await _supplierService.GetSuppliersAsync(q, ct));
+        [FromQuery] string? region,
+        [FromQuery] string? sortBy,
+        [FromQuery] int? page,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] bool all = false,
+        CancellationToken ct = default)
+    {
+        if (page.HasValue && !all)
+        {
+            var paged = await _supplierService.GetPagedSuppliersAsync(q, region, sortBy, page.Value, pageSize, ct);
+            return Success(paged);
+        }
+
+        var list = await _supplierService.GetSuppliersAsync(q, ct);
+        return Success(list);
+    }
+
+    [HttpGet("regions")]
+    public async Task<ActionResult<ApiResponse<List<string>>>> GetRegions(CancellationToken ct)
+        => Success(await _supplierService.GetRegionsAsync(ct));
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<SupplierDto>>> GetById(
@@ -46,8 +64,9 @@ public class SuppliersController : BaseApiController
     [HttpGet("{id:int}/debt-history")]
     public async Task<ActionResult<ApiResponse<List<SupplierDebtHistoryDto>>>> GetDebtHistory(
         int id,
+        [FromQuery] string? month,
         CancellationToken ct)
-        => Success(await _supplierService.GetDebtHistoryAsync(id, ct));
+        => Success(await _supplierService.GetDebtHistoryAsync(id, month, ct));
 
     [HttpPost("{id:int}/debt-adjust")]
     public async Task<ActionResult<ApiResponse<bool>>> AdjustDebt(

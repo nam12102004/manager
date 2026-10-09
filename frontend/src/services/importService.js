@@ -1,4 +1,5 @@
-import { importsApi, suppliersApi, productsApi } from '../api/endpoints';
+import { importsApi, suppliersApi, productsApi, ownersApi } from '../api/endpoints';
+import { auditService } from './auditService';
 
 /**
  * Frontend Business Logic & Service for Import Vouchers (Mua hàng, Nhập kho & Nợ Nhà cung cấp)
@@ -101,7 +102,7 @@ export const importService = {
       items: formData.items.map((it) => ({
         productId: Number(it.productId),
         quantity: Number(it.quantity),
-        unitCost: Number(it.unitCost || 0),
+        unitPrice: Number(it.unitCost || it.unitPrice || 0),
       })),
     };
   },
@@ -122,26 +123,52 @@ export const importService = {
       throw new Error(firstError);
     }
     const payload = this.formatImportPayload(formData);
-    return await importsApi.create(payload);
+    const result = await importsApi.create(payload);
+    auditService.logAction({
+      action: 'CREATE',
+      entityName: 'ImportVoucher',
+      entityId: result?.voucherNumber || result?.id || 'Mới',
+      entityDisplayName: `Phiếu nhập #${result?.voucherNumber || result?.id}`,
+      details: `Lập phiếu mua hàng nhập kho, Tổng tiền: ${(result?.totalAmount || formData.totalAmount || 0).toLocaleString()}₫`,
+    });
+    return result;
   },
 
   async updateStatus(id, action) {
-    return await importsApi.updateStatus(id, action);
+    const result = await importsApi.updateStatus(id, action);
+    auditService.logAction({
+      action: action === 'cancel' ? 'CANCEL' : 'STATUS_CHANGE',
+      entityName: 'ImportVoucher',
+      entityId: String(id),
+      entityDisplayName: `Phiếu nhập #${id}`,
+      details: `${action === 'cancel' ? 'Hủy' : 'Đổi trạng thái'} phiếu nhập #${id}`,
+    });
+    return result;
   },
 
   async delete(id) {
-    return await importsApi.delete(id);
+    const result = await importsApi.delete(id);
+    auditService.logAction({
+      action: 'DELETE',
+      entityName: 'ImportVoucher',
+      entityId: String(id),
+      entityDisplayName: `Phiếu nhập #${id}`,
+      details: `Xóa vĩnh viễn phiếu nhập #${id}`,
+    });
+    return result;
   },
 
   async getDependencies() {
-    const [supps, prods] = await Promise.allSettled([
+    const [supps, prods, owner] = await Promise.allSettled([
       suppliersApi.getAll(),
       productsApi.getAll(),
+      ownersApi.get(),
     ]);
 
     return {
       suppliers: supps.status === 'fulfilled' && Array.isArray(supps.value) ? supps.value : [],
       products: prods.status === 'fulfilled' && Array.isArray(prods.value) ? prods.value : [],
+      ownerInfo: owner.status === 'fulfilled' ? owner.value : null,
     };
   },
 };

@@ -1,3 +1,4 @@
+using DebtManager.Application.Common;
 using DebtManager.Application.Common.Exceptions;
 using DebtManager.Application.DTOs.ExportVouchers;
 using DebtManager.Application.Interfaces;
@@ -17,7 +18,7 @@ public class ExportService : IExportService
         _uow = uow;
     }
 
-    public async Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, CancellationToken ct = default)
+    public async Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var query = _uow.ExportVouchers.Query()
             .Include(v => v.Customer)
@@ -30,11 +31,32 @@ public class ExportService : IExportService
             query = query.Where(v => v.CustomerId == customerId.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(month) && DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
         {
-            var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-            var end = start.AddMonths(1);
-            query = query.Where(v => v.Date >= start && v.Date < end);
+            var start = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+            query = query.Where(v => v.Date >= start);
+        }
+
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            var end = new DateTime(pTo.Year, pTo.Month, pTo.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+            query = query.Where(v => v.Date <= end);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
+        {
+            if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                query = query.Where(v => v.Date >= start && v.Date < end);
+            }
+            else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                query = query.Where(v => v.Date >= start && v.Date < end);
+            }
         }
 
         var list = await query.OrderByDescending(v => v.Date)
@@ -42,6 +64,94 @@ public class ExportService : IExportService
                               .ToListAsync(ct);
 
         return list.Select(MapToDto).ToList();
+    }
+
+    public async Task<ExportPagedResult> GetPagedExportsAsync(
+        int? customerId = null,
+        string? month = null,
+        string? date = null,
+        string? fromDate = null,
+        string? toDate = null,
+        string? search = null,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = pageSize > 0 ? pageSize : 15;
+
+        var query = _uow.ExportVouchers.Query()
+            .Include(v => v.Customer)
+            .Include(v => v.Items)
+                .ThenInclude(i => i.Product)
+            .AsQueryable();
+
+        if (customerId.HasValue)
+        {
+            query = query.Where(v => v.CustomerId == customerId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(v => v.VoucherNumber.ToLower().Contains(s) ||
+                                     (v.Customer != null && v.Customer.Name.ToLower().Contains(s)) ||
+                                     (v.Notes != null && v.Notes.ToLower().Contains(s)));
+        }
+
+        var effectiveDate = !string.IsNullOrWhiteSpace(date) ? date : month;
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            var start = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+            query = query.Where(v => v.Date >= start);
+        }
+
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            var end = new DateTime(pTo.Year, pTo.Month, pTo.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+            query = query.Where(v => v.Date <= end);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(effectiveDate))
+        {
+            if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                query = query.Where(v => v.Date >= start && v.Date < end);
+            }
+            else if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                query = query.Where(v => v.Date >= start && v.Date < end);
+            }
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        var totalAmount = await query.SumAsync(v => (decimal?)v.TotalSale, ct) ?? 0;
+        var totalPaid = await query.SumAsync(v => (decimal?)v.PaidAmount, ct) ?? 0;
+        var totalDebt = await query.SumAsync(v => (decimal?)v.UnpaidAmount, ct) ?? 0;
+        var totalProfit = await query.SumAsync(v => (decimal?)(v.TotalSale - v.TotalCost), ct) ?? 0;
+
+        var items = await query.OrderByDescending(v => v.Date)
+                               .ThenByDescending(v => v.Id)
+                               .Skip((page - 1) * pageSize)
+                               .Take(pageSize)
+                               .ToListAsync(ct);
+
+        return new ExportPagedResult
+        {
+            Items = items.Select(MapToDto).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalSale = totalAmount,
+            TotalPaid = totalPaid,
+            TotalDebt = totalDebt,
+            TotalProfit = totalProfit
+        };
     }
 
     public async Task<ExportVoucherDto> GetByIdAsync(long id, CancellationToken ct = default)
@@ -70,7 +180,9 @@ public class ExportService : IExportService
                 ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {dto.CustomerId}");
 
             var warehouse = string.IsNullOrWhiteSpace(dto.Warehouse) ? DomainConstants.Warehouses.Warehouse1 : dto.Warehouse;
-            var voucherDate = dto.Date ?? DateTime.UtcNow;
+            var voucherDate = dto.Date.HasValue
+                ? (dto.Date.Value.TimeOfDay == TimeSpan.Zero ? dto.Date.Value.Date.Add(DateTime.UtcNow.TimeOfDay) : dto.Date.Value)
+                : DateTime.UtcNow;
             var voucherNumber = $"PX{DateTime.UtcNow:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000):D3}";
 
             var voucher = new ExportVoucher
@@ -111,32 +223,13 @@ public class ExportService : IExportService
                 voucher.Items.Add(voucherItem);
 
                 // Deduct stock
-                decimal beforeWhStock = warehouse switch
-                {
-                    DomainConstants.Warehouses.Warehouse2 => product.StockWarehouse2,
-                    DomainConstants.Warehouses.Warehouse3 => product.StockWarehouse3,
-                    _ => product.StockWarehouse1
-                };
-
+                decimal beforeWhStock = product.GetWarehouseStock(warehouse);
                 var delta = -itemDto.Quantity;
                 var afterWhStock = beforeWhStock + delta;
                 var beforeTotal = product.TotalStock;
-                var afterTotal = beforeTotal + delta;
 
-                switch (warehouse)
-                {
-                    case DomainConstants.Warehouses.Warehouse2:
-                        product.StockWarehouse2 = afterWhStock;
-                        break;
-                    case DomainConstants.Warehouses.Warehouse3:
-                        product.StockWarehouse3 = afterWhStock;
-                        break;
-                    default:
-                        product.StockWarehouse1 = afterWhStock;
-                        break;
-                }
-
-                product.TotalStock = product.StockWarehouse1 + product.StockWarehouse2 + product.StockWarehouse3;
+                product.SetWarehouseStock(warehouse, afterWhStock);
+                var afterTotal = product.TotalStock;
                 product.UpdatedAt = DateTime.UtcNow;
                 _uow.Products.Update(product);
 
@@ -246,30 +339,13 @@ public class ExportService : IExportService
                     var product = await _uow.Products.GetByIdAsync(item.ProductId, ct);
                     if (product == null) continue;
 
-                    decimal beforeWhStock = voucher.Warehouse switch
-                    {
-                        DomainConstants.Warehouses.Warehouse2 => product.StockWarehouse2,
-                        DomainConstants.Warehouses.Warehouse3 => product.StockWarehouse3,
-                        _ => product.StockWarehouse1
-                    };
+                    decimal beforeWhStock = product.GetWarehouseStock(voucher.Warehouse);
                     var delta = item.Quantity; // Restore stock
                     var afterWhStock = beforeWhStock + delta;
                     var beforeTotal = product.TotalStock;
-                    var afterTotal = beforeTotal + delta;
 
-                    switch (voucher.Warehouse)
-                    {
-                        case DomainConstants.Warehouses.Warehouse2:
-                            product.StockWarehouse2 = afterWhStock;
-                            break;
-                        case DomainConstants.Warehouses.Warehouse3:
-                            product.StockWarehouse3 = afterWhStock;
-                            break;
-                        default:
-                            product.StockWarehouse1 = afterWhStock;
-                            break;
-                    }
-                    product.TotalStock = product.StockWarehouse1 + product.StockWarehouse2 + product.StockWarehouse3;
+                    product.SetWarehouseStock(voucher.Warehouse, afterWhStock);
+                    var afterTotal = product.TotalStock;
                     product.UpdatedAt = DateTime.UtcNow;
                     _uow.Products.Update(product);
 
@@ -328,30 +404,13 @@ public class ExportService : IExportService
                     var product = await _uow.Products.GetByIdAsync(item.ProductId, ct);
                     if (product == null) continue;
 
-                    decimal beforeWhStock = voucher.Warehouse switch
-                    {
-                        DomainConstants.Warehouses.Warehouse2 => product.StockWarehouse2,
-                        DomainConstants.Warehouses.Warehouse3 => product.StockWarehouse3,
-                        _ => product.StockWarehouse1
-                    };
+                    decimal beforeWhStock = product.GetWarehouseStock(voucher.Warehouse);
                     var delta = -item.Quantity;
                     var afterWhStock = beforeWhStock + delta;
                     var beforeTotal = product.TotalStock;
-                    var afterTotal = beforeTotal + delta;
 
-                    switch (voucher.Warehouse)
-                    {
-                        case DomainConstants.Warehouses.Warehouse2:
-                            product.StockWarehouse2 = afterWhStock;
-                            break;
-                        case DomainConstants.Warehouses.Warehouse3:
-                            product.StockWarehouse3 = afterWhStock;
-                            break;
-                        default:
-                            product.StockWarehouse1 = afterWhStock;
-                            break;
-                    }
-                    product.TotalStock = product.StockWarehouse1 + product.StockWarehouse2 + product.StockWarehouse3;
+                    product.SetWarehouseStock(voucher.Warehouse, afterWhStock);
+                    var afterTotal = product.TotalStock;
                     product.UpdatedAt = DateTime.UtcNow;
                     _uow.Products.Update(product);
 

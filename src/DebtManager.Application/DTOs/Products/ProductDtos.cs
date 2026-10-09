@@ -16,6 +16,7 @@ public class ProductDto
     public decimal StockWarehouse1 { get; set; }
     public decimal StockWarehouse2 { get; set; }
     public decimal StockWarehouse3 { get; set; }
+    public Dictionary<string, decimal> WarehouseStocks { get; set; } = new();
     public decimal TotalStock { get; set; }
     public decimal ReorderPoint { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -36,6 +37,7 @@ public class CreateProductDto
     public decimal StockWarehouse1 { get; set; } = 0;
     public decimal StockWarehouse2 { get; set; } = 0;
     public decimal StockWarehouse3 { get; set; } = 0;
+    public Dictionary<string, decimal>? WarehouseStocks { get; set; }
     public decimal ReorderPoint { get; set; } = 0;
 }
 

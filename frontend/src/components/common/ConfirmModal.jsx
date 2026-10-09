@@ -1,6 +1,5 @@
 import React from 'react';
 import Modal from './Modal';
-import { AlertCircle } from 'lucide-react';
 
 export default function ConfirmModal({
   isOpen,
@@ -34,23 +33,10 @@ export default function ConfirmModal({
         </>
       }
     >
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-        <div
-          style={{
-            background: isDanger ? 'var(--danger-light)' : 'var(--primary-light)',
-            color: isDanger ? 'var(--danger)' : 'var(--primary)',
-            padding: '0.625rem',
-            borderRadius: 'var(--radius-md)',
-            flexShrink: 0,
-          }}
-        >
-          <AlertCircle size={24} />
-        </div>
-        <div>
-          <p style={{ fontSize: '0.9375rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
-            {message}
-          </p>
-        </div>
+      <div>
+        <p style={{ fontSize: '0.9375rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+          {message}
+        </p>
       </div>
     </Modal>
   );
