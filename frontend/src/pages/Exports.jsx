@@ -22,6 +22,7 @@ import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
 import SearchableSelect from '../components/common/SearchableSelect';
 import TimeFilter from '../components/common/TimeFilter';
+import Pagination from '../components/common/Pagination';
 import { exportService, warehouseService, getProductStockForWarehouse } from '../services';
 import { generateExportHtml, printInNewTab } from '../utils/printVoucher';
 
@@ -34,6 +35,12 @@ export default function Exports({ initialOpenCreate = false }) {
   const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
   const [ownerInfo, setOwnerInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Pagination states (15 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const isFirstFilterChange = React.useRef(true);
 
   // Time & Customer Filters
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -63,11 +70,13 @@ export default function Exports({ initialOpenCreate = false }) {
     items: [],
   });
 
-  // Load Exports via exportService
-  const loadExports = async () => {
+  // Load Exports via exportService with server-side pagination (15 items/page)
+  const loadExports = React.useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
       const params = {
+        page,
+        pageSize: 15,
         customerId: selectedCustomerId ? Number(selectedCustomerId) : null,
       };
 
@@ -80,14 +89,23 @@ export default function Exports({ initialOpenCreate = false }) {
         params.toDate = toDate;
       }
 
-      const data = await exportService.getAll(params);
-      setExportsList(data || []);
+      const res = await exportService.getAll(params);
+      if (res && res.items) {
+        setExportsList(res.items);
+        setCurrentPage(res.page || page);
+        setTotalPages(res.totalPages || 1);
+        setTotalCount(res.totalCount || 0);
+      } else if (Array.isArray(res)) {
+        setExportsList(res);
+        setTotalCount(res.length);
+        setTotalPages(Math.ceil(res.length / 15) || 1);
+      }
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách phiếu xuất');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, selectedCustomerId, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
 
   // Load Customers & Products & Owner via exportService
   const loadDependencies = async () => {
@@ -105,8 +123,22 @@ export default function Exports({ initialOpenCreate = false }) {
     }
   };
 
+  // Fetch when currentPage changes
   useEffect(() => {
-    loadExports();
+    loadExports(currentPage);
+  }, [currentPage]);
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    if (isFirstFilterChange.current) {
+      isFirstFilterChange.current = false;
+      return;
+    }
+    if (currentPage === 1) {
+      loadExports(1);
+    } else {
+      setCurrentPage(1);
+    }
   }, [selectedCustomerId, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
@@ -204,6 +236,20 @@ export default function Exports({ initialOpenCreate = false }) {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // Validate items don't exceed stock
+      for (const item of createForm.items) {
+        if (!item.productId) continue;
+        const prod = products.find((p) => p.id === Number(item.productId));
+        if (!prod) continue;
+        const whStock = getProductStockForWarehouse(prod, createForm.warehouse);
+        const qty = Number(item.quantity || 0);
+        if (qty > whStock) {
+          notify.error(`Sản phẩm "${prod.name}" chỉ còn ${whStock} ${prod.uom || 'ĐVT'}, không thể xuất ${qty}`);
+          setSubmitting(false);
+          return;
+        }
+      }
+      
       const result = await exportService.create(createForm, products);
       notify.success(`Tạo phiếu xuất ${result.voucherNumber} thành công!`);
       setIsCreateOpen(false);
@@ -421,6 +467,17 @@ export default function Exports({ initialOpenCreate = false }) {
           </table>
         </div>
       )}
+
+      {/* Pagination (15 items per page) */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={15}
+        onPageChange={(p) => setCurrentPage(p)}
+        disabled={loading}
+        itemLabel="phiếu xuất"
+      />
 
       {/* Modal Lập Phiếu Xuất Mới (POS / Sales Invoice) */}
       <Modal

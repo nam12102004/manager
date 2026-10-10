@@ -187,8 +187,8 @@ export const cashBookService = {
 
   async getDependencies() {
     const [cRes, sRes, oRes] = await Promise.allSettled([
-      customersApi.getAll(),
-      suppliersApi.getAll(),
+      customersApi.getAll({ all: true }),
+      suppliersApi.getAll({ all: true }),
       ownersApi.get(),
     ]);
 

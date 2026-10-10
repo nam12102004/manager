@@ -109,6 +109,10 @@ export const supplierService = {
     return await suppliersApi.getAll(params);
   },
 
+  async getRegions() {
+    return await suppliersApi.getRegions();
+  },
+
   async getById(id) {
     return await suppliersApi.getById(id);
   },

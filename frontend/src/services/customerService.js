@@ -110,6 +110,10 @@ export const customerService = {
     return await customersApi.getAll(params);
   },
 
+  async getRegions() {
+    return await customersApi.getRegions();
+  },
+
   async getById(id) {
     return await customersApi.getById(id);
   },

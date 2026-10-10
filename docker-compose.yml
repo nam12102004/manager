@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:15-alpine
     container_name: debtmanager_db
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: debtmanager_db
       POSTGRES_USER: postgres
@@ -34,7 +34,7 @@ services:
       - ConnectionStrings__PostgresConnection=Host=db;Port=5432;Database=debtmanager_db;Username=postgres;Password=postgres
     volumes:
       - ./data:/app/data
-    restart: unless-stopped
+    restart: always
 
   frontend:
     build:
@@ -45,7 +45,7 @@ services:
       - api
     ports:
       - "${FRONTEND_PORT:-3000}:80"
-    restart: unless-stopped
+    restart: always
 
   # Optional SQL Server profile (Run with: docker compose --profile mssql up)
   mssql:

@@ -19,6 +19,7 @@ import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
 import SearchableSelect from '../components/common/SearchableSelect';
 import TimeFilter from '../components/common/TimeFilter';
+import Pagination from '../components/common/Pagination';
 import { importService, warehouseService, getProductStockForWarehouse } from '../services';
 import { generateImportHtml, printInNewTab } from '../utils/printVoucher';
 
@@ -31,6 +32,12 @@ export default function Imports({ initialOpenCreate = false }) {
   const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
   const [ownerInfo, setOwnerInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Pagination states (15 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const isFirstFilterChange = React.useRef(true);
 
   // Filters
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
@@ -59,11 +66,13 @@ export default function Imports({ initialOpenCreate = false }) {
     items: [],
   });
 
-  // Load Imports via importService
-  const loadImports = async () => {
+  // Load Imports via importService with server-side pagination (15 items/page)
+  const loadImports = React.useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
       const params = {
+        page,
+        pageSize: 15,
         supplierId: selectedSupplierId ? Number(selectedSupplierId) : null,
       };
 
@@ -76,14 +85,23 @@ export default function Imports({ initialOpenCreate = false }) {
         params.toDate = toDate;
       }
 
-      const data = await importService.getAll(params);
-      setImportsList(data || []);
+      const res = await importService.getAll(params);
+      if (res && res.items) {
+        setImportsList(res.items);
+        setCurrentPage(res.page || page);
+        setTotalPages(res.totalPages || 1);
+        setTotalCount(res.totalCount || 0);
+      } else if (Array.isArray(res)) {
+        setImportsList(res);
+        setTotalCount(res.length);
+        setTotalPages(Math.ceil(res.length / 15) || 1);
+      }
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách phiếu nhập');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, selectedSupplierId, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
 
   // Load Dependencies via importService & warehouseService
   const loadDependencies = async () => {
@@ -109,8 +127,22 @@ export default function Imports({ initialOpenCreate = false }) {
     printInNewTab(html);
   };
 
+  // Fetch when currentPage changes
   useEffect(() => {
-    loadImports();
+    loadImports(currentPage);
+  }, [currentPage]);
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    if (isFirstFilterChange.current) {
+      isFirstFilterChange.current = false;
+      return;
+    }
+    if (currentPage === 1) {
+      loadImports(1);
+    } else {
+      setCurrentPage(1);
+    }
   }, [selectedSupplierId, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
@@ -427,6 +459,17 @@ export default function Imports({ initialOpenCreate = false }) {
           </table>
         </div>
       )}
+
+      {/* Pagination (15 items per page) */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={15}
+        onPageChange={(p) => setCurrentPage(p)}
+        disabled={loading}
+        itemLabel="phiếu nhập"
+      />
 
       {/* Modal Lập Phiếu Nhập Kho */}
       <Modal

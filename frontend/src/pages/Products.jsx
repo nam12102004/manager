@@ -20,6 +20,8 @@ import {
   Layers,
   Warehouse as WarehouseIcon,
   ChevronRight,
+  ChevronLeft,
+  Menu,
   Info,
   Coins,
   DollarSign,
@@ -38,6 +40,7 @@ import EmptyState from '../components/common/EmptyState';
 import SearchableSelect from '../components/common/SearchableSelect';
 import SortDropdown from '../components/common/SortDropdown';
 import ConfirmModal from '../components/common/ConfirmModal';
+import Pagination from '../components/common/Pagination';
 import { productService, warehouseService } from '../services';
 
 const PRODUCT_SORT_OPTIONS = [
@@ -59,6 +62,18 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Pagination states (15 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [serverSummary, setServerSummary] = useState({
+    totalStockQty: 0,
+    totalCostVal: 0,
+    totalWholesaleVal: 0,
+    totalRetailVal: 0,
+  });
+  const isFirstFilterChange = React.useRef(true);
+
   // Warehouses list
   const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
   const [selectedWarehouse, setSelectedWarehouse] = useState(initialWarehouse || 'overview');
@@ -66,6 +81,10 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   // Filters & Sorting
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL'); // 'ALL' | 'NONE' | category name
+  const [categories, setCategories] = useState([]);
+  const [categoryCounts, setCategoryCounts] = useState({});
+  const categoryTabsRef = React.useRef(null);
   const [sortBy, setSortBy] = useState('default');
 
   // Modals state
@@ -158,52 +177,87 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     return () => window.removeEventListener('warehouses-updated', handleWhUpdate);
   }, []);
 
-  // Load products & suppliers via productService
-  const loadData = async () => {
+  // Load suppliers dependencies & category list
+  useEffect(() => {
+    productService.getDependencies().then((res) => {
+      if (res?.suppliers) setSuppliers(res.suppliers);
+    }).catch(() => {});
+    productService.getCategories().then((res) => {
+      if (Array.isArray(res)) setCategories(res);
+    }).catch(() => {});
+  }, []);
+
+  // Load products with server-side pagination (15 items/page)
+  const loadProducts = React.useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
-      const [prods, depRes, whRes] = await Promise.all([
-        productService.getAll(),
-        productService.getDependencies(),
-        warehouseService.getWarehouses(),
-      ]);
-      setProducts(prods || []);
-      setSuppliers(depRes.suppliers || []);
-      if (whRes && Array.isArray(whRes)) setWarehouses(whRes);
+      const res = await productService.getAll({
+        page,
+        pageSize: 15,
+        q: searchQuery || undefined,
+        supplierId: selectedSupplierId ? Number(selectedSupplierId) : undefined,
+        warehouse: selectedWarehouse,
+        sortBy: sortBy !== 'default' ? sortBy : undefined,
+        category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+      });
+
+      if (res && res.items) {
+        setProducts(res.items);
+        setCurrentPage(res.page || page);
+        setTotalPages(res.totalPages || 1);
+        setTotalCount(res.totalCount || 0);
+        setCategoryCounts(res.categoryCounts || {});
+        setServerSummary({
+          totalStockQty: res.totalStockQty || 0,
+          totalCostVal: res.totalCostVal || 0,
+          totalWholesaleVal: res.totalWholesaleVal || 0,
+          totalRetailVal: res.totalRetailVal || 0,
+        });
+      } else if (Array.isArray(res)) {
+        setProducts(res);
+        setTotalCount(res.length);
+        setTotalPages(Math.ceil(res.length / 15) || 1);
+      }
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách sản phẩm');
     } finally {
       setLoading(false);
     }
+  }, [currentPage, searchQuery, selectedSupplierId, selectedWarehouse, sortBy, selectedCategory, notify]);
+
+  // Initial & page change load
+  useEffect(() => {
+    loadProducts(currentPage);
+  }, [currentPage]);
+
+  // Reset to page 1 on filters or search change
+  useEffect(() => {
+    if (isFirstFilterChange.current) {
+      isFirstFilterChange.current = false;
+      return;
+    }
+    if (currentPage === 1) {
+      loadProducts(1);
+    } else {
+      setCurrentPage(1);
+    }
+  }, [searchQuery, selectedSupplierId, selectedWarehouse, sortBy, selectedCategory]);
+
+  const loadData = () => {
+    productService.getCategories().then((res) => {
+      if (Array.isArray(res)) setCategories(res);
+    }).catch(() => {});
+    return loadProducts(currentPage);
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Filter products continuously based on supplier and search query
-  const filteredProducts = React.useMemo(() => {
-    let result = products;
-
-    if (selectedSupplierId) {
-      const suppId = Number(selectedSupplierId);
-      result = result.filter((p) => Number(p.supplierId) === suppId);
+  const scrollCategoryTabs = (direction) => {
+    if (categoryTabsRef.current) {
+      categoryTabsRef.current.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' });
     }
+  };
 
-    if (searchQuery && searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      result = result.filter(
-        (p) =>
-          (p.name && p.name.toLowerCase().includes(q)) ||
-          (p.sku && p.sku.toLowerCase().includes(q)) ||
-          (p.category && p.category.toLowerCase().includes(q)) ||
-          (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-          (p.supplierName && p.supplierName.toLowerCase().includes(q))
-      );
-    }
-
-    return result;
-  }, [products, searchQuery, selectedSupplierId]);
+  // Total across all categories (respecting search & supplier filters)
+  const allCategoriesCount = Object.values(categoryCounts).reduce((sum, n) => sum + Number(n || 0), 0);
 
   // Current active warehouse object if in specific warehouse mode
   const currentWarehouseObj = warehouses.find((w) => w.id === selectedWarehouse);
@@ -221,76 +275,19 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     return 0;
   };
 
-  // When viewing a specific warehouse: ONLY show products that have stock > 0 in THIS warehouse
-  // (hide out-of-stock products in specific warehouse view; keep all in overview)
-  const displayedProducts = React.useMemo(() => {
-    if (isOverview) {
-      return filteredProducts;
-    }
-    return filteredProducts.filter((p) => {
-      const stock = getProductStockForWarehouse(p, selectedWarehouse);
-      return stock > 0;
-    });
-  }, [filteredProducts, isOverview, selectedWarehouse]);
+  const displayedProducts = products;
+  const sortedAndDisplayedProducts = products;
 
-  // Sort displayed products based on selected numeric metric
-  const sortedAndDisplayedProducts = React.useMemo(() => {
-    let list = [...displayedProducts];
-    if (sortBy === 'stock_desc') {
-      list.sort((a, b) => {
-        const stockA = isOverview ? Number(a.totalStock || 0) : getProductStockForWarehouse(a, selectedWarehouse);
-        const stockB = isOverview ? Number(b.totalStock || 0) : getProductStockForWarehouse(b, selectedWarehouse);
-        return stockB - stockA;
-      });
-    } else if (sortBy === 'stock_asc') {
-      list.sort((a, b) => {
-        const stockA = isOverview ? Number(a.totalStock || 0) : getProductStockForWarehouse(a, selectedWarehouse);
-        const stockB = isOverview ? Number(b.totalStock || 0) : getProductStockForWarehouse(b, selectedWarehouse);
-        return stockA - stockB;
-      });
-    } else if (sortBy === 'cost_desc') {
-      list.sort((a, b) => Number(b.unitCost || 0) - Number(a.unitCost || 0));
-    } else if (sortBy === 'cost_asc') {
-      list.sort((a, b) => Number(a.unitCost || 0) - Number(b.unitCost || 0));
-    } else if (sortBy === 'wholesale_desc') {
-      list.sort((a, b) => Number(b.wholesalePrice || 0) - Number(a.wholesalePrice || 0));
-    } else if (sortBy === 'wholesale_asc') {
-      list.sort((a, b) => Number(a.wholesalePrice || 0) - Number(b.wholesalePrice || 0));
-    } else if (sortBy === 'retail_desc') {
-      list.sort((a, b) => Number(b.retailPrice || 0) - Number(a.retailPrice || 0));
-    } else if (sortBy === 'retail_asc') {
-      list.sort((a, b) => Number(a.retailPrice || 0) - Number(b.retailPrice || 0));
-    }
-    return list;
-  }, [displayedProducts, sortBy, isOverview, selectedWarehouse]);
-
-  // Dynamic Totals Summary (Continuously updates on search / filter)
+  // Dynamic Totals Summary directly from backend database calculations
   const summary = React.useMemo(() => {
-    let totalStockQty = 0;
-    let totalCostVal = 0;
-    let totalWholesaleVal = 0;
-    let totalRetailVal = 0;
-
-    displayedProducts.forEach((p) => {
-      const stock = isOverview ? Number(p.totalStock || 0) : getProductStockForWarehouse(p, selectedWarehouse);
-      const cost = Number(p.unitCost || 0);
-      const wholesale = Number(p.wholesalePrice || 0);
-      const retail = Number(p.retailPrice || 0);
-
-      totalStockQty += stock;
-      totalCostVal += stock * cost;
-      totalWholesaleVal += stock * wholesale;
-      totalRetailVal += stock * retail;
-    });
-
     return {
-      totalItems: displayedProducts.length,
-      totalStockQty,
-      totalCostVal,
-      totalWholesaleVal,
-      totalRetailVal,
+      totalItems: totalCount,
+      totalStockQty: serverSummary.totalStockQty,
+      totalCostVal: serverSummary.totalCostVal,
+      totalWholesaleVal: serverSummary.totalWholesaleVal,
+      totalRetailVal: serverSummary.totalRetailVal,
     };
-  }, [displayedProducts, isOverview, selectedWarehouse]);
+  }, [totalCount, serverSummary]);
 
   const handleTabSelect = (tabId) => {
     setSelectedWarehouse(tabId);
@@ -813,13 +810,14 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
           style={{ minWidth: '240px' }}
         />
 
-        {(searchQuery || selectedSupplierId || sortBy !== 'default') && (
+        {(searchQuery || selectedSupplierId || sortBy !== 'default' || selectedCategory !== 'ALL') && (
           <button
             className="btn btn-outline btn-sm"
             onClick={() => {
               setSearchQuery('');
               setSelectedSupplierId('');
               setSortBy('default');
+              setSelectedCategory('ALL');
             }}
             title="Xóa bộ lọc & sắp xếp để xem toàn bộ danh sách"
             style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
@@ -830,15 +828,136 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         )}
       </div>
 
+      {/* Category Tabs Strip (Excel-like Sheet Tabs Bar, same style as Customers region tabs) */}
+      {(() => {
+        const renderTab = (key, label, count, extraStyle = {}) => {
+          const isSelected = selectedCategory === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSelectedCategory(key)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.65rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: isSelected ? 700 : 500,
+                color: isSelected ? '#0f172a' : '#475569',
+                backgroundColor: isSelected ? '#ffffff' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderBottom: isSelected ? '3px solid #16a34a' : '3px solid transparent',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+                ...extraStyle,
+              }}
+            >
+              <span>{label}</span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: isSelected ? '#dcfce7' : '#e2e8f0',
+                  color: isSelected ? '#166534' : '#475569',
+                  fontWeight: 600,
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        };
+
+        const scrollBtnStyle = {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '28px',
+          height: '100%',
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          color: 'var(--text-muted, #64748b)',
+          padding: '0 4px',
+          flexShrink: 0,
+        };
+
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: '#f8fafc',
+              border: '1px solid var(--border-color, #e2e8f0)',
+              borderRadius: 'var(--radius, 8px) var(--radius, 8px) 0 0',
+              marginBottom: 0,
+              position: 'relative',
+              userSelect: 'none',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.6rem 0.75rem',
+                color: 'var(--text-muted, #64748b)',
+                borderRight: '1px solid var(--border-color, #e2e8f0)',
+                backgroundColor: '#ffffff',
+                flexShrink: 0,
+              }}
+              title="Danh mục sản phẩm"
+            >
+              <Menu size={16} />
+            </div>
+
+            <button type="button" onClick={() => scrollCategoryTabs('left')} style={scrollBtnStyle} title="Cuộn sang trái">
+              <ChevronLeft size={16} />
+            </button>
+
+            <div
+              ref={categoryTabsRef}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
+                scrollbarWidth: 'thin',
+                WebkitOverflowScrolling: 'touch',
+                flex: 1,
+                gap: '2px',
+              }}
+              onWheel={(e) => {
+                if (categoryTabsRef.current && e.deltaY !== 0) {
+                  categoryTabsRef.current.scrollLeft += e.deltaY;
+                }
+              }}
+            >
+              {renderTab('ALL', 'Tất cả', allCategoriesCount)}
+              {categories.map((cat) => renderTab(cat, cat, categoryCounts[cat.trim()] || 0, { textTransform: 'uppercase' }))}
+              {(categoryCounts.NONE || 0) > 0 &&
+                renderTab('NONE', 'Chưa phân danh mục', categoryCounts.NONE, { fontStyle: 'italic' })}
+            </div>
+
+            <button type="button" onClick={() => scrollCategoryTabs('right')} style={scrollBtnStyle} title="Cuộn sang phải">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Products Table */}
       {sortedAndDisplayedProducts.length === 0 && !loading ? (
         <EmptyState
           icon={Package}
-          title={isOverview ? 'Không tìm thấy sản phẩm' : `Không có sản phẩm còn hàng tại ${currentWarehouseObj?.name || 'kho này'}`}
+          title={isOverview ? 'Không tìm thấy sản phẩm' : `Không có sản phẩm tại ${currentWarehouseObj?.name || 'kho này'}`}
           description={
             isOverview
               ? 'Chưa có sản phẩm nào thỏa mãn điều kiện lọc hoặc danh mục đang trống.'
-              : `Kho ${currentWarehouseObj?.shortName || currentWarehouseObj?.name || ''} hiện không có sản phẩm nào còn tồn kho (> 0). Các sản phẩm hết hàng đã được tự động ẩn.`
+              : `Kho ${currentWarehouseObj?.shortName || currentWarehouseObj?.name || ''} hiện không có sản phẩm nào. Cả sản phẩm còn hàng lẫn hết hàng/nợ hàng đều được hiển thị.`
           }
           action={
             <button className="btn btn-primary btn-sm" onClick={handleOpenCreate}>
@@ -907,8 +1026,10 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                           </span>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          {whStock <= 0 ? (
-                            <span className="badge badge-danger">Hết hàng</span>
+                          {whStock < 0 ? (
+                            <span className="badge badge-error" title="Số lượng âm - nợ hàng">Nợ hàng</span>
+                          ) : whStock === 0 ? (
+                            <span className="badge badge-warning">Hết hàng</span>
                           ) : (
                             <span className="badge badge-success">Đủ hàng</span>
                           )}
@@ -985,6 +1106,17 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
           </table>
         </div>
       )}
+
+      {/* Pagination (15 items per page) */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={15}
+        onPageChange={(p) => setCurrentPage(p)}
+        disabled={loading}
+        itemLabel="sản phẩm"
+      />
 
       {/* Modal Thêm Mới Sản Phẩm */}
       <Modal

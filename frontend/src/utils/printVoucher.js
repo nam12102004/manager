@@ -5,37 +5,22 @@ import { warehouseService } from '../services/warehouseService';
  * Helper to parse store & owner info safely
  */
 function parseOwner(ownerInfo) {
-  let storeName = 'CÔNG TY / CỬA HÀNG KHO VẬT LIỆU';
+  let storeName = 'CÔNG TY CỔ PHẦN SẢN XUẤT VÀ THƯƠNG MẠI NAM SƠN';
   let storeAddress = '';
   let storePhone = '';
   let bankName = '';
   let bankAccount = '';
   let accountHolder = '';
 
-  if (ownerInfo) {
-    if (typeof ownerInfo === 'string') {
-      try {
-        const parsed = JSON.parse(ownerInfo);
-        storeName = parsed.storeName || storeName;
-        storeAddress = parsed.storeAddress || '';
-        storePhone = parsed.storePhone || '';
-        bankName = parsed.bankName || '';
-        bankAccount = parsed.bankAccount || '';
-        accountHolder = parsed.accountHolder || '';
-      } catch {
-        storeName = ownerInfo;
-      }
-    } else if (typeof ownerInfo === 'object') {
-      storeName = ownerInfo.storeName || ownerInfo.info || storeName;
-      storeAddress = ownerInfo.storeAddress || '';
-      storePhone = ownerInfo.storePhone || '';
-      bankName = ownerInfo.bankName || '';
-      bankAccount = ownerInfo.bankAccount || '';
-      accountHolder = ownerInfo.accountHolder || '';
-    }
-  }
-
-  return { storeName, storeAddress, storePhone, bankName, bankAccount, accountHolder };
+  // Return fixed values - no parsing needed
+  return {
+    storeName,
+    storeAddress,
+    storePhone,
+    bankName,
+    bankAccount,
+    accountHolder,
+  };
 }
 
 /**
@@ -43,6 +28,8 @@ function parseOwner(ownerInfo) {
  * Formatted exactly according to Vietnamese standard enterprise receipt layout
  */
 export function generateExportHtml({ exportData, ownerInfo = null, customer = null }) {
+  const store = parseOwner(ownerInfo);
+  
   const vDate = exportData.createdAt ? new Date(exportData.createdAt) : (exportData.date ? new Date(exportData.date) : new Date());
   const hours = String(vDate.getHours()).padStart(2, '0');
   const minutes = String(vDate.getMinutes()).padStart(2, '0');
@@ -308,12 +295,6 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
         (Bằng chữ: <strong>${totalInWords}</strong>)
       </div>
 
-      <div class="note-text">
-        <u>Chú ý:</u> Quý khách kiểm tra hàng trước khi ký nhận.
-      </div>
-      <div class="return-policy">
-        - Hàng trả lại trong vòng 30 ngày kể từ ngày nhận hàng; Không nhận hàng trả lại với các sản phẩm cắt lô và hàng ôm kho.
-      </div>
     </div>
 
     <!-- Chữ ký 4 bên -->
@@ -338,7 +319,6 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
           <div class="sig-role">Người nhận</div>
           <div class="sig-sub">(Ký, họ tên)</div>
           <div class="sig-space"></div>
-          <div class="sig-name">${customerName}</div>
         </td>
       </tr>
     </table>
@@ -574,7 +554,6 @@ export function generateImportHtml({ importData, ownerInfo = null, supplier = nu
           <div class="sig-role">Người giao hàng</div>
           <div class="sig-sub">(Ký, họ tên)</div>
           <div class="sig-space"></div>
-          <div class="sig-name">${supplierName}</div>
         </td>
         <td>
           <div class="sig-role">Thủ kho</div>
@@ -644,7 +623,7 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
   <style>
     @page {
       size: A5 landscape;
-      margin: 10mm 15mm;
+      margin: 7mm 8mm;
     }
     * {
       box-sizing: border-box;
@@ -653,11 +632,11 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
     }
     body {
       font-family: "Times New Roman", Times, serif;
-      font-size: 13pt;
+      font-size: 11.5pt;
       color: #000000;
-      line-height: 1.45;
+      line-height: 1.25;
       background: #ffffff;
-      padding: 10px;
+      padding: 0;
     }
     .voucher-container {
       max-width: 820px;
@@ -666,7 +645,7 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 8px;
+      margin-bottom: 5px;
     }
     .header-table td {
       vertical-align: top;
@@ -676,13 +655,13 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
       text-align: left;
     }
     .unit-name {
-      font-size: 11pt;
+      font-size: 10.5pt;
       font-weight: bold;
       text-transform: uppercase;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .unit-detail {
-      font-size: 9.5pt;
+      font-size: 9pt;
       color: #333;
     }
     .form-info {
@@ -690,99 +669,100 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
       text-align: center;
     }
     .form-code {
-      font-size: 10pt;
+      font-size: 9.5pt;
       font-weight: bold;
     }
     .form-circular {
-      font-size: 8.5pt;
+      font-size: 8pt;
       font-style: italic;
     }
     .voucher-number {
-      font-size: 10.5pt;
-      margin-top: 4px;
+      font-size: 9.5pt;
+      margin-top: 2px;
       font-weight: 600;
     }
     .title-section {
       text-align: center;
-      margin: 10px 0 14px 0;
+      margin: 6px 0 8px 0;
     }
     .voucher-title {
-      font-size: 18pt;
+      font-size: 15pt;
       font-weight: bold;
       letter-spacing: 1.5px;
     }
     .voucher-date {
-      font-size: 11pt;
+      font-size: 10pt;
       font-style: italic;
-      margin-top: 3px;
+      margin-top: 2px;
     }
     .content-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 14px;
+      margin-bottom: 8px;
     }
     .content-table td {
-      padding: 3.5px 0;
-      font-size: 11.5pt;
+      padding: 2px 0;
+      font-size: 10.5pt;
       vertical-align: baseline;
     }
     .content-label {
-      width: 220px;
+      width: 190px;
       white-space: nowrap;
     }
     .content-val {
       font-weight: 500;
       border-bottom: 1px dotted #888;
-      padding-left: 6px;
+      padding-left: 4px;
     }
     .strong-val {
       font-weight: bold;
     }
     .amount-highlight {
-      font-size: 12.5pt;
+      font-size: 11.5pt;
       font-weight: bold;
     }
     .signatures-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
-      page-break-inside: avoid;
+      margin-top: 4px;
     }
     .signatures-table td {
       width: 20%;
       text-align: center;
       vertical-align: top;
-      padding: 2px;
+      padding: 0 1px;
     }
     .sig-title {
       font-weight: bold;
-      font-size: 10.5pt;
-      margin-bottom: 2px;
+      font-size: 8.8pt;
+      margin-bottom: 1px;
     }
     .sig-sub {
       font-style: italic;
-      font-size: 9pt;
+      font-size: 7.7pt;
       color: #555;
     }
     .sig-space {
-      height: 65px;
+      height: 18px;
     }
     .sig-name {
       font-weight: 600;
-      font-size: 10pt;
+      font-size: 8.5pt;
     }
     .receipt-note {
-      margin-top: 12px;
-      font-size: 10pt;
-      font-style: italic;
-      border-top: 1px dashed #aaa;
-      padding-top: 6px;
+      display: none;
     }
     @media print {
       body {
         padding: 0;
       }
       .no-print, .no-print * {
+        display: none !important;
+      }
+      .voucher-container {
+        width: 100%;
+      }
+      .receipt-note {
         display: none !important;
       }
     }
@@ -835,10 +815,6 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
         <td class="content-label">Hình thức thanh toán:</td>
         <td class="content-val">${methodLabel}</td>
       </tr>
-      <tr>
-        <td class="content-label">Kèm theo:</td>
-        <td class="content-val">Chứng từ gốc liên quan</td>
-      </tr>
     </table>
 
     <table class="signatures-table">
@@ -857,7 +833,6 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
           <div class="sig-title">${isReceipt ? 'Người nộp tiền' : 'Người nhận tiền'}</div>
           <div class="sig-sub">(Ký, họ tên)</div>
           <div class="sig-space"></div>
-          <div class="sig-name">${partnerName}</div>
         </td>
         <td>
           <div class="sig-title">Người lập phiếu</div>
@@ -871,10 +846,6 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
         </td>
       </tr>
     </table>
-
-    <div class="receipt-note">
-      + Đã nhận đủ số tiền (viết bằng chữ): <strong>${amountInWords}</strong>
-    </div>
   </div>
 </body>
 </html>

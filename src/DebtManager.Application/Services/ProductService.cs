@@ -51,6 +51,7 @@ public class ProductService : IProductService
         string? sortBy = null,
         int page = 1,
         int pageSize = 15,
+        string? category = null,
         CancellationToken ct = default)
     {
         page = Math.Max(1, page);
@@ -75,19 +76,34 @@ public class ProductService : IProductService
             query = query.Where(p => p.SupplierId == supplierId.Value);
         }
 
+        // Per-category counts (computed in DB before the category filter so every tab shows its own total)
+        var categoryGroups = await query
+            .GroupBy(p => p.Category ?? "")
+            .Select(g => new { Category = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var categoryCounts = new Dictionary<string, int>();
+        foreach (var g in categoryGroups)
+        {
+            var key = string.IsNullOrWhiteSpace(g.Category) ? "NONE" : g.Category.Trim();
+            categoryCounts[key] = categoryCounts.GetValueOrDefault(key) + g.Count;
+        }
+
+        if (!string.IsNullOrWhiteSpace(category) && category != "ALL")
+        {
+            if (category == "NONE")
+            {
+                query = query.Where(p => p.Category == null || p.Category.Trim() == "");
+            }
+            else
+            {
+                var c = category.Trim();
+                query = query.Where(p => p.Category != null && p.Category.Trim() == c);
+            }
+        }
+
         var wh = (warehouse ?? "overview").Trim().ToLower();
-        if (wh == "warehouse1")
-        {
-            query = query.Where(p => p.StockWarehouse1 > 0);
-        }
-        else if (wh == "warehouse2")
-        {
-            query = query.Where(p => p.StockWarehouse2 > 0);
-        }
-        else if (wh == "warehouse3")
-        {
-            query = query.Where(p => p.StockWarehouse3 > 0);
-        }
+        // Allow displaying products with zero or negative stock (out of stock / debt)
+        // No filtering by stock level - all products are shown
 
         var totalCount = await query.CountAsync(ct);
 
@@ -161,7 +177,8 @@ public class ProductService : IProductService
             TotalStockQty = totalStockQty,
             TotalCostVal = totalCostVal,
             TotalWholesaleVal = totalWholesaleVal,
-            TotalRetailVal = totalRetailVal
+            TotalRetailVal = totalRetailVal,
+            CategoryCounts = categoryCounts
         };
     }
 
@@ -428,4 +445,16 @@ public class ProductService : IProductService
         CreatedAt = p.CreatedAt,
         UpdatedAt = p.UpdatedAt
     };
+
+    public async Task<List<string>> GetCategoriesAsync(CancellationToken ct = default)
+    {
+        var categories = await _uow.Products.Query()
+            .Where(p => p.Category != null && p.Category != "")
+            .Select(p => p.Category)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToListAsync(ct);
+
+        return categories ?? new List<string>();
+    }
 }

@@ -14,10 +14,19 @@ export const authApi = {
 // 2. Customers API
 // ==========================================
 export const customersApi = {
-  getAll: async (params = '') => {
-    const q = typeof params === 'string' ? params : (params?.q || undefined);
-    const res = await api.get('/customers', { params: { q: q || undefined } });
-    return res.data; // List<CustomerDto>
+  getAll: async (params = {}) => {
+    let queryParams = {};
+    if (typeof params === 'string') {
+      if (params) queryParams.q = params;
+    } else if (params && typeof params === 'object') {
+      queryParams = { ...params };
+    }
+    const res = await api.get('/customers', { params: queryParams });
+    return res.data; // List<CustomerDto> or CustomerPagedResult
+  },
+  getRegions: async () => {
+    const res = await api.get('/customers/regions');
+    return res.data; // List<string>
   },
   getById: async (id) => {
     const res = await api.get(`/customers/${id}`);
@@ -45,10 +54,19 @@ export const customersApi = {
 // 3. Suppliers API
 // ==========================================
 export const suppliersApi = {
-  getAll: async (params = '') => {
-    const q = typeof params === 'string' ? params : (params?.q || undefined);
-    const res = await api.get('/suppliers', { params: { q: q || undefined } });
-    return res.data; // List<SupplierDto>
+  getAll: async (params = {}) => {
+    let queryParams = {};
+    if (typeof params === 'string') {
+      if (params) queryParams.q = params;
+    } else if (params && typeof params === 'object') {
+      queryParams = { ...params };
+    }
+    const res = await api.get('/suppliers', { params: queryParams });
+    return res.data; // List<SupplierDto> or SupplierPagedResult
+  },
+  getRegions: async () => {
+    const res = await api.get('/suppliers/regions');
+    return res.data; // List<string>
   },
   getById: async (id) => {
     const res = await api.get(`/suppliers/${id}`);
@@ -76,12 +94,15 @@ export const suppliersApi = {
 // 4. Products API
 // ==========================================
 export const productsApi = {
-  getAll: async ({ q = '', supplierId = null } = {}) => {
-    const params = {};
-    if (q) params.q = q;
-    if (supplierId) params.supplierId = supplierId;
-    const res = await api.get('/products', { params });
-    return res.data; // List<ProductDto>
+  getAll: async (params = {}) => {
+    let queryParams = {};
+    if (typeof params === 'string') {
+      if (params) queryParams.q = params;
+    } else if (params && typeof params === 'object') {
+      queryParams = { ...params };
+    }
+    const res = await api.get('/products', { params: queryParams });
+    return res.data; // List<ProductDto> or ProductPagedResult
   },
   getById: async (id) => {
     const res = await api.get(`/products/${id}`);
@@ -105,21 +126,19 @@ export const productsApi = {
     const res = await api.get(`/products/${id}/stock-history`, { params });
     return res.data; // List<StockHistoryDto>
   },
+  getCategories: async () => {
+    const res = await api.get('/products/categories');
+    return res.data; // List<string>
+  },
 };
 
 // ==========================================
 // 5. Exports API (Bán hàng / Xuất kho)
 // ==========================================
 export const exportsApi = {
-  getAll: async ({ customerId = null, month = '', date = '', fromDate = '', toDate = '' } = {}) => {
-    const params = {};
-    if (customerId) params.customerId = customerId;
-    if (date) params.date = date;
-    else if (month) params.month = month;
-    if (fromDate) params.fromDate = fromDate;
-    if (toDate) params.toDate = toDate;
-    const res = await api.get('/exports', { params });
-    return res.data; // List<ExportVoucherDto>
+  getAll: async (params = {}) => {
+    const res = await api.get('/exports', { params: params || {} });
+    return res.data; // List<ExportVoucherDto> or ExportPagedResult
   },
   getById: async (id) => {
     const res = await api.get(`/exports/${id}`);
@@ -143,15 +162,9 @@ export const exportsApi = {
 // 6. Imports API (Mua hàng / Nhập kho)
 // ==========================================
 export const importsApi = {
-  getAll: async ({ supplierId = null, month = '', date = '', fromDate = '', toDate = '' } = {}) => {
-    const params = {};
-    if (supplierId) params.supplierId = supplierId;
-    if (date) params.date = date;
-    else if (month) params.month = month;
-    if (fromDate) params.fromDate = fromDate;
-    if (toDate) params.toDate = toDate;
-    const res = await api.get('/imports', { params });
-    return res.data; // List<ImportVoucherDto>
+  getAll: async (params = {}) => {
+    const res = await api.get('/imports', { params: params || {} });
+    return res.data; // List<ImportVoucherDto> or ImportPagedResult
   },
   getById: async (id) => {
     const res = await api.get(`/imports/${id}`);
@@ -175,13 +188,9 @@ export const importsApi = {
 // 7. Receipts API (Phiếu Thu)
 // ==========================================
 export const receiptsApi = {
-  getAll: async ({ customerId = null, supplierId = null, q = '' } = {}) => {
-    const params = {};
-    if (customerId) params.customerId = customerId;
-    if (supplierId) params.supplierId = supplierId;
-    if (q) params.q = q;
-    const res = await api.get('/receipts', { params });
-    return res.data; // List<ReceiptDto>
+  getAll: async (params = {}) => {
+    const res = await api.get('/receipts', { params: params || {} });
+    return res.data; // List<ReceiptDto> or ReceiptPagedResult
   },
   getById: async (id) => {
     const res = await api.get(`/receipts/${id}`);
@@ -201,13 +210,9 @@ export const receiptsApi = {
 // 8. Payments API (Phiếu Chi)
 // ==========================================
 export const paymentsApi = {
-  getAll: async ({ supplierId = null, customerId = null, q = '' } = {}) => {
-    const params = {};
-    if (supplierId) params.supplierId = supplierId;
-    if (customerId) params.customerId = customerId;
-    if (q) params.q = q;
-    const res = await api.get('/payments', { params });
-    return res.data; // List<PaymentDto>
+  getAll: async (params = {}) => {
+    const res = await api.get('/payments', { params: params || {} });
+    return res.data; // List<PaymentDto> or PaymentPagedResult
   },
   getById: async (id) => {
     const res = await api.get(`/payments/${id}`);

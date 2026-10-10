@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Users,
   Plus,
@@ -30,6 +30,7 @@ import Modal from '../components/common/Modal';
 import Drawer from '../components/common/Drawer';
 import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
+import Pagination from '../components/common/Pagination';
 import { customerService, cashBookService, settingService } from '../services';
 
 const CUSTOMER_SORT_OPTIONS = [
@@ -47,6 +48,15 @@ export default function Customers({ onQuickAction }) {
   const [selectedRegion, setSelectedRegion] = useState('ALL'); // 'ALL' or specific region string
   const [sortBy, setSortBy] = useState('default');
   const regionTabsRef = useRef(null);
+
+  // Pagination states (15 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalReceivables, setTotalReceivables] = useState(0);
+  const [totalPayables, setTotalPayables] = useState(0);
+  const [allRegions, setAllRegions] = useState([]);
+  const isFirstFilterChange = useRef(true);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -80,65 +90,11 @@ export default function Customers({ onQuickAction }) {
 
   // Extract unique regions list
   const regionOptions = useMemo(() => {
-    const set = new Set();
-    customers.forEach((c) => {
-      if (c.region && c.region.trim()) set.add(c.region.trim());
-    });
-    return Array.from(set).map((r) => ({ id: r, value: r, label: r }));
-  }, [customers]);
+    return allRegions.map((r) => ({ id: r, value: r, label: r }));
+  }, [allRegions]);
 
-  const allRegions = useMemo(() => {
-    const set = new Set();
-    customers.forEach((c) => {
-      if (c.region && c.region.trim()) set.add(c.region.trim());
-    });
-    return Array.from(set);
-  }, [customers]);
-
-  // Filter customers by selected region & real-time search query
-  const filteredCustomers = useMemo(() => {
-    let list = customers;
-    if (selectedRegion === 'NONE') {
-      list = list.filter((c) => !c.region || !c.region.trim());
-    } else if (selectedRegion !== 'ALL') {
-      list = list.filter((c) => (c.region || '').trim().toLowerCase() === selectedRegion.trim().toLowerCase());
-    }
-
-    if (searchQuery && searchQuery.trim()) {
-      const q = normalizeText(searchQuery.trim());
-      list = list.filter((c) => {
-        const name = normalizeText(c.name || '');
-        const code = normalizeText(c.code || '');
-        const contact = normalizeText(c.contactName || '');
-        const phone = normalizeText(parseJsonList(c.phonesJson) || '');
-        const email = normalizeText(c.email || '');
-        const address = normalizeText(parseJsonList(c.addressesJson) || '');
-        const region = normalizeText(c.region || '');
-        return (
-          name.includes(q) ||
-          code.includes(q) ||
-          contact.includes(q) ||
-          phone.includes(q) ||
-          email.includes(q) ||
-          address.includes(q) ||
-          region.includes(q)
-        );
-      });
-    }
-
-    return list;
-  }, [customers, selectedRegion, searchQuery]);
-
-  // Sort filtered customers based on selected numeric debt metric
-  const sortedCustomers = useMemo(() => {
-    let list = [...filteredCustomers];
-    if (sortBy === 'debt_desc') {
-      list.sort((a, b) => Number(b.debt || 0) - Number(a.debt || 0));
-    } else if (sortBy === 'debt_asc') {
-      list.sort((a, b) => Number(a.debt || 0) - Number(b.debt || 0));
-    }
-    return list;
-  }, [filteredCustomers, sortBy]);
+  const filteredCustomers = customers;
+  const sortedCustomers = customers;
 
   const [adjustData, setAdjustData] = useState({
     mode: 'delta', // 'delta' or 'newDebt'
@@ -156,23 +112,71 @@ export default function Customers({ onQuickAction }) {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // Load Customers via customerService
-  const loadCustomers = async () => {
+  const loadRegions = async () => {
+    try {
+      const regions = await customerService.getRegions();
+      if (Array.isArray(regions)) {
+        setAllRegions(regions);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Load Customers with server-side pagination (15 items/page)
+  const loadCustomers = useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
-      const data = await customerService.getAll();
-      setCustomers(data || []);
+      const res = await customerService.getAll({
+        page,
+        pageSize: 15,
+        q: searchQuery || undefined,
+        region: selectedRegion !== 'ALL' ? selectedRegion : undefined,
+        sortBy: sortBy !== 'default' ? sortBy : undefined,
+      });
+
+      if (res && res.items) {
+        setCustomers(res.items);
+        setCurrentPage(res.page || page);
+        setTotalPages(res.totalPages || 1);
+        setTotalCount(res.totalCount || 0);
+        setTotalReceivables(res.totalReceivables || 0);
+        setTotalPayables(res.totalPayables || 0);
+      } else if (Array.isArray(res)) {
+        setCustomers(res);
+        setTotalCount(res.length);
+        setTotalPages(Math.ceil(res.length / 15) || 1);
+      }
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách khách hàng');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchQuery, selectedRegion, sortBy, notify]);
 
+  // Initial load
   useEffect(() => {
-    loadCustomers();
+    loadRegions();
     settingService.getSettings().then((res) => setOwnerInfo(res)).catch(() => {});
   }, []);
+
+  // Fetch when page changes
+  useEffect(() => {
+    loadCustomers(currentPage);
+  }, [currentPage]);
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    if (isFirstFilterChange.current) {
+      isFirstFilterChange.current = false;
+      return;
+    }
+    if (currentPage === 1) {
+      loadCustomers(1);
+    } else {
+      setCurrentPage(1);
+    }
+  }, [selectedRegion, sortBy, searchQuery]);
 
   // Open Create
   const handleOpenCreate = () => {
@@ -348,10 +352,6 @@ export default function Customers({ onQuickAction }) {
     }
   };
 
-  // Totals calculated from filteredCustomers
-  const { totalReceivables, totalPayables, debtCustomerCount } = useMemo(() => {
-    return customerService.calculateCustomerSummary(filteredCustomers);
-  }, [filteredCustomers]);
 
   const scrollTabs = (direction) => {
     if (regionTabsRef.current) {
@@ -519,14 +519,18 @@ export default function Customers({ onQuickAction }) {
                 fontWeight: 600,
               }}
             >
-              {customers.length}
+              {totalCount}
             </span>
           </button>
 
           {/* Dynamic Region Tabs */}
           {allRegions.map((region) => {
-            const count = customers.filter((c) => (c.region || '').trim() === region.trim()).length;
             const isSelected = selectedRegion === region;
+            const count = selectedRegion === 'ALL'
+              ? customers.filter((c) => (c.region || '').trim() === region.trim()).length
+              : isSelected
+              ? totalCount
+              : 0;
             return (
               <button
                 key={region}
@@ -567,7 +571,7 @@ export default function Customers({ onQuickAction }) {
           })}
 
           {/* Tab for customers without region if any */}
-          {customers.some((c) => !c.region || !c.region.trim()) && (
+          {(selectedRegion === 'NONE' || customers.some((c) => !c.region || !c.region.trim())) && (
             <button
               type="button"
               onClick={() => setSelectedRegion('NONE')}
@@ -599,7 +603,7 @@ export default function Customers({ onQuickAction }) {
                   fontWeight: 600,
                 }}
               >
-                {customers.filter((c) => !c.region || !c.region.trim()).length}
+                {selectedRegion === 'NONE' ? totalCount : 0}
               </span>
             </button>
           )}
@@ -793,6 +797,17 @@ export default function Customers({ onQuickAction }) {
           </table>
         </div>
       )}
+
+      {/* Pagination (15 items per page) */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={15}
+        onPageChange={(p) => setCurrentPage(p)}
+        disabled={loading}
+        itemLabel="khách hàng"
+      />
 
       {/* Modal Thêm Khách Hàng */}
       <Modal

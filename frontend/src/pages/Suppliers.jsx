@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Truck,
   Plus,
@@ -30,6 +30,7 @@ import Modal from '../components/common/Modal';
 import Drawer from '../components/common/Drawer';
 import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
+import Pagination from '../components/common/Pagination';
 import { supplierService, cashBookService, settingService } from '../services';
 
 const SUPPLIER_SORT_OPTIONS = [
@@ -49,6 +50,15 @@ export default function Suppliers() {
   const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [sortBy, setSortBy] = useState('default');
   const regionTabsRef = useRef(null);
+
+  // Pagination states (15 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalReceivables, setTotalReceivables] = useState(0);
+  const [totalPayables, setTotalPayables] = useState(0);
+  const [allRegions, setAllRegions] = useState([]);
+  const isFirstFilterChange = useRef(true);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -84,87 +94,11 @@ export default function Suppliers() {
 
   // Extract unique regions list
   const regionOptions = useMemo(() => {
-    const set = new Set();
-    suppliers.forEach((s) => {
-      if (s.region && s.region.trim()) set.add(s.region.trim());
-    });
-    return Array.from(set).map((r) => ({ id: r, value: r, label: r }));
-  }, [suppliers]);
+    return allRegions.map((r) => ({ id: r, value: r, label: r }));
+  }, [allRegions]);
 
-  const allRegions = useMemo(() => {
-    const set = new Set();
-    suppliers.forEach((s) => {
-      if (s.region && s.region.trim()) set.add(s.region.trim());
-    });
-    return Array.from(set);
-  }, [suppliers]);
-
-  // Filter suppliers by selected region & real-time search query
-  const filteredSuppliers = useMemo(() => {
-    let list = suppliers;
-    if (selectedRegion === 'NONE') {
-      list = list.filter((s) => !s.region || !s.region.trim());
-    } else if (selectedRegion !== 'ALL') {
-      list = list.filter((s) => (s.region || '').trim().toLowerCase() === selectedRegion.trim().toLowerCase());
-    }
-
-    if (searchQuery && searchQuery.trim()) {
-      const q = normalizeText(searchQuery.trim());
-      list = list.filter((s) => {
-        const name = normalizeText(s.name || '');
-        const code = normalizeText(s.code || '');
-        const contact = normalizeText(s.contactName || '');
-        const phone = normalizeText(parseJsonList(s.phonesJson) || '');
-        const email = normalizeText(s.email || '');
-        const address = normalizeText(parseJsonList(s.addressesJson) || '');
-        const region = normalizeText(s.region || '');
-        const bankAccount = normalizeText(s.bankAccount || '');
-        return (
-          name.includes(q) ||
-          code.includes(q) ||
-          contact.includes(q) ||
-          phone.includes(q) ||
-          email.includes(q) ||
-          address.includes(q) ||
-          region.includes(q) ||
-          bankAccount.includes(q)
-        );
-      });
-    }
-
-    return list;
-  }, [suppliers, selectedRegion, searchQuery]);
-
-  // Sort filtered suppliers based on selected numeric debt metric
-  const sortedSuppliers = useMemo(() => {
-    let list = [...filteredSuppliers];
-    if (sortBy === 'payable_desc') {
-      list.sort((a, b) => {
-        const payA = Number(a.debt || 0) < 0 ? Math.abs(Number(a.debt || 0)) : 0;
-        const payB = Number(b.debt || 0) < 0 ? Math.abs(Number(b.debt || 0)) : 0;
-        return payB - payA;
-      });
-    } else if (sortBy === 'payable_asc') {
-      list.sort((a, b) => {
-        const payA = Number(a.debt || 0) < 0 ? Math.abs(Number(a.debt || 0)) : 0;
-        const payB = Number(b.debt || 0) < 0 ? Math.abs(Number(b.debt || 0)) : 0;
-        return payA - payB;
-      });
-    } else if (sortBy === 'receivable_desc') {
-      list.sort((a, b) => {
-        const recA = Number(a.debt || 0) > 0 ? Number(a.debt || 0) : 0;
-        const recB = Number(b.debt || 0) > 0 ? Number(b.debt || 0) : 0;
-        return recB - recA;
-      });
-    } else if (sortBy === 'receivable_asc') {
-      list.sort((a, b) => {
-        const recA = Number(a.debt || 0) > 0 ? Number(a.debt || 0) : 0;
-        const recB = Number(b.debt || 0) > 0 ? Number(b.debt || 0) : 0;
-        return recA - recB;
-      });
-    }
-    return list;
-  }, [filteredSuppliers, sortBy]);
+  const filteredSuppliers = suppliers;
+  const sortedSuppliers = suppliers;
 
   const [adjustData, setAdjustData] = useState({
     mode: 'delta',
@@ -182,23 +116,71 @@ export default function Suppliers() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // Load Suppliers via supplierService
-  const loadSuppliers = async () => {
+  const loadRegions = async () => {
+    try {
+      const regions = await supplierService.getRegions();
+      if (Array.isArray(regions)) {
+        setAllRegions(regions);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Load Suppliers with server-side pagination (15 items/page)
+  const loadSuppliers = useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
-      const data = await supplierService.getAll();
-      setSuppliers(data || []);
+      const res = await supplierService.getAll({
+        page,
+        pageSize: 15,
+        q: searchQuery || undefined,
+        region: selectedRegion !== 'ALL' ? selectedRegion : undefined,
+        sortBy: sortBy !== 'default' ? sortBy : undefined,
+      });
+
+      if (res && res.items) {
+        setSuppliers(res.items);
+        setCurrentPage(res.page || page);
+        setTotalPages(res.totalPages || 1);
+        setTotalCount(res.totalCount || 0);
+        setTotalReceivables(res.totalReceivables || 0);
+        setTotalPayables(res.totalPayables || 0);
+      } else if (Array.isArray(res)) {
+        setSuppliers(res);
+        setTotalCount(res.length);
+        setTotalPages(Math.ceil(res.length / 15) || 1);
+      }
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách nhà cung cấp');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchQuery, selectedRegion, sortBy, notify]);
 
+  // Initial load
   useEffect(() => {
-    loadSuppliers();
+    loadRegions();
     settingService.getSettings().then((res) => setOwnerInfo(res)).catch(() => {});
   }, []);
+
+  // Fetch when page changes
+  useEffect(() => {
+    loadSuppliers(currentPage);
+  }, [currentPage]);
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    if (isFirstFilterChange.current) {
+      isFirstFilterChange.current = false;
+      return;
+    }
+    if (currentPage === 1) {
+      loadSuppliers(1);
+    } else {
+      setCurrentPage(1);
+    }
+  }, [selectedRegion, sortBy, searchQuery]);
 
   // Open Create
   const handleOpenCreate = () => {
@@ -385,10 +367,6 @@ export default function Suppliers() {
     }
   };
 
-  // Total Payables & Receivables via supplierService from filteredSuppliers
-  const { totalPayables, totalReceivables } = useMemo(() => {
-    return supplierService.calculateSupplierSummary(filteredSuppliers);
-  }, [filteredSuppliers]);
 
   const scrollTabs = (direction) => {
     if (regionTabsRef.current) {
@@ -440,15 +418,15 @@ export default function Suppliers() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải trả:</span>
-            <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--warning-text)' }}>
-              {formatVND(totalPayables)}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải thu:</span>
             <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--info-text)' }}>
               {formatVND(totalReceivables)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải trả:</span>
+            <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--warning-text)' }}>
+              {formatVND(totalPayables)}
             </span>
           </div>
         </div>
@@ -556,14 +534,18 @@ export default function Suppliers() {
                 fontWeight: 600,
               }}
             >
-              {suppliers.length}
+              {totalCount}
             </span>
           </button>
 
           {/* Dynamic Region Tabs */}
           {allRegions.map((region) => {
-            const count = suppliers.filter((s) => (s.region || '').trim() === region.trim()).length;
             const isSelected = selectedRegion === region;
+            const count = selectedRegion === 'ALL'
+              ? suppliers.filter((s) => (s.region || '').trim() === region.trim()).length
+              : isSelected
+              ? totalCount
+              : 0;
             return (
               <button
                 key={region}
@@ -604,7 +586,7 @@ export default function Suppliers() {
           })}
 
           {/* Tab for suppliers without region if any */}
-          {suppliers.some((s) => !s.region || !s.region.trim()) && (
+          {(selectedRegion === 'NONE' || suppliers.some((s) => !s.region || !s.region.trim())) && (
             <button
               type="button"
               onClick={() => setSelectedRegion('NONE')}
@@ -636,7 +618,7 @@ export default function Suppliers() {
                   fontWeight: 600,
                 }}
               >
-                {suppliers.filter((s) => !s.region || !s.region.trim()).length}
+                {selectedRegion === 'NONE' ? totalCount : 0}
               </span>
             </button>
           )}
@@ -694,8 +676,8 @@ export default function Suppliers() {
                 <th>Khu Vực</th>
                 <th>Số Điện Thoại</th>
                 <th>Ngân Hàng & STK</th>
-                <th style={{ textAlign: 'right' }}>Phải Trả</th>
                 <th style={{ textAlign: 'right' }}>Phải Thu</th>
+                <th style={{ textAlign: 'right' }}>Phải Trả</th>
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
               </tr>
             </thead>
@@ -756,22 +738,7 @@ export default function Suppliers() {
                         '—'
                       )}
                     </td>
-                    {/* Cột 1: Phải Trả (Mình nợ nhà cung cấp) */}
-                    <td style={{ textAlign: 'right' }}>
-                      {s.debt < 0 ? (
-                        <div>
-                          <span className="mono" style={{ fontWeight: 800, color: 'var(--warning-text)' }}>
-                            {formatVND(Math.abs(s.debt))}
-                          </span>
-                          <div style={{ fontSize: '0.6875rem', color: 'var(--warning-text)', marginTop: '2px', fontWeight: 600 }}>
-                            Cần thanh toán
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
-                      )}
-                    </td>
-                    {/* Cột 2: Phải Thu (Cửa hàng nộp tiền trước để lấy hàng) */}
+                    {/* Cột 1: Phải Thu (Cửa hàng nộp tiền trước để lấy hàng) */}
                     <td style={{ textAlign: 'right' }}>
                       {s.debt > 0 ? (
                         <div>
@@ -780,6 +747,21 @@ export default function Suppliers() {
                           </span>
                           <div style={{ fontSize: '0.6875rem', color: 'var(--info-text)', marginTop: '2px', fontWeight: 600 }}>
                             Đã nộp trước
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                      )}
+                    </td>
+                    {/* Cột 2: Phải Trả (Mình nợ nhà cung cấp) */}
+                    <td style={{ textAlign: 'right' }}>
+                      {s.debt < 0 ? (
+                        <div>
+                          <span className="mono" style={{ fontWeight: 800, color: 'var(--warning-text)' }}>
+                            {formatVND(Math.abs(s.debt))}
+                          </span>
+                          <div style={{ fontSize: '0.6875rem', color: 'var(--warning-text)', marginTop: '2px', fontWeight: 600 }}>
+                            Cần thanh toán
                           </div>
                         </div>
                       ) : (
@@ -829,6 +811,17 @@ export default function Suppliers() {
           </table>
         </div>
       )}
+
+      {/* Pagination (15 items per page) */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={15}
+        onPageChange={(p) => setCurrentPage(p)}
+        disabled={loading}
+        itemLabel="nhà cung cấp"
+      />
 
       {/* Modal Thêm NCC */}
       <Modal

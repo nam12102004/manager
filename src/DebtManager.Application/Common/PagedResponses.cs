@@ -26,6 +26,7 @@ public class ProductPagedResult : PagedResult<ProductDto>
     public decimal TotalCostVal { get; set; }
     public decimal TotalWholesaleVal { get; set; }
     public decimal TotalRetailVal { get; set; }
+    public Dictionary<string, int> CategoryCounts { get; set; } = new();
 }
 
 public class ImportPagedResult : PagedResult<ImportVoucherDto>

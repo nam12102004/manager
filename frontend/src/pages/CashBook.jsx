@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   WalletCards,
   Plus,
@@ -26,6 +26,7 @@ import EmptyState from '../components/common/EmptyState';
 import StatCard from '../components/common/StatCard';
 import SearchBar from '../components/common/SearchBar';
 import TimeFilter from '../components/common/TimeFilter';
+import Pagination from '../components/common/Pagination';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import SearchableSelect from '../components/common/SearchableSelect';
 import { cashBookService } from '../services';
@@ -35,11 +36,22 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
 
   const [activeSubTab, setActiveSubTab] = useState('receipts'); // 'receipts' | 'payments'
   const [receipts, setReceipts] = useState([]);
+  const [receiptsPage, setReceiptsPage] = useState(1);
+  const [receiptsTotalPages, setReceiptsTotalPages] = useState(1);
+  const [receiptsTotalCount, setReceiptsTotalCount] = useState(0);
+  const [totalReceipts, setTotalReceipts] = useState(0);
+
   const [payments, setPayments] = useState([]);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [paymentsTotalPages, setPaymentsTotalPages] = useState(1);
+  const [paymentsTotalCount, setPaymentsTotalCount] = useState(0);
+  const [totalPayments, setTotalPayments] = useState(0);
+
   const [customers, setCustomers] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [ownerInfo, setOwnerInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const isFirstFilterChange = useRef(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
@@ -77,76 +89,131 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
     notes: '',
   });
 
-  // Load Data via cashBookService
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [rRes, pRes, deps] = await Promise.all([
-        cashBookService.getReceipts({ q: searchQuery }),
-        cashBookService.getPayments({ q: searchQuery }),
-        cashBookService.getDependencies(),
-      ]);
+  const getTimeParams = useCallback(() => {
+    const params = {};
+    if (timeMode === 'month') {
+      params.month = selectedMonth;
+    } else if (timeMode === 'day') {
+      params.date = selectedDate;
+    } else if (timeMode === 'range') {
+      params.fromDate = fromDate;
+      params.toDate = toDate;
+    }
+    return params;
+  }, [timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
-      setReceipts(rRes || []);
-      setPayments(pRes || []);
+  // Load Receipts via cashBookService
+  const loadReceipts = useCallback(async (page = receiptsPage) => {
+    try {
+      const timeParams = getTimeParams();
+      const res = await cashBookService.getReceipts({
+        page,
+        pageSize: 15,
+        q: searchQuery || undefined,
+        ...timeParams,
+      });
+
+      if (res && res.items) {
+        setReceipts(res.items);
+        setReceiptsPage(res.page || page);
+        setReceiptsTotalPages(res.totalPages || 1);
+        setReceiptsTotalCount(res.totalCount || 0);
+        setTotalReceipts(res.totalAmount ?? 0);
+      } else if (Array.isArray(res)) {
+        setReceipts(res);
+        setReceiptsTotalCount(res.length);
+        setReceiptsTotalPages(Math.ceil(res.length / 15) || 1);
+        setTotalReceipts(res.reduce((sum, r) => sum + Number(r.amount || 0), 0));
+      }
+    } catch (err) {
+      notify.error(err.message || 'Không thể tải danh sách phiếu thu');
+    }
+  }, [receiptsPage, searchQuery, getTimeParams, notify]);
+
+  // Load Payments via cashBookService
+  const loadPayments = useCallback(async (page = paymentsPage) => {
+    try {
+      const timeParams = getTimeParams();
+      const res = await cashBookService.getPayments({
+        page,
+        pageSize: 15,
+        q: searchQuery || undefined,
+        ...timeParams,
+      });
+
+      if (res && res.items) {
+        setPayments(res.items);
+        setPaymentsPage(res.page || page);
+        setPaymentsTotalPages(res.totalPages || 1);
+        setPaymentsTotalCount(res.totalCount || 0);
+        setTotalPayments(res.totalAmount ?? 0);
+      } else if (Array.isArray(res)) {
+        setPayments(res);
+        setPaymentsTotalCount(res.length);
+        setPaymentsTotalPages(Math.ceil(res.length / 15) || 1);
+        setTotalPayments(res.filter((p) => p.status !== 'cancelled').reduce((sum, p) => sum + Number(p.amount || 0), 0));
+      }
+    } catch (err) {
+      notify.error(err.message || 'Không thể tải danh sách phiếu chi');
+    }
+  }, [paymentsPage, searchQuery, getTimeParams, notify]);
+
+  // Load Dependencies
+  const loadDependencies = async () => {
+    try {
+      const deps = await cashBookService.getDependencies();
       setCustomers(deps?.customers || []);
       setSuppliers(deps?.suppliers || []);
       setOwnerInfo(deps?.ownerInfo || null);
     } catch (err) {
-      notify.error(err.message || 'Không thể tải dữ liệu thu chi');
+      console.error(err);
+    }
+  };
+
+  // Reload both
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([loadReceipts(receiptsPage), loadPayments(paymentsPage)]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
-  }, [searchQuery]);
+    loadDependencies();
+  }, []);
 
-  // Filter receipts by date/month/range
-  const filteredReceipts = React.useMemo(() => {
-    return receipts.filter((r) => {
-      if (timeMode === 'all') return true;
-      const rDate = r.date ? r.date.slice(0, 10) : '';
-      if (!rDate) return true;
-      if (timeMode === 'month') {
-        return rDate.startsWith(selectedMonth);
-      }
-      if (timeMode === 'day') {
-        return rDate === selectedDate;
-      }
-      if (timeMode === 'range') {
-        if (fromDate && rDate < fromDate) return false;
-        if (toDate && rDate > toDate) return false;
-        return true;
-      }
-      return true;
-    });
-  }, [receipts, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+  useEffect(() => {
+    loadReceipts(receiptsPage);
+  }, [receiptsPage]);
 
-  // Filter payments by date/month/range
-  const filteredPayments = React.useMemo(() => {
-    return payments.filter((p) => {
-      if (timeMode === 'all') return true;
-      const pDate = p.date ? p.date.slice(0, 10) : '';
-      if (!pDate) return true;
-      if (timeMode === 'month') {
-        return pDate.startsWith(selectedMonth);
-      }
-      if (timeMode === 'day') {
-        return pDate === selectedDate;
-      }
-      if (timeMode === 'range') {
-        if (fromDate && pDate < fromDate) return false;
-        if (toDate && pDate > toDate) return false;
-        return true;
-      }
-      return true;
-    });
-  }, [payments, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+  useEffect(() => {
+    loadPayments(paymentsPage);
+  }, [paymentsPage]);
 
-  // Compute Cashflow Totals on filtered lists
-  const { totalReceipts, totalPayments, netFund } = cashBookService.calculateCashFlowStats(filteredReceipts, filteredPayments);
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    if (isFirstFilterChange.current) {
+      isFirstFilterChange.current = false;
+      return;
+    }
+    if (receiptsPage === 1) {
+      loadReceipts(1);
+    } else {
+      setReceiptsPage(1);
+    }
+
+    if (paymentsPage === 1) {
+      loadPayments(1);
+    } else {
+      setPaymentsPage(1);
+    }
+  }, [searchQuery, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+
+  // Compute Cashflow Totals
+  const netFund = totalReceipts - totalPayments;
+
 
   // Open Create Receipt
   const handleOpenCreateReceipt = () => {
@@ -278,14 +345,14 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
         <StatCard
           title="TỔNG THU TIỀN VÀO QUỸ"
           value={formatVND(totalReceipts)}
-          subtitle={`${filteredReceipts.length} lượt phiếu thu`}
+          subtitle={`${receiptsTotalCount} lượt phiếu thu`}
           icon={Receipt}
           color="success"
         />
         <StatCard
           title="TỔNG CHI TIỀN TỪ QUỸ"
           value={formatVND(totalPayments)}
-          subtitle={`${filteredPayments.filter((p) => p.status !== 'cancelled').length} lượt phiếu chi`}
+          subtitle={`${paymentsTotalCount} lượt phiếu chi`}
           icon={CreditCard}
           color="danger"
         />
@@ -304,7 +371,6 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Tìm theo số phiếu, tên đối tác, ghi chú..."
-          debounceMs={0}
           style={{ flex: 1, minWidth: '280px' }}
         />
 
@@ -329,20 +395,20 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           onClick={() => setActiveSubTab('receipts')}
         >
           <Receipt size={16} />
-          <span>Phiếu Thu ({filteredReceipts.length})</span>
+          <span>Phiếu Thu ({receiptsTotalCount})</span>
         </button>
         <button
           className={`btn ${activeSubTab === 'payments' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setActiveSubTab('payments')}
         >
           <CreditCard size={16} />
-          <span>Phiếu Chi ({filteredPayments.length})</span>
+          <span>Phiếu Chi ({paymentsTotalCount})</span>
         </button>
       </div>
 
       {/* Content based on subTab */}
       {activeSubTab === 'receipts' ? (
-        filteredReceipts.length === 0 && !loading ? (
+        receipts.length === 0 && !loading ? (
           <EmptyState
             icon={Receipt}
             title="Chưa có phiếu thu nào"
@@ -361,72 +427,82 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
             }
           />
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Số Phiếu Thu</th>
-                  <th>Thời Gian Thu</th>
-                  <th>Người Nộp Tiền</th>
-                  <th>Phương Thức</th>
-                  <th style={{ textAlign: 'right' }}>Số Tiền Thu</th>
-                  <th>Ghi Chú</th>
-                  <th style={{ textAlign: 'center' }}>Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredReceipts.map((r) => {
-                  const partnerName = r.customerName
-                    ? `Khách: ${r.customerName}`
-                    : r.supplierName
-                    ? `NCC: ${r.supplierName}`
-                    : 'Khách vãng lai';
-                  const methodObj = PAYMENT_METHODS.find((m) => m.id === r.method);
+          <>
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Số Phiếu Thu</th>
+                    <th>Thời Gian Thu</th>
+                    <th>Người Nộp Tiền</th>
+                    <th>Phương Thức</th>
+                    <th style={{ textAlign: 'right' }}>Số Tiền Thu</th>
+                    <th>Ghi Chú</th>
+                    <th style={{ textAlign: 'center' }}>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receipts.map((r) => {
+                    const partnerName = r.customerName
+                      ? `Khách: ${r.customerName}`
+                      : r.supplierName
+                      ? `NCC: ${r.supplierName}`
+                      : 'Khách vãng lai';
+                    const methodObj = PAYMENT_METHODS.find((m) => m.id === r.method);
 
-                  return (
-                    <tr key={r.id}>
-                      <td className="mono" style={{ fontWeight: 700, color: 'var(--success)' }}>
-                        {r.receiptNumber}
-                      </td>
-                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt || r.date, true)}</td>
-                      <td style={{ fontWeight: 600 }}>{partnerName}</td>
-                      <td>
-                        <span className="badge badge-neutral">{methodObj?.label || r.method || 'Tiền mặt'}</span>
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)' }} className="mono">
-                        +{formatVND(r.amount)}
-                      </td>
-                      <td style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{r.notes || '—'}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <button
-                          className="btn btn-ghost btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--primary)', marginRight: '4px' }}
-                          title="Xem trước & In phiếu thu này"
-                          onClick={() => {
-                            setPrintVoucher({ voucher: r, type: 'receipt' });
-                            setIsPrintModalOpen(true);
-                          }}
-                        >
-                          <Printer size={15} />
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
-                          title="Xóa phiếu thu này"
-                          onClick={() => handleOpenDelete(r, 'receipt')}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    return (
+                      <tr key={r.id}>
+                        <td className="mono" style={{ fontWeight: 700, color: 'var(--success)' }}>
+                          {r.receiptNumber}
+                        </td>
+                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt || r.date, true)}</td>
+                        <td style={{ fontWeight: 600 }}>{partnerName}</td>
+                        <td>
+                          <span className="badge badge-neutral">{methodObj?.label || r.method || 'Tiền mặt'}</span>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)' }} className="mono">
+                          +{formatVND(r.amount)}
+                        </td>
+                        <td style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{r.notes || '—'}</td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <button
+                            className="btn btn-ghost btn-icon"
+                            style={{ width: '32px', height: '32px', color: 'var(--primary)', marginRight: '4px' }}
+                            title="Xem trước & In phiếu thu này"
+                            onClick={() => {
+                              setPrintVoucher({ voucher: r, type: 'receipt' });
+                              setIsPrintModalOpen(true);
+                            }}
+                          >
+                            <Printer size={15} />
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-icon"
+                            style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
+                            title="Xóa phiếu thu này"
+                            onClick={() => handleOpenDelete(r, 'receipt')}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Pagination
+              currentPage={receiptsPage}
+              totalPages={receiptsTotalPages}
+              totalItems={receiptsTotalCount}
+              pageSize={15}
+              onPageChange={setReceiptsPage}
+              itemLabel="phiếu thu"
+            />
+          </>
         )
       ) : (
-        filteredPayments.length === 0 && !loading ? (
+        payments.length === 0 && !loading ? (
           <EmptyState
             icon={CreditCard}
             title="Chưa có phiếu chi nào"
@@ -445,75 +521,85 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
             }
           />
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Số Phiếu Chi</th>
-                  <th>Thời Gian Chi</th>
-                  <th>Người Nhận Tiền</th>
-                  <th>Phương Thức</th>
-                  <th style={{ textAlign: 'right' }}>Số Tiền Chi</th>
-                  <th style={{ textAlign: 'center' }}>Trạng Thái</th>
-                  <th>Ghi Chú</th>
-                  <th style={{ textAlign: 'center' }}>Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPayments.map((p) => {
-                  const partnerName = p.supplierName
-                    ? `NCC: ${p.supplierName}`
-                    : p.customerName
-                    ? `Khách: ${p.customerName}`
-                    : 'Khác';
-                  const methodObj = PAYMENT_METHODS.find((m) => m.id === p.method);
+          <>
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Số Phiếu Chi</th>
+                    <th>Thời Gian Chi</th>
+                    <th>Người Nhận Tiền</th>
+                    <th>Phương Thức</th>
+                    <th style={{ textAlign: 'right' }}>Số Tiền Chi</th>
+                    <th style={{ textAlign: 'center' }}>Trạng Thái</th>
+                    <th>Ghi Chú</th>
+                    <th style={{ textAlign: 'center' }}>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((p) => {
+                    const partnerName = p.supplierName
+                      ? `NCC: ${p.supplierName}`
+                      : p.customerName
+                      ? `Khách: ${p.customerName}`
+                      : 'Khác';
+                    const methodObj = PAYMENT_METHODS.find((m) => m.id === p.method);
 
-                  return (
-                    <tr key={p.id}>
-                      <td className="mono" style={{ fontWeight: 700, color: 'var(--danger)' }}>
-                        {p.paymentNumber}
-                      </td>
-                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.createdAt || p.date, true)}</td>
-                      <td style={{ fontWeight: 600 }}>{partnerName}</td>
-                      <td>
-                        <span className="badge badge-neutral">{methodObj?.label || p.method || 'Tiền mặt'}</span>
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--danger)' }} className="mono">
-                        -{formatVND(p.amount)}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className={`badge badge-${p.status === 'cancelled' ? 'danger' : 'info'}`}>
-                          {p.status === 'cancelled' ? 'Đã hủy' : 'Đã chi'}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{p.notes || '—'}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <button
-                          className="btn btn-ghost btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--primary)', marginRight: '4px' }}
-                          title="Xem trước & In phiếu chi này"
-                          onClick={() => {
-                            setPrintVoucher({ voucher: p, type: 'payment' });
-                            setIsPrintModalOpen(true);
-                          }}
-                        >
-                          <Printer size={15} />
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
-                          title="Xóa phiếu chi này"
-                          onClick={() => handleOpenDelete(p, 'payment')}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    return (
+                      <tr key={p.id}>
+                        <td className="mono" style={{ fontWeight: 700, color: 'var(--danger)' }}>
+                          {p.paymentNumber}
+                        </td>
+                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.createdAt || p.date, true)}</td>
+                        <td style={{ fontWeight: 600 }}>{partnerName}</td>
+                        <td>
+                          <span className="badge badge-neutral">{methodObj?.label || p.method || 'Tiền mặt'}</span>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--danger)' }} className="mono">
+                          -{formatVND(p.amount)}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`badge badge-${p.status === 'cancelled' ? 'danger' : 'info'}`}>
+                            {p.status === 'cancelled' ? 'Đã hủy' : 'Đã chi'}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{p.notes || '—'}</td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <button
+                            className="btn btn-ghost btn-icon"
+                            style={{ width: '32px', height: '32px', color: 'var(--primary)', marginRight: '4px' }}
+                            title="Xem trước & In phiếu chi này"
+                            onClick={() => {
+                              setPrintVoucher({ voucher: p, type: 'payment' });
+                              setIsPrintModalOpen(true);
+                            }}
+                          >
+                            <Printer size={15} />
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-icon"
+                            style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
+                            title="Xóa phiếu chi này"
+                            onClick={() => handleOpenDelete(p, 'payment')}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Pagination
+              currentPage={paymentsPage}
+              totalPages={paymentsTotalPages}
+              totalItems={paymentsTotalCount}
+              pageSize={15}
+              onPageChange={setPaymentsPage}
+              itemLabel="phiếu chi"
+            />
+          </>
         )
       )}
 

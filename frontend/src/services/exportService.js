@@ -158,8 +158,8 @@ export const exportService = {
 
   async getDependencies() {
     const [custs, prods, owner] = await Promise.allSettled([
-      customersApi.getAll(),
-      productsApi.getAll(),
+      customersApi.getAll({ all: true }),
+      productsApi.getAll({ all: true }),
       ownersApi.get(),
     ]);
 

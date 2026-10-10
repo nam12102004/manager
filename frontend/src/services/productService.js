@@ -157,6 +157,10 @@ export const productService = {
     return await productsApi.getStockHistory(id, month);
   },
 
+  async getCategories() {
+    return await productsApi.getCategories();
+  },
+
   async getDependencies() {
     const supps = await suppliersApi.getAll();
     return {

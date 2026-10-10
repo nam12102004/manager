@@ -21,6 +21,7 @@ public class ProductsController : BaseApiController
         [FromQuery] int? supplierId,
         [FromQuery] string? warehouse,
         [FromQuery] string? sortBy,
+        [FromQuery] string? category,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -28,7 +29,7 @@ public class ProductsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _productService.GetPagedProductsAsync(q, supplierId, warehouse, sortBy, page.Value, pageSize, ct);
+            var paged = await _productService.GetPagedProductsAsync(q, supplierId, warehouse, sortBy, page.Value, pageSize, category, ct);
             return Success(paged);
         }
 
@@ -71,4 +72,8 @@ public class ProductsController : BaseApiController
         [FromQuery] string? month,
         CancellationToken ct)
         => Success(await _productService.GetStockHistoryAsync(id, month, ct));
+
+    [HttpGet("categories")]
+    public async Task<ActionResult<ApiResponse<List<string>>>> GetCategories(CancellationToken ct)
+        => Success(await _productService.GetCategoriesAsync(ct));
 }

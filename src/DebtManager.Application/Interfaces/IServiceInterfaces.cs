@@ -22,12 +22,13 @@ public interface IAuthService
 public interface IProductService
 {
     Task<List<ProductDto>> GetProductsAsync(string? search = null, int? supplierId = null, CancellationToken ct = default);
-    Task<ProductPagedResult> GetPagedProductsAsync(string? search = null, int? supplierId = null, string? warehouse = null, string? sortBy = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
+    Task<ProductPagedResult> GetPagedProductsAsync(string? search = null, int? supplierId = null, string? warehouse = null, string? sortBy = null, int page = 1, int pageSize = 15, string? category = null, CancellationToken ct = default);
     Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<ProductDto> CreateProductAsync(CreateProductDto dto, CancellationToken ct = default);
     Task<ProductDto> UpdateProductAsync(int id, UpdateProductDto dto, CancellationToken ct = default);
     Task<bool> AdjustStockAsync(int id, StockAdjustDto dto, CancellationToken ct = default);
     Task<List<StockHistoryDto>> GetStockHistoryAsync(int productId, string? month = null, CancellationToken ct = default);
+    Task<List<string>> GetCategoriesAsync(CancellationToken ct = default);
 }
 
 public interface ICustomerService

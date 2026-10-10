@@ -160,8 +160,8 @@ export const importService = {
 
   async getDependencies() {
     const [supps, prods, owner] = await Promise.allSettled([
-      suppliersApi.getAll(),
-      productsApi.getAll(),
+      suppliersApi.getAll({ all: true }),
+      productsApi.getAll({ all: true }),
       ownersApi.get(),
     ]);
 
