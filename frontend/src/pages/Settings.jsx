@@ -9,12 +9,16 @@ import {
   Phone,
   MapPin,
   CheckCircle,
+  FileSpreadsheet,
+  Database,
 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
+import { useExport } from '../context/ExportContext';
 import { settingService } from '../services';
 
 export default function Settings() {
   const notify = useNotification();
+  const { openExportModal } = useExport();
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -235,6 +239,37 @@ export default function Settings() {
               <div className="mono" style={{ color: 'var(--primary)', fontWeight: 600 }}>
                 {bankAccount} - {bankName}
               </div>
+            </div>
+          </div>
+
+          {/* Backup & Excel Export Card */}
+          <div className="glass-card" style={{ padding: '1.5rem' }}>
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FileSpreadsheet size={18} color="var(--success, #10b981)" />
+              <span>Sao Lưu & Xuất Dữ Liệu Excel</span>
+            </h4>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
+              Hệ thống hỗ trợ xuất ma trận doanh số, số lượng theo ngày và sao lưu dữ liệu ra file Excel chạy ngầm.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => openExportModal({ tab: 'matrix' })}
+                style={{ fontSize: '0.8125rem', padding: '6px 12px', gap: '6px' }}
+              >
+                <FileSpreadsheet size={15} />
+                <span>Xuất Ma Trận Ngày</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => openExportModal({ tab: 'full_db' })}
+                style={{ fontSize: '0.8125rem', padding: '6px 12px', gap: '6px' }}
+              >
+                <Database size={15} />
+                <span>Sao Lưu Dữ Liệu</span>
+              </button>
             </div>
           </div>
 

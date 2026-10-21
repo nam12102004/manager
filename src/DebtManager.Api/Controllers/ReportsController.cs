@@ -26,4 +26,13 @@ public class ReportsController : BaseApiController
         [FromQuery] string? month,
         CancellationToken ct)
         => Success(await _reportService.GetDebtReportAsync(month, ct));
+
+    [HttpGet("warehouse-sales")]
+    public async Task<ActionResult<ApiResponse<WarehouseSalesResponseDto>>> GetWarehouseSales(
+        [FromQuery] string? warehouse,
+        [FromQuery] string? month,
+        [FromQuery] string? type,
+        [FromQuery] string? sortBy,
+        CancellationToken ct)
+        => Success(await _reportService.GetWarehouseSalesAsync(warehouse, month, type, sortBy, ct));
 }

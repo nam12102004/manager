@@ -14,9 +14,11 @@ import {
   AlertCircle,
   Package,
   Filter,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { useNotification } from '../context/NotificationContext';
+import { useExport } from '../context/ExportContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
@@ -25,10 +27,13 @@ import TimeFilter from '../components/common/TimeFilter';
 import Pagination from '../components/common/Pagination';
 import { exportService, warehouseService, getProductStockForWarehouse } from '../services';
 import { generateExportHtml, printInNewTab } from '../utils/printVoucher';
+import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
 
 export default function Exports({ initialOpenCreate = false }) {
   const notify = useNotification();
+  const { openExportModal } = useExport();
 
+  const [ledgerCustomer, setLedgerCustomer] = useState(null);
   const [exportsList, setExportsList] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -42,8 +47,9 @@ export default function Exports({ initialOpenCreate = false }) {
   const [totalCount, setTotalCount] = useState(0);
   const isFirstFilterChange = React.useRef(true);
 
-  // Time & Customer Filters
+  // Time & Customer & Warehouse Filters
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState('');
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
   const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
@@ -78,6 +84,7 @@ export default function Exports({ initialOpenCreate = false }) {
         page,
         pageSize: 15,
         customerId: selectedCustomerId ? Number(selectedCustomerId) : null,
+        warehouse: selectedWarehouse || undefined,
       };
 
       if (timeMode === 'month') {
@@ -105,7 +112,7 @@ export default function Exports({ initialOpenCreate = false }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, selectedCustomerId, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
+  }, [currentPage, selectedCustomerId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
 
   // Load Customers & Products & Owner via exportService
   const loadDependencies = async () => {
@@ -139,7 +146,7 @@ export default function Exports({ initialOpenCreate = false }) {
     } else {
       setCurrentPage(1);
     }
-  }, [selectedCustomerId, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+  }, [selectedCustomerId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
     loadDependencies();
@@ -318,6 +325,20 @@ export default function Exports({ initialOpenCreate = false }) {
           </p>
         </div>
         <div className="page-actions">
+          <button
+            className="btn btn-outline"
+            onClick={() =>
+              openExportModal({
+                tab: 'matrix',
+                customerId: selectedCustomerId,
+                month: timeMode === 'month' ? selectedMonth : null,
+              })
+            }
+            style={{ gap: '6px' }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Xuất Excel Ma Trận</span>
+          </button>
           <button className="btn btn-outline" onClick={loadExports} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Tải lại</span>
@@ -331,7 +352,7 @@ export default function Exports({ initialOpenCreate = false }) {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div style={{ minWidth: '260px' }}>
+        <div style={{ minWidth: '240px' }}>
           <SearchableSelect
             options={customers.map((c) => ({
               id: c.id,
@@ -347,6 +368,22 @@ export default function Exports({ initialOpenCreate = false }) {
             searchPlaceholder="Tìm theo tên, mã KH, SĐT..."
             searchFields={['label', 'code', 'phone']}
           />
+        </div>
+
+        <div style={{ minWidth: '180px' }}>
+          <select
+            className="form-control"
+            value={selectedWarehouse}
+            onChange={(e) => setSelectedWarehouse(e.target.value)}
+            style={{ height: '38px', fontSize: '0.875rem' }}
+          >
+            <option value="">-- Tất cả kho --</option>
+            {warehouses.map((wh) => (
+              <option key={wh.id} value={wh.id}>
+                {wh.name || wh.shortName || wh.id}
+              </option>
+            ))}
+          </select>
         </div>
 
         <TimeFilter
@@ -407,7 +444,20 @@ export default function Exports({ initialOpenCreate = false }) {
                     {exp.voucherNumber}
                   </td>
                   <td style={{ fontSize: '0.8125rem' }}>{formatDate(exp.createdAt || exp.date, true)}</td>
-                  <td style={{ fontWeight: 600 }}>{exp.customerName}</td>
+                  <td
+                    style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                    title="Bấm để xem sổ chi tiết Nhập / Xuất / Thu / Chi của khách hàng này"
+                    onClick={() => {
+                      const c = customers.find((x) => x.id === exp.customerId);
+                      setLedgerCustomer({
+                        id: exp.customerId,
+                        name: exp.customerName,
+                        code: c?.code || `KH_${exp.customerId}`,
+                      });
+                    }}
+                  >
+                    {exp.customerName}
+                  </td>
                   <td>
                     <span className="badge badge-neutral">{warehouseService.getWarehouseName(exp.warehouse, warehouses)}</span>
                   </td>
@@ -828,6 +878,7 @@ export default function Exports({ initialOpenCreate = false }) {
                   <tr>
                     <th>STT</th>
                     <th>Tên Hàng Hóa</th>
+                    <th style={{ textAlign: 'center' }}>ĐVT</th>
                     <th style={{ textAlign: 'right' }}>Số Lượng</th>
                     <th style={{ textAlign: 'right' }}>Đơn Giá</th>
                     <th style={{ textAlign: 'right' }}>Thành Tiền</th>
@@ -840,6 +891,9 @@ export default function Exports({ initialOpenCreate = false }) {
                       <td>
                         <strong>{it.productName || it.sku}</strong>
                         {it.sku && <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '6px' }}>({it.sku})</span>}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="badge badge-neutral">{it.uom || '—'}</span>
                       </td>
                       <td style={{ textAlign: 'right' }} className="mono">{formatNumber(it.quantity)}</td>
                       <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.salePrice)}</td>
@@ -870,9 +924,24 @@ export default function Exports({ initialOpenCreate = false }) {
                   <span className="mono">{formatVND(selectedExport.paidAmount)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 700, color: selectedExport.unpaidAmount > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
-                  <span>Còn nợ lại:</span>
+                  <span>Còn nợ lại đơn này:</span>
                   <span className="mono">{formatVND(selectedExport.unpaidAmount)}</span>
                 </div>
+                {(() => {
+                  const cust = customers.find((c) => c.id === selectedExport.customerId || c.name === selectedExport.customerName);
+                  const rawDebt = cust?.debt != null ? Number(cust.debt) : (selectedExport.customerDebt != null ? Number(selectedExport.customerDebt) : null);
+                  if (rawDebt == null) return null;
+                  const isNeg = rawDebt < 0;
+                  const label = isNeg ? 'Tổng công nợ còn lại:' : 'Công nợ còn lại của quý khách:';
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 700, borderTop: '1px dashed var(--border-color)', paddingTop: '0.4rem', marginTop: '0.2rem' }}>
+                      <span>{label}</span>
+                      <span className="mono" style={{ color: isNeg ? 'var(--info)' : (rawDebt > 0 ? 'var(--danger)' : 'var(--text-muted)') }}>
+                        {formatVND(rawDebt)}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -890,6 +959,18 @@ export default function Exports({ initialOpenCreate = false }) {
         isDanger={true}
         isLoading={submitting}
       />
+
+      {/* Sổ Chi Tiết Nhập / Xuất / Thu / Chi Khách Hàng (Modal) */}
+      {ledgerCustomer && (
+        <EntityTransactionLedger
+          entityType="customer"
+          entityId={ledgerCustomer.id}
+          entityName={ledgerCustomer.name}
+          entityCode={ledgerCustomer.code}
+          asModal={true}
+          onClose={() => setLedgerCustomer(null)}
+        />
+      )}
     </div>
   );
 }

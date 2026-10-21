@@ -46,12 +46,38 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
   const paidAmount = Number(exportData.paidAmount || 0);
   const unpaidThisOrder = Number(exportData.unpaidAmount || (totalSale - paidAmount));
   
-  // Calculate old debt and new total debt
-  const currentTotalDebt = customer?.debt != null ? Number(customer.debt) : unpaidThisOrder;
-  const oldDebt = currentTotalDebt - unpaidThisOrder;
-  const finalTotalDebt = currentTotalDebt;
+  // Tính công nợ còn lại của khách hàng:
+  // - Nếu công nợ >= 0 (khách nợ hoặc hết nợ): nhãn "Công nợ còn lại của quý khách:"
+  // - Nếu công nợ < 0 (công nợ âm - cty nợ khách): nhãn "Tổng công nợ còn lại:"
+  let debtLabel = 'Công nợ còn lại của quý khách:';
+  let debtDisplay = '0 ₫';
 
-  const totalInWords = numberToWordsVN(finalTotalDebt > 0 ? finalTotalDebt : totalSale);
+  const rawDebt = customer?.debt != null
+    ? Number(customer.debt)
+    : (exportData.customerDebt != null ? Number(exportData.customerDebt) : null);
+
+  if (rawDebt != null) {
+    if (rawDebt < 0) {
+      debtLabel = 'Tổng công nợ còn lại:';
+      debtDisplay = formatVND(rawDebt);
+    } else if (rawDebt > 0) {
+      debtLabel = 'Công nợ còn lại của quý khách:';
+      debtDisplay = formatVND(rawDebt);
+    } else {
+      debtLabel = 'Công nợ còn lại của quý khách:';
+      debtDisplay = '0 ₫';
+    }
+  } else {
+    if (unpaidThisOrder < 0) {
+      debtLabel = 'Tổng công nợ còn lại:';
+      debtDisplay = formatVND(unpaidThisOrder);
+    } else {
+      debtLabel = 'Công nợ còn lại của quý khách:';
+      debtDisplay = formatVND(unpaidThisOrder);
+    }
+  }
+
+  const totalInWords = numberToWordsVN(totalSale);
 
   const items = exportData.items || [];
 
@@ -289,6 +315,11 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
       <div class="summary-row">
         <span>Tiền khách thanh toán ngay:</span>
         <span>${formatVND(paidAmount)}</span>
+      </div>
+
+      <div class="summary-row total-debt-row">
+        <span><strong>${debtLabel}</strong></span>
+        <span><strong>${debtDisplay}</strong></span>
       </div>
 
       <div style="font-style: italic; margin-top: 3px; font-size: 11pt;">

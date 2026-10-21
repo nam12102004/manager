@@ -161,6 +161,10 @@ export const productService = {
     return await productsApi.getCategories();
   },
 
+  async getLedger(id, params = {}) {
+    return await productsApi.getLedger(id, params);
+  },
+
   async getDependencies() {
     const supps = await suppliersApi.getAll();
     return {

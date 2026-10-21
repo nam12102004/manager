@@ -22,6 +22,8 @@ public class ProductsController : BaseApiController
         [FromQuery] string? warehouse,
         [FromQuery] string? sortBy,
         [FromQuery] string? category,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -29,7 +31,7 @@ public class ProductsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _productService.GetPagedProductsAsync(q, supplierId, warehouse, sortBy, page.Value, pageSize, category, ct);
+            var paged = await _productService.GetPagedProductsAsync(q, supplierId, warehouse, sortBy, page.Value, pageSize, category, fromDate, toDate, ct);
             return Success(paged);
         }
 
@@ -76,4 +78,12 @@ public class ProductsController : BaseApiController
     [HttpGet("categories")]
     public async Task<ActionResult<ApiResponse<List<string>>>> GetCategories(CancellationToken ct)
         => Success(await _productService.GetCategoriesAsync(ct));
+
+    [HttpGet("{id:int}/ledger")]
+    public async Task<ActionResult<ApiResponse<DebtManager.Application.DTOs.Common.EntityLedgerResponseDto>>> GetLedger(
+        int id,
+        [FromQuery] string? warehouse,
+        [FromQuery] string? month,
+        CancellationToken ct)
+        => Success(await _productService.GetLedgerAsync(id, warehouse, month, ct));
 }

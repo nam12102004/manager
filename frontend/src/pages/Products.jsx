@@ -27,6 +27,9 @@ import {
   DollarSign,
   X,
   Trash2,
+  BarChart2,
+  ReceiptText,
+  Truck,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { STOCK_ADJUST_REASONS } from '../utils/constants';
@@ -41,6 +44,9 @@ import SearchableSelect from '../components/common/SearchableSelect';
 import SortDropdown from '../components/common/SortDropdown';
 import ConfirmModal from '../components/common/ConfirmModal';
 import Pagination from '../components/common/Pagination';
+import WarehouseSalesTab from '../components/warehouse/WarehouseSalesTab';
+import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
+import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
 import { productService, warehouseService } from '../services';
 
 const PRODUCT_SORT_OPTIONS = [
@@ -84,8 +90,16 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const [selectedCategory, setSelectedCategory] = useState('ALL'); // 'ALL' | 'NONE' | category name
   const [categories, setCategories] = useState([]);
   const [categoryCounts, setCategoryCounts] = useState({});
+  const [supplierCounts, setSupplierCounts] = useState({});
   const categoryTabsRef = React.useRef(null);
+  const supplierTabsRef = React.useRef(null);
+  const isFirstTimeChange = React.useRef(true);
   const [sortBy, setSortBy] = useState('default');
+  const [warehouseViewMode, setWarehouseViewMode] = useState('inventory'); // 'inventory' | 'sales'
+  const [ledgerProduct, setLedgerProduct] = useState(null);
+  const [visibleMetrics, setVisibleMetrics] = useState(() =>
+    loadSavedMetrics('dm_product_metrics_v3')
+  );
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -191,14 +205,24 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const loadProducts = React.useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
+      const timeParams = getMetricTimeParams(visibleMetrics);
+      const parsedSupplierId =
+        selectedSupplierId === 'NONE'
+          ? -1
+          : selectedSupplierId
+          ? Number(selectedSupplierId)
+          : undefined;
+
       const res = await productService.getAll({
         page,
         pageSize: 15,
         q: searchQuery || undefined,
-        supplierId: selectedSupplierId ? Number(selectedSupplierId) : undefined,
+        supplierId: parsedSupplierId,
         warehouse: selectedWarehouse,
         sortBy: sortBy !== 'default' ? sortBy : undefined,
         category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+        fromDate: timeParams.fromDate,
+        toDate: timeParams.toDate,
       });
 
       if (res && res.items) {
@@ -207,6 +231,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         setTotalPages(res.totalPages || 1);
         setTotalCount(res.totalCount || 0);
         setCategoryCounts(res.categoryCounts || {});
+        setSupplierCounts(res.supplierCounts || {});
         setServerSummary({
           totalStockQty: res.totalStockQty || 0,
           totalCostVal: res.totalCostVal || 0,
@@ -223,12 +248,21 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedSupplierId, selectedWarehouse, sortBy, selectedCategory, notify]);
+  }, [currentPage, searchQuery, selectedSupplierId, selectedWarehouse, sortBy, selectedCategory, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, notify]);
 
   // Initial & page change load
   useEffect(() => {
     loadProducts(currentPage);
   }, [currentPage]);
+
+  // Reload current page when metric time filter changes
+  useEffect(() => {
+    if (isFirstTimeChange.current) {
+      isFirstTimeChange.current = false;
+      return;
+    }
+    loadProducts(currentPage);
+  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth]);
 
   // Reset to page 1 on filters or search change
   useEffect(() => {
@@ -256,8 +290,15 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     }
   };
 
-  // Total across all categories (respecting search & supplier filters)
+  const scrollSupplierTabs = (direction) => {
+    if (supplierTabsRef.current) {
+      supplierTabsRef.current.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' });
+    }
+  };
+
+  // Total across all categories & suppliers
   const allCategoriesCount = Object.values(categoryCounts).reduce((sum, n) => sum + Number(n || 0), 0);
+  const allSuppliersCount = Object.values(supplierCounts).reduce((sum, n) => sum + Number(n || 0), 0);
 
   // Current active warehouse object if in specific warehouse mode
   const currentWarehouseObj = warehouses.find((w) => w.id === selectedWarehouse);
@@ -685,6 +726,40 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         </button>
       </div>
 
+      {/* View Mode Toggle: Tồn Kho vs Doanh Số Kho */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '1.25rem',
+        }}
+      >
+        <button
+          className={`btn ${warehouseViewMode === 'inventory' ? 'btn-primary' : 'btn-outline'}`}
+          style={{ padding: '0.45rem 1rem', fontSize: '0.875rem' }}
+          onClick={() => setWarehouseViewMode('inventory')}
+        >
+          <Boxes size={15} />
+          <span>Tồn kho hàng hóa</span>
+        </button>
+        <button
+          className={`btn ${warehouseViewMode === 'sales' ? 'btn-primary' : 'btn-outline'}`}
+          style={{ padding: '0.45rem 1rem', fontSize: '0.875rem' }}
+          onClick={() => setWarehouseViewMode('sales')}
+        >
+          <BarChart2 size={15} />
+          <span>Doanh số từng kho (Nhập / Xuất)</span>
+        </button>
+      </div>
+
+      {warehouseViewMode === 'sales' ? (
+        <WarehouseSalesTab
+          selectedWarehouse={selectedWarehouse}
+          warehouses={warehouses}
+        />
+      ) : (
+        <>
       {/* SPECIFIC WAREHOUSE MODE: Banner Alert */}
       {!isOverview && currentWarehouseObj && (
         <div
@@ -810,6 +885,16 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
           style={{ minWidth: '240px' }}
         />
 
+        <WarehouseMetricCheckboxes
+          warehouses={warehouses}
+          activeWarehouse={isOverview ? null : currentWarehouseObj}
+          visibleMetrics={visibleMetrics}
+          onChange={setVisibleMetrics}
+          showCashBook={true}
+          primaryDirection="export"
+          storageKey="dm_product_metrics_v3"
+        />
+
         {(searchQuery || selectedSupplierId || sortBy !== 'default' || selectedCategory !== 'ALL') && (
           <button
             className="btn btn-outline btn-sm"
@@ -826,6 +911,214 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             <span>Xóa lọc</span>
           </button>
         )}
+      </div>
+
+      {/* Horizontal Supplier (NCC) Filter Strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: '#f8fafc',
+          border: '1px solid var(--border-color, #e2e8f0)',
+          borderBottom: 'none',
+          borderRadius: 'var(--radius, 8px) var(--radius, 8px) 0 0',
+          marginBottom: 0,
+          position: 'relative',
+          userSelect: 'none',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '0.55rem 0.75rem',
+            color: '#0f172a',
+            fontWeight: 700,
+            fontSize: '0.78rem',
+            borderRight: '1px solid var(--border-color, #e2e8f0)',
+            backgroundColor: '#ffffff',
+            flexShrink: 0,
+          }}
+          title="Lọc ngang theo Nhà cung cấp (NCC)"
+        >
+          <Truck size={15} color="#2563eb" />
+          <span>NCC:</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => scrollSupplierTabs('left')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '100%',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-muted, #64748b)',
+            padding: '0 4px',
+            flexShrink: 0,
+          }}
+          title="Cuộn sang trái"
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        <div
+          ref={supplierTabsRef}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            scrollbarWidth: 'thin',
+            WebkitOverflowScrolling: 'touch',
+            flex: 1,
+            gap: '2px',
+          }}
+          onWheel={(e) => {
+            if (supplierTabsRef.current && e.deltaY !== 0) {
+              supplierTabsRef.current.scrollLeft += e.deltaY;
+            }
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedSupplierId('')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '0.55rem 0.9rem',
+              fontSize: '0.84rem',
+              fontWeight: !selectedSupplierId ? 700 : 500,
+              color: !selectedSupplierId ? '#0f172a' : '#475569',
+              backgroundColor: !selectedSupplierId ? '#ffffff' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              borderBottom: !selectedSupplierId ? '3px solid #2563eb' : '3px solid transparent',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+            }}
+          >
+            <span>Tất cả NCC</span>
+            <span
+              style={{
+                fontSize: '0.72rem',
+                padding: '1px 6px',
+                borderRadius: '10px',
+                backgroundColor: !selectedSupplierId ? '#dbeafe' : '#e2e8f0',
+                color: !selectedSupplierId ? '#1e40af' : '#475569',
+                fontWeight: 600,
+              }}
+            >
+              {allSuppliersCount || totalCount}
+            </span>
+          </button>
+
+          {suppliers.map((sup) => {
+            const supKey = String(sup.id);
+            const isSelected = String(selectedSupplierId) === supKey;
+            const count = supplierCounts[supKey] || 0;
+            return (
+              <button
+                key={sup.id}
+                type="button"
+                onClick={() => setSelectedSupplierId(sup.id)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '0.55rem 0.9rem',
+                  fontSize: '0.84rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  color: isSelected ? '#0f172a' : '#475569',
+                  backgroundColor: isSelected ? '#ffffff' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderBottom: isSelected ? '3px solid #2563eb' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
+              >
+                <span>{sup.name}</span>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    backgroundColor: isSelected ? '#dbeafe' : '#e2e8f0',
+                    color: isSelected ? '#1e40af' : '#475569',
+                    fontWeight: 600,
+                  }}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+
+          {(supplierCounts.NONE || 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedSupplierId('NONE')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.55rem 0.9rem',
+                fontSize: '0.84rem',
+                fontWeight: selectedSupplierId === 'NONE' ? 700 : 500,
+                color: selectedSupplierId === 'NONE' ? '#0f172a' : '#64748b',
+                backgroundColor: selectedSupplierId === 'NONE' ? '#ffffff' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderBottom: selectedSupplierId === 'NONE' ? '3px solid #2563eb' : '3px solid transparent',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+                fontStyle: 'italic',
+              }}
+            >
+              <span>Chưa gán NCC</span>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: selectedSupplierId === 'NONE' ? '#dbeafe' : '#e2e8f0',
+                  color: selectedSupplierId === 'NONE' ? '#1e40af' : '#475569',
+                  fontWeight: 600,
+                }}
+              >
+                {supplierCounts.NONE}
+              </span>
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => scrollSupplierTabs('right')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '100%',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-muted, #64748b)',
+            padding: '0 4px',
+            flexShrink: 0,
+          }}
+          title="Cuộn sang phải"
+        >
+          <ChevronRight size={16} />
+        </button>
       </div>
 
       {/* Category Tabs Strip (Excel-like Sheet Tabs Bar, same style as Customers region tabs) */}
@@ -892,7 +1185,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               alignItems: 'center',
               backgroundColor: '#f8fafc',
               border: '1px solid var(--border-color, #e2e8f0)',
-              borderRadius: 'var(--radius, 8px) var(--radius, 8px) 0 0',
+              borderRadius: '0',
               marginBottom: 0,
               position: 'relative',
               userSelect: 'none',
@@ -902,16 +1195,19 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: '5px',
                 padding: '0.6rem 0.75rem',
                 color: 'var(--text-muted, #64748b)',
+                fontWeight: 700,
+                fontSize: '0.78rem',
                 borderRight: '1px solid var(--border-color, #e2e8f0)',
                 backgroundColor: '#ffffff',
                 flexShrink: 0,
               }}
               title="Danh mục sản phẩm"
             >
-              <Menu size={16} />
+              <Menu size={15} />
+              <span>Loại:</span>
             </div>
 
             <button type="button" onClick={() => scrollCategoryTabs('left')} style={scrollBtnStyle} title="Cuộn sang trái">
@@ -984,6 +1280,75 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                     <th style={{ textAlign: 'center' }}>Trạng Thái Kho Này</th>
                   </>
                 )}
+
+                {isOverview ? (
+                  <>
+                    {/* Cột Xuất theo từng kho & Tổng */}
+                    {warehouses.map((wh) => (
+                      visibleMetrics.exportWarehouses?.[wh.id] ? (
+                        <th key={`th-prod-exp-${wh.id}`} style={{ textAlign: 'right', color: '#ea580c' }}>
+                          Xuất {wh.shortName || wh.name}
+                        </th>
+                      ) : null
+                    ))}
+                    {visibleMetrics.exportTotal && (
+                      <th style={{ textAlign: 'right', color: '#ea580c', fontWeight: 800 }}>
+                        Tổng Xuất
+                      </th>
+                    )}
+
+                    {/* Cột Nhập theo từng kho & Tổng */}
+                    {warehouses.map((wh) => (
+                      visibleMetrics.importWarehouses?.[wh.id] ? (
+                        <th key={`th-prod-imp-${wh.id}`} style={{ textAlign: 'right', color: '#1d4ed8' }}>
+                          Nhập {wh.shortName || wh.name}
+                        </th>
+                      ) : null
+                    ))}
+                    {visibleMetrics.importTotal && (
+                      <th style={{ textAlign: 'right', color: '#1d4ed8', fontWeight: 800 }}>
+                        Tổng Nhập
+                      </th>
+                    )}
+
+                    {visibleMetrics.receipt && (
+                      <th style={{ textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>
+                        Đã Thu
+                      </th>
+                    )}
+                    {visibleMetrics.payment && (
+                      <th style={{ textAlign: 'right', color: '#dc2626', fontWeight: 800 }}>
+                        Đã Chi
+                      </th>
+                    )}
+                  </>
+                ) : (
+                  currentWarehouseObj && (
+                    <>
+                      {(visibleMetrics.exportWarehouses?.[currentWarehouseObj.id] || visibleMetrics.exportTotal) && (
+                        <th style={{ textAlign: 'right', color: '#ea580c', fontWeight: 800 }}>
+                          Xuất {currentWarehouseObj.shortName || currentWarehouseObj.name}
+                        </th>
+                      )}
+                      {(visibleMetrics.importWarehouses?.[currentWarehouseObj.id] || visibleMetrics.importTotal) && (
+                        <th style={{ textAlign: 'right', color: '#1d4ed8', fontWeight: 800 }}>
+                          Nhập {currentWarehouseObj.shortName || currentWarehouseObj.name}
+                        </th>
+                      )}
+                      {visibleMetrics.receipt && (
+                        <th style={{ textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>
+                          Đã Thu ({currentWarehouseObj.shortName || currentWarehouseObj.name})
+                        </th>
+                      )}
+                      {visibleMetrics.payment && (
+                        <th style={{ textAlign: 'right', color: '#dc2626', fontWeight: 800 }}>
+                          Đã Chi ({currentWarehouseObj.shortName || currentWarehouseObj.name})
+                        </th>
+                      )}
+                    </>
+                  )
+                )}
+
                 <th style={{ textAlign: 'right' }}>Giá Vốn</th>
                 <th style={{ textAlign: 'right' }}>Giá Sỉ</th>
                 <th style={{ textAlign: 'right' }}>Giá Lẻ</th>
@@ -993,9 +1358,21 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             <tbody>
               {sortedAndDisplayedProducts.map((p) => {
                 const whStock = !isOverview && currentWarehouseObj ? getProductStockForWarehouse(p, currentWarehouseObj.id) : 0;
+                const activeWhMetric = !isOverview && currentWarehouseObj
+                  ? (p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()])
+                  : null;
 
                 return (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    onClick={() => setLedgerProduct(ledgerProduct?.id === p.id ? null : p)}
+                    style={{
+                      cursor: 'pointer',
+                      backgroundColor: ledgerProduct?.id === p.id ? 'rgba(37, 99, 235, 0.08)' : undefined,
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    title="Bấm vào để xem sổ chi tiết Nhập / Xuất / Thu / Chi"
+                  >
                     <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
                       {p.sku}
                     </td>
@@ -1037,6 +1414,127 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                       </>
                     )}
 
+                    {isOverview ? (
+                      <>
+                        {/* Cột Xuất theo từng kho */}
+                        {warehouses.map((wh) => {
+                          if (!visibleMetrics.exportWarehouses?.[wh.id]) return null;
+                          const metric = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
+                          const exportQty = metric?.exportQty || 0;
+                          const exportAmount = metric?.exportAmount || 0;
+                          return (
+                            <td key={`td-prod-exp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                              <div style={{ fontWeight: 700, color: exportQty > 0 ? '#ea580c' : 'var(--text-muted)' }}>
+                                SL: {formatNumber(exportQty)} {p.uom || ''}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: exportAmount > 0 ? '#c2410c' : 'var(--text-muted)' }}>
+                                {formatVND(exportAmount)}
+                              </div>
+                            </td>
+                          );
+                        })}
+
+                        {/* Tổng Xuất */}
+                        {visibleMetrics.exportTotal && (
+                          <td style={{ textAlign: 'right' }} className="mono">
+                            <div style={{ fontWeight: 800, color: (p.totalExportQty || 0) > 0 ? '#ea580c' : 'var(--text-muted)' }}>
+                              SL: {formatNumber(p.totalExportQty || 0)} {p.uom || ''}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: (p.totalExportAmount || 0) > 0 ? '#c2410c' : 'var(--text-muted)' }}>
+                              {formatVND(p.totalExportAmount || 0)}
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Cột Nhập theo từng kho */}
+                        {warehouses.map((wh) => {
+                          if (!visibleMetrics.importWarehouses?.[wh.id]) return null;
+                          const metric = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
+                          const importQty = metric?.importQty || 0;
+                          const importAmount = metric?.importAmount || 0;
+                          return (
+                            <td key={`td-prod-imp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                              <div style={{ fontWeight: 700, color: importQty > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
+                                SL: {formatNumber(importQty)} {p.uom || ''}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: importAmount > 0 ? '#1e40af' : 'var(--text-muted)' }}>
+                                {formatVND(importAmount)}
+                              </div>
+                            </td>
+                          );
+                        })}
+
+                        {/* Tổng Nhập */}
+                        {visibleMetrics.importTotal && (
+                          <td style={{ textAlign: 'right' }} className="mono">
+                            <div style={{ fontWeight: 800, color: (p.totalImportQty || 0) > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
+                              SL: {formatNumber(p.totalImportQty || 0)} {p.uom || ''}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: (p.totalImportAmount || 0) > 0 ? '#1e40af' : 'var(--text-muted)' }}>
+                              {formatVND(p.totalImportAmount || 0)}
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Đã Thu (Tổng) */}
+                        {visibleMetrics.receipt && (
+                          <td style={{ textAlign: 'right' }} className="mono">
+                            <span style={{ fontWeight: 700, color: (p.totalReceiptAmount || 0) > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                              {formatVND(p.totalReceiptAmount || 0)}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* Đã Chi (Tổng) */}
+                        {visibleMetrics.payment && (
+                          <td style={{ textAlign: 'right' }} className="mono">
+                            <span style={{ fontWeight: 700, color: (p.totalPaymentAmount || 0) > 0 ? '#dc2626' : 'var(--text-muted)' }}>
+                              {formatVND(p.totalPaymentAmount || 0)}
+                            </span>
+                          </td>
+                        )}
+                      </>
+                    ) : (
+                      currentWarehouseObj && (
+                        <>
+                          {(visibleMetrics.exportWarehouses?.[currentWarehouseObj.id] || visibleMetrics.exportTotal) && (
+                            <td style={{ textAlign: 'right' }} className="mono">
+                              <div style={{ fontWeight: 800, color: (activeWhMetric?.exportQty || 0) > 0 ? '#ea580c' : 'var(--text-muted)' }}>
+                                SL: {formatNumber(activeWhMetric?.exportQty || 0)} {p.uom || ''}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: (activeWhMetric?.exportAmount || 0) > 0 ? '#c2410c' : 'var(--text-muted)' }}>
+                                {formatVND(activeWhMetric?.exportAmount || 0)}
+                              </div>
+                            </td>
+                          )}
+                          {(visibleMetrics.importWarehouses?.[currentWarehouseObj.id] || visibleMetrics.importTotal) && (
+                            <td style={{ textAlign: 'right' }} className="mono">
+                              <div style={{ fontWeight: 800, color: (activeWhMetric?.importQty || 0) > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
+                                SL: {formatNumber(activeWhMetric?.importQty || 0)} {p.uom || ''}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: (activeWhMetric?.importAmount || 0) > 0 ? '#1e40af' : 'var(--text-muted)' }}>
+                                {formatVND(activeWhMetric?.importAmount || 0)}
+                              </div>
+                            </td>
+                          )}
+                          {visibleMetrics.receipt && (
+                            <td style={{ textAlign: 'right' }} className="mono">
+                              <span style={{ fontWeight: 700, color: (activeWhMetric?.receiptAmount || 0) > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                                {formatVND(activeWhMetric?.receiptAmount || 0)}
+                              </span>
+                            </td>
+                          )}
+                          {visibleMetrics.payment && (
+                            <td style={{ textAlign: 'right' }} className="mono">
+                              <span style={{ fontWeight: 700, color: (activeWhMetric?.paymentAmount || 0) > 0 ? '#dc2626' : 'var(--text-muted)' }}>
+                                {formatVND(activeWhMetric?.paymentAmount || 0)}
+                              </span>
+                            </td>
+                          )}
+                        </>
+                      )
+                    )}
+
                     <td style={{ textAlign: 'right' }} className="mono">
                       {formatVND(p.unitCost)}
                     </td>
@@ -1047,7 +1545,15 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                       {formatVND(p.retailPrice)}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.35rem' }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="btn btn-outline btn-icon"
+                          style={{ width: '32px', height: '32px', color: '#2563eb', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}
+                          title="Xem sổ chi tiết Nhập / Xuất / Thu / Chi (4 cột)"
+                          onClick={() => setLedgerProduct(p)}
+                        >
+                          <ReceiptText size={15} />
+                        </button>
                         <button
                           className="btn btn-outline btn-icon"
                           style={{ width: '32px', height: '32px' }}
@@ -1090,6 +1596,152 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                     </span>
                   </td>
                   {!isOverview && <td style={{ textAlign: 'center' }}>-</td>}
+
+                  {isOverview ? (
+                    <>
+                      {/* Cột Xuất theo từng kho (TFOOT) */}
+                      {warehouses.map((wh) => {
+                        if (!visibleMetrics.exportWarehouses?.[wh.id]) return null;
+                        const totQty = displayedProducts.reduce((sum, p) => {
+                          const m = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
+                          return sum + (Number(m?.exportQty) || 0);
+                        }, 0);
+                        const totAmt = displayedProducts.reduce((sum, p) => {
+                          const m = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
+                          return sum + (Number(m?.exportAmount) || 0);
+                        }, 0);
+                        return (
+                          <td key={`tf-prod-exp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                            <div style={{ fontWeight: 800, color: '#ea580c' }}>SL: {formatNumber(totQty)}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatVND(totAmt)}</div>
+                          </td>
+                        );
+                      })}
+
+                      {/* Tổng Xuất (TFOOT) */}
+                      {visibleMetrics.exportTotal && (
+                        <td style={{ textAlign: 'right' }} className="mono">
+                          <div style={{ fontWeight: 800, color: '#ea580c' }}>
+                            SL: {formatNumber(displayedProducts.reduce((sum, p) => sum + (Number(p.totalExportQty) || 0), 0))}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {formatVND(displayedProducts.reduce((sum, p) => sum + (Number(p.totalExportAmount) || 0), 0))}
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Cột Nhập theo từng kho (TFOOT) */}
+                      {warehouses.map((wh) => {
+                        if (!visibleMetrics.importWarehouses?.[wh.id]) return null;
+                        const totQty = displayedProducts.reduce((sum, p) => {
+                          const m = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
+                          return sum + (Number(m?.importQty) || 0);
+                        }, 0);
+                        const totAmt = displayedProducts.reduce((sum, p) => {
+                          const m = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
+                          return sum + (Number(m?.importAmount) || 0);
+                        }, 0);
+                        return (
+                          <td key={`tf-prod-imp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                            <div style={{ fontWeight: 800, color: '#1d4ed8' }}>SL: {formatNumber(totQty)}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatVND(totAmt)}</div>
+                          </td>
+                        );
+                      })}
+
+                      {/* Tổng Nhập (TFOOT) */}
+                      {visibleMetrics.importTotal && (
+                        <td style={{ textAlign: 'right' }} className="mono">
+                          <div style={{ fontWeight: 800, color: '#1d4ed8' }}>
+                            SL: {formatNumber(displayedProducts.reduce((sum, p) => sum + (Number(p.totalImportQty) || 0), 0))}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {formatVND(displayedProducts.reduce((sum, p) => sum + (Number(p.totalImportAmount) || 0), 0))}
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Đã Thu (TFOOT) */}
+                      {visibleMetrics.receipt && (
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#16a34a' }} className="mono">
+                          {formatVND(displayedProducts.reduce((sum, p) => sum + (Number(p.totalReceiptAmount) || 0), 0))}
+                        </td>
+                      )}
+
+                      {/* Đã Chi (TFOOT) */}
+                      {visibleMetrics.payment && (
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#dc2626' }} className="mono">
+                          {formatVND(displayedProducts.reduce((sum, p) => sum + (Number(p.totalPaymentAmount) || 0), 0))}
+                        </td>
+                      )}
+                    </>
+                  ) : (
+                    currentWarehouseObj && (
+                      <>
+                        {(visibleMetrics.exportWarehouses?.[currentWarehouseObj.id] || visibleMetrics.exportTotal) && (
+                          <td style={{ textAlign: 'right' }} className="mono">
+                            <div style={{ fontWeight: 800, color: '#ea580c' }}>
+                              SL: {formatNumber(
+                                displayedProducts.reduce((sum, p) => {
+                                  const m = p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()];
+                                  return sum + (Number(m?.exportQty) || 0);
+                                }, 0)
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {formatVND(
+                                displayedProducts.reduce((sum, p) => {
+                                  const m = p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()];
+                                  return sum + (Number(m?.exportAmount) || 0);
+                                }, 0)
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {(visibleMetrics.importWarehouses?.[currentWarehouseObj.id] || visibleMetrics.importTotal) && (
+                          <td style={{ textAlign: 'right' }} className="mono">
+                            <div style={{ fontWeight: 800, color: '#1d4ed8' }}>
+                              SL: {formatNumber(
+                                displayedProducts.reduce((sum, p) => {
+                                  const m = p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()];
+                                  return sum + (Number(m?.importQty) || 0);
+                                }, 0)
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {formatVND(
+                                displayedProducts.reduce((sum, p) => {
+                                  const m = p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()];
+                                  return sum + (Number(m?.importAmount) || 0);
+                                }, 0)
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {visibleMetrics.receipt && (
+                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#16a34a' }} className="mono">
+                            {formatVND(
+                              displayedProducts.reduce((sum, p) => {
+                                const m = p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()];
+                                return sum + (Number(m?.receiptAmount) || 0);
+                              }, 0)
+                            )}
+                          </td>
+                        )}
+                        {visibleMetrics.payment && (
+                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#dc2626' }} className="mono">
+                            {formatVND(
+                              displayedProducts.reduce((sum, p) => {
+                                const m = p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()];
+                                return sum + (Number(m?.paymentAmount) || 0);
+                              }, 0)
+                            )}
+                          </td>
+                        )}
+                      </>
+                    )
+                  )}
+
                   <td style={{ textAlign: 'right' }} className="mono" title="Tổng giá trị vốn = ∑(Tồn kho × Giá vốn)">
                     <span style={{ color: 'var(--primary)', fontWeight: 800 }}>{formatVND(summary.totalCostVal)}</span>
                   </td>
@@ -1107,6 +1759,18 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         </div>
       )}
 
+      {/* Modal Sổ Chi Tiết Nhập / Xuất / Thu / Chi Sản Phẩm */}
+      {ledgerProduct && (
+        <EntityTransactionLedger
+          entityType="product"
+          entityId={ledgerProduct.id}
+          entityName={ledgerProduct.name}
+          entityCode={ledgerProduct.sku}
+          asModal={true}
+          onClose={() => setLedgerProduct(null)}
+        />
+      )}
+
       {/* Pagination (15 items per page) */}
       <Pagination
         currentPage={currentPage}
@@ -1117,6 +1781,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         disabled={loading}
         itemLabel="sản phẩm"
       />
+        </>
+      )}
 
       {/* Modal Thêm Mới Sản Phẩm */}
       <Modal

@@ -153,4 +153,8 @@ export const reportService = {
   async getCashFlow(month) {
     return await reportsApi.getCashFlow(month);
   },
+
+  async getWarehouseSales(params = {}) {
+    return await reportsApi.getWarehouseSales(params);
+  },
 };

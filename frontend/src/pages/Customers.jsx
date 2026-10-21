@@ -18,10 +18,14 @@ import {
   ChevronLeft,
   ChevronRight,
   MapPinned,
+  ReceiptText,
+  FileSpreadsheet,
+  CreditCard,
 } from 'lucide-react';
 import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { DEBT_ADJUST_REASONS, PAYMENT_METHODS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
+import { useExport } from '../context/ExportContext';
 import SearchBar from '../components/common/SearchBar';
 import SearchableSelect from '../components/common/SearchableSelect';
 import SortDropdown from '../components/common/SortDropdown';
@@ -31,7 +35,9 @@ import Drawer from '../components/common/Drawer';
 import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import Pagination from '../components/common/Pagination';
-import { customerService, cashBookService, settingService } from '../services';
+import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
+import { customerService, cashBookService, settingService, warehouseService } from '../services';
+import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
 
 const CUSTOMER_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -41,6 +47,7 @@ const CUSTOMER_SORT_OPTIONS = [
 
 export default function Customers({ onQuickAction }) {
   const notify = useNotification();
+  const { openExportModal } = useExport();
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -58,12 +65,27 @@ export default function Customers({ onQuickAction }) {
   const [allRegions, setAllRegions] = useState([]);
   const isFirstFilterChange = useRef(true);
 
+  const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
+  useEffect(() => {
+    warehouseService.getWarehouses().then((res) => {
+      if (Array.isArray(res) && res.length > 0) setWarehouses(res);
+    });
+  }, []);
+
+  // Checkbox metrics visibility (saved in localStorage, default all unticked)
+  const [visibleMetrics, setVisibleMetrics] = useState(() =>
+    loadSavedMetrics('dm_customer_metrics_v3')
+  );
+
+  const [ledgerCustomer, setLedgerCustomer] = useState(null);
+
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printVoucher, setPrintVoucher] = useState(null);
   const [ownerInfo, setOwnerInfo] = useState(null);
@@ -110,6 +132,12 @@ export default function Customers({ onQuickAction }) {
     notes: '',
   });
 
+  const [paymentData, setPaymentData] = useState({
+    amount: 0,
+    method: 'cash',
+    notes: '',
+  });
+
   const [submitting, setSubmitting] = useState(false);
 
   const loadRegions = async () => {
@@ -127,12 +155,15 @@ export default function Customers({ onQuickAction }) {
   const loadCustomers = useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
+      const timeParams = getMetricTimeParams(visibleMetrics);
       const res = await customerService.getAll({
         page,
         pageSize: 15,
         q: searchQuery || undefined,
         region: selectedRegion !== 'ALL' ? selectedRegion : undefined,
         sortBy: sortBy !== 'default' ? sortBy : undefined,
+        fromDate: timeParams.fromDate,
+        toDate: timeParams.toDate,
       });
 
       if (res && res.items) {
@@ -152,7 +183,7 @@ export default function Customers({ onQuickAction }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedRegion, sortBy, notify]);
+  }, [currentPage, searchQuery, selectedRegion, sortBy, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, notify]);
 
   // Initial load
   useEffect(() => {
@@ -164,6 +195,16 @@ export default function Customers({ onQuickAction }) {
   useEffect(() => {
     loadCustomers(currentPage);
   }, [currentPage]);
+
+  // Reload current page when metric time filter changes
+  const isFirstTimeChange = useRef(true);
+  useEffect(() => {
+    if (isFirstTimeChange.current) {
+      isFirstTimeChange.current = false;
+      return;
+    }
+    loadCustomers(currentPage);
+  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth]);
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
@@ -251,6 +292,17 @@ export default function Customers({ onQuickAction }) {
       notes: `Thu tiền công nợ khách hàng: ${customer.name}`,
     });
     setIsReceiptOpen(true);
+  };
+
+  // Open Quick Payment (Chi hoàn trả / trả tiền cọc cho khách hàng)
+  const handleOpenPayment = (customer) => {
+    setSelectedCustomer(customer);
+    setPaymentData({
+      amount: customer.debt < 0 ? Math.abs(customer.debt) : 0,
+      method: 'cash',
+      notes: `Chi tiền hoàn trả cho khách hàng: ${customer.name}`,
+    });
+    setIsPaymentOpen(true);
   };
 
   // Submit Create via customerService
@@ -352,6 +404,47 @@ export default function Customers({ onQuickAction }) {
     }
   };
 
+  // Submit Quick Payment via cashBookService (Chi hoàn tiền cho KH)
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    if (Number(paymentData.amount || 0) <= 0) {
+      notify.error('Số tiền chi phải lớn hơn 0');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const created = await cashBookService.createPayment({
+        partnerType: 'customer',
+        partnerId: selectedCustomer.id,
+        customerId: selectedCustomer.id,
+        amount: Number(paymentData.amount),
+        method: paymentData.method,
+        notes: paymentData.notes,
+        date: new Date().toISOString(),
+      });
+      notify.success('Lập phiếu chi tiền cho KH thành công!');
+      setIsPaymentOpen(false);
+      loadCustomers();
+
+      if (created) {
+        setPrintVoucher({
+          voucher: {
+            ...created,
+            customerName: selectedCustomer.name,
+            customerAddress: parseJsonList(selectedCustomer.addressesJson),
+          },
+          type: 'payment',
+        });
+        setIsPrintModalOpen(true);
+      }
+    } catch (err) {
+      notify.error(err.message || 'Lập phiếu chi thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   const scrollTabs = (direction) => {
     if (regionTabsRef.current) {
@@ -374,6 +467,14 @@ export default function Customers({ onQuickAction }) {
           </p>
         </div>
         <div className="page-actions">
+          <button
+            className="btn btn-outline"
+            onClick={() => openExportModal({ tab: 'matrix', partnerType: 'customer' })}
+            style={{ gap: '6px' }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Xuất Excel</span>
+          </button>
           <button className="btn btn-outline" onClick={loadCustomers} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Tải lại</span>
@@ -399,6 +500,16 @@ export default function Customers({ onQuickAction }) {
           onChange={setSortBy}
           options={CUSTOMER_SORT_OPTIONS}
           style={{ minWidth: '240px' }}
+        />
+
+        {/* Metric Checkboxes */}
+        <WarehouseMetricCheckboxes
+          warehouses={warehouses}
+          visibleMetrics={visibleMetrics}
+          onChange={setVisibleMetrics}
+          showCashBook={true}
+          primaryDirection="export"
+          storageKey="dm_customer_metrics_v3"
         />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
@@ -661,6 +772,36 @@ export default function Customers({ onQuickAction }) {
                 <th>Khu Vực</th>
                 <th>Số Điện Thoại</th>
                 <th>Địa Chỉ</th>
+                {/* Cột Xuất theo từng kho & Tổng */}
+                {warehouses.map((wh) => (
+                  visibleMetrics.exportWarehouses?.[wh.id] ? (
+                    <th key={`th-exp-${wh.id}`} style={{ textAlign: 'right', color: '#ea580c' }}>
+                      Xuất {wh.shortName || wh.name}
+                    </th>
+                  ) : null
+                ))}
+                {visibleMetrics.exportTotal && (
+                  <th style={{ textAlign: 'right', color: '#ea580c', fontWeight: 800 }}>
+                    Tổng Xuất
+                  </th>
+                )}
+
+                {/* Cột Nhập theo từng kho & Tổng */}
+                {warehouses.map((wh) => (
+                  visibleMetrics.importWarehouses?.[wh.id] ? (
+                    <th key={`th-imp-${wh.id}`} style={{ textAlign: 'right', color: '#1d4ed8' }}>
+                      Nhập {wh.shortName || wh.name}
+                    </th>
+                  ) : null
+                ))}
+                {visibleMetrics.importTotal && (
+                  <th style={{ textAlign: 'right', color: '#1d4ed8', fontWeight: 800 }}>
+                    Tổng Nhập
+                  </th>
+                )}
+
+                {visibleMetrics.receipt && <th style={{ textAlign: 'right', color: '#16a34a' }}>Đã Thu</th>}
+                {visibleMetrics.payment && <th style={{ textAlign: 'right', color: '#dc2626' }}>Đã Chi</th>}
                 <th style={{ textAlign: 'right' }}>Phải Thu</th>
                 <th style={{ textAlign: 'right' }}>Phải Trả</th>
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
@@ -668,8 +809,18 @@ export default function Customers({ onQuickAction }) {
             </thead>
             <tbody>
               {sortedCustomers.map((c) => {
+                const isSelected = ledgerCustomer?.id === c.id;
                 return (
-                  <tr key={c.id}>
+                  <tr
+                    key={c.id}
+                    onClick={() => setLedgerCustomer(isSelected ? null : c)}
+                    style={{
+                      cursor: 'pointer',
+                      backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.08)' : undefined,
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    title="Bấm vào để xem sổ chi tiết Nhập / Xuất / Thu / Chi"
+                  >
                     <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
                       {c.code}
                     </td>
@@ -727,6 +878,77 @@ export default function Customers({ onQuickAction }) {
                         '—'
                       )}
                     </td>
+                    {/* Các cột hiển thị theo Tick Box: Xuất từng kho */}
+                    {warehouses.map((wh) => {
+                      if (!visibleMetrics.exportWarehouses?.[wh.id]) return null;
+                      const whExp = c.warehouseExports?.[wh.id] || c.warehouseExports?.[wh.id.toLowerCase()] || 0;
+                      return (
+                        <td key={`td-exp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                          {whExp > 0 ? (
+                            <span style={{ fontWeight: 700, color: '#ea580c' }}>{formatVND(whExp)}</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    {/* Tổng Xuất */}
+                    {visibleMetrics.exportTotal && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {c.totalExportAmount > 0 ? (
+                          <span style={{ fontWeight: 800, color: '#ea580c' }}>{formatVND(c.totalExportAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
+
+                    {/* Nhập từng kho */}
+                    {warehouses.map((wh) => {
+                      if (!visibleMetrics.importWarehouses?.[wh.id]) return null;
+                      const whImp = c.warehouseImports?.[wh.id] || c.warehouseImports?.[wh.id.toLowerCase()] || 0;
+                      return (
+                        <td key={`td-imp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                          {whImp > 0 ? (
+                            <span style={{ fontWeight: 700, color: '#1d4ed8' }}>{formatVND(whImp)}</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    {/* Tổng Nhập */}
+                    {visibleMetrics.importTotal && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {c.totalImportAmount > 0 ? (
+                          <span style={{ fontWeight: 800, color: '#1d4ed8' }}>{formatVND(c.totalImportAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
+
+                    {/* Sổ quỹ */}
+                    {visibleMetrics.receipt && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {c.totalReceiptAmount > 0 ? (
+                          <span style={{ fontWeight: 700, color: '#16a34a' }}>{formatVND(c.totalReceiptAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
+                    {visibleMetrics.payment && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {c.totalPaymentAmount > 0 ? (
+                          <span style={{ fontWeight: 700, color: '#dc2626' }}>{formatVND(c.totalPaymentAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
                     {/* Cột 1: Phải Thu (Khách nợ cửa hàng) */}
                     <td style={{ textAlign: 'right' }}>
                       {c.debt > 0 ? (
@@ -755,7 +977,15 @@ export default function Customers({ onQuickAction }) {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.35rem' }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="btn btn-outline btn-icon"
+                          style={{ width: '32px', height: '32px', color: '#2563eb', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}
+                          title="Xem sổ chi tiết Nhập / Xuất / Thu / Chi (4 cột)"
+                          onClick={() => setLedgerCustomer(c)}
+                        >
+                          <ReceiptText size={15} />
+                        </button>
                         <button
                           className="btn btn-outline btn-icon"
                           style={{ width: '32px', height: '32px' }}
@@ -771,6 +1001,14 @@ export default function Customers({ onQuickAction }) {
                           onClick={() => handleOpenReceipt(c)}
                         >
                           <Receipt size={15} />
+                        </button>
+                        <button
+                          className="btn btn-outline btn-icon"
+                          style={{ width: '32px', height: '32px', color: 'var(--danger-text, #dc2626)', borderColor: '#fecaca', backgroundColor: '#fef2f2' }}
+                          title="Lập phiếu chi hoàn tiền cho KH"
+                          onClick={() => handleOpenPayment(c)}
+                        >
+                          <CreditCard size={15} />
                         </button>
                         <button
                           className="btn btn-outline btn-icon"
@@ -796,6 +1034,18 @@ export default function Customers({ onQuickAction }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Modal Sổ Chi Tiết Giao Dịch & Sổ Nợ Khách Hàng */}
+      {ledgerCustomer && (
+        <EntityTransactionLedger
+          entityType="customer"
+          entityId={ledgerCustomer.id}
+          entityName={ledgerCustomer.name}
+          entityCode={ledgerCustomer.code}
+          asModal={true}
+          onClose={() => setLedgerCustomer(null)}
+        />
       )}
 
       {/* Pagination (15 items per page) */}
@@ -1208,6 +1458,79 @@ export default function Customers({ onQuickAction }) {
         </form>
       </Modal>
 
+      {/* Modal Lập Phiếu Chi Hoàn Tiền Cho KH */}
+      <Modal
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        title={`Lập Phiếu Chi Hoàn Tiền: ${selectedCustomer?.name || ''}`}
+        size="md"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setIsPaymentOpen(false)} disabled={submitting}>
+              Hủy
+            </button>
+            <button className="btn btn-warning" onClick={handlePaymentSubmit} disabled={submitting}>
+              {submitting ? 'Đang lưu...' : 'Xác nhận chi tiền'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handlePaymentSubmit}>
+          <div
+            style={{
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              background: '#fef2f2',
+              color: '#991b1b',
+              border: '1px solid #fecaca',
+              marginBottom: '1rem',
+              fontSize: '0.875rem',
+            }}
+          >
+            Dư nợ hiện tại: <strong>{selectedCustomer?.debt < 0 ? `KH đang gửi trước ${formatVND(Math.abs(selectedCustomer.debt))}` : `KH đang nợ ${formatVND(selectedCustomer?.debt || 0)}`}</strong>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              Số Tiền Chi <span className="req">*</span>
+            </label>
+            <input
+              type="number"
+              className="form-input mono"
+              min="1"
+              value={paymentData.amount}
+              onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Hình Thức Thanh Toán</label>
+            <select
+              className="form-select"
+              value={paymentData.method}
+              onChange={(e) => setPaymentData({ ...paymentData, method: e.target.value })}
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ghi Chú Phiếu Chi</label>
+            <textarea
+              className="form-textarea"
+              rows={2}
+              value={paymentData.notes}
+              onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
+            />
+          </div>
+        </form>
+      </Modal>
+
       {/* Drawer Xem Lịch Sử Sổ Nợ Khách Hàng */}
       <Drawer
         isOpen={isHistoryOpen}
@@ -1275,11 +1598,21 @@ export default function Customers({ onQuickAction }) {
                     <tr key={r.id}>
                       <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt, true)}</td>
                       <td>
-                        <span className={`badge badge-${isIncrease ? 'danger' : 'success'}`}>
+                        <span className={
+                          r.sourceType === 'export'
+                            ? 'badge badge-primary'
+                            : r.sourceType === 'receipt'
+                            ? 'badge badge-success'
+                            : r.sourceType === 'payment'
+                            ? 'badge badge-danger'
+                            : 'badge badge-secondary'
+                        }>
                           {r.sourceType === 'export'
                             ? 'Xuất'
                             : r.sourceType === 'receipt'
                             ? 'Thu tiền'
+                            : r.sourceType === 'payment'
+                            ? 'Chi tiền'
                             : 'Điều chỉnh'}
                         </span>
                       </td>

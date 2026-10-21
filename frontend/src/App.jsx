@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ExportProvider } from './context/ExportContext';
 import Layout from './components/layout/Layout';
+import FloatingExportWidget from './components/common/FloatingExportWidget';
+import ExportMatrixModal from './components/common/ExportMatrixModal';
 
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import ProductCatalog from './pages/ProductCatalog';
 import Products from './pages/Products';
 import Exports from './pages/Exports';
 import Imports from './pages/Imports';
@@ -14,12 +18,14 @@ import Customers from './pages/Customers';
 import Suppliers from './pages/Suppliers';
 import CashBook from './pages/CashBook';
 import Reports from './pages/Reports';
+import ExcelExport from './pages/ExcelExport';
 import Settings from './pages/Settings';
 import AuditHistory from './pages/AuditHistory';
 import Users from './pages/Users';
 
 const VALID_BASE_TABS = [
   'dashboard',
+  'product-catalog',
   'products',
   'exports',
   'imports',
@@ -27,6 +33,7 @@ const VALID_BASE_TABS = [
   'suppliers',
   'cashbook',
   'reports',
+  'excel-export',
   'history',
   'users',
   'settings',
@@ -164,6 +171,11 @@ function AppContent() {
           title: 'Tổng Quan Hoạt Động',
           subtitle: 'Trung tâm chỉ huy bán hàng, kho đa điểm và công nợ',
         };
+      case 'product-catalog':
+        return {
+          title: 'Danh Mục Sản Phẩm',
+          subtitle: 'Quản lý thông tin hàng hóa, giá bán và xem sổ chi tiết giao dịch',
+        };
       case 'exports':
         return {
           title: 'Phiếu Xuất',
@@ -193,6 +205,11 @@ function AppContent() {
         return {
           title: 'Báo Cáo Thống Kê Định Kỳ',
           subtitle: 'Báo cáo xuất nhập tồn và tổng hợp công nợ theo tháng',
+        };
+      case 'excel-export':
+        return {
+          title: 'Xuất Dữ Liệu Excel (Chạy Ngầm)',
+          subtitle: 'Kết xuất ma trận xuất hàng ngày (1..31) doanh số & số lượng, sao lưu CSDL không nghẽn máy',
         };
       case 'settings':
         return {
@@ -230,6 +247,9 @@ function AppContent() {
           onQuickAction={handleQuickAction}
         />
       )}
+      {activeTab === 'product-catalog' && (
+        <ProductCatalog />
+      )}
       {isProductsTab && (
         <Products
           key={quickActionTrigger}
@@ -260,9 +280,12 @@ function AppContent() {
         />
       )}
       {activeTab === 'reports' && <Reports />}
+      {activeTab === 'excel-export' && <ExcelExport />}
       {activeTab === 'history' && (isAdmin ? <AuditHistory /> : <Dashboard />)}
       {activeTab === 'users' && (isAdmin ? <Users /> : <Dashboard />)}
       {activeTab === 'settings' && <Settings />}
+      <ExportMatrixModal />
+      <FloatingExportWidget />
     </Layout>
   );
 }
@@ -272,7 +295,9 @@ export default function App() {
     <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
-          <AppContent />
+          <ExportProvider>
+            <AppContent />
+          </ExportProvider>
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>

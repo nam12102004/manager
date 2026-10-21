@@ -12,12 +12,20 @@ public class CustomerPagedResult : PagedResult<CustomerDto>
 {
     public decimal TotalReceivables { get; set; }
     public decimal TotalPayables { get; set; }
+    public decimal TotalExportAmount { get; set; }
+    public decimal TotalReceiptAmount { get; set; }
+    public decimal TotalImportAmount { get; set; }
+    public decimal TotalPaymentAmount { get; set; }
 }
 
 public class SupplierPagedResult : PagedResult<SupplierDto>
 {
     public decimal TotalReceivables { get; set; }
     public decimal TotalPayables { get; set; }
+    public decimal TotalImportAmount { get; set; }
+    public decimal TotalPaymentAmount { get; set; }
+    public decimal TotalExportAmount { get; set; }
+    public decimal TotalReceiptAmount { get; set; }
 }
 
 public class ProductPagedResult : PagedResult<ProductDto>
@@ -26,7 +34,14 @@ public class ProductPagedResult : PagedResult<ProductDto>
     public decimal TotalCostVal { get; set; }
     public decimal TotalWholesaleVal { get; set; }
     public decimal TotalRetailVal { get; set; }
+    public decimal TotalImportQty { get; set; }
+    public decimal TotalExportQty { get; set; }
+    public decimal TotalImportAmount { get; set; }
+    public decimal TotalExportAmount { get; set; }
     public Dictionary<string, int> CategoryCounts { get; set; } = new();
+    public Dictionary<string, int> SupplierCounts { get; set; } = new();
+    public decimal TotalReceiptAmount { get; set; }
+    public decimal TotalPaymentAmount { get; set; }
 }
 
 public class ImportPagedResult : PagedResult<ImportVoucherDto>

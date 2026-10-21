@@ -1,5 +1,15 @@
 namespace DebtManager.Application.DTOs.Products;
 
+public class ProductWarehouseMetricDto
+{
+    public decimal ImportQty { get; set; }
+    public decimal ImportAmount { get; set; }
+    public decimal ExportQty { get; set; }
+    public decimal ExportAmount { get; set; }
+    public decimal ReceiptAmount { get; set; }
+    public decimal PaymentAmount { get; set; }
+}
+
 public class ProductDto
 {
     public int Id { get; set; }
@@ -18,6 +28,13 @@ public class ProductDto
     public decimal StockWarehouse3 { get; set; }
     public Dictionary<string, decimal> WarehouseStocks { get; set; } = new();
     public decimal TotalStock { get; set; }
+    public decimal TotalImportQty { get; set; }
+    public decimal TotalExportQty { get; set; }
+    public decimal TotalImportAmount { get; set; }
+    public decimal TotalExportAmount { get; set; }
+    public decimal TotalReceiptAmount { get; set; }
+    public decimal TotalPaymentAmount { get; set; }
+    public Dictionary<string, ProductWarehouseMetricDto> WarehouseMetrics { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public decimal ReorderPoint { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

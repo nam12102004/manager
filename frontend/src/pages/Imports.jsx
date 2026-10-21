@@ -11,9 +11,11 @@ import {
   Trash2,
   Printer,
   Filter,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { useNotification } from '../context/NotificationContext';
+import { useExport } from '../context/ExportContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
@@ -22,10 +24,13 @@ import TimeFilter from '../components/common/TimeFilter';
 import Pagination from '../components/common/Pagination';
 import { importService, warehouseService, getProductStockForWarehouse } from '../services';
 import { generateImportHtml, printInNewTab } from '../utils/printVoucher';
+import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
 
 export default function Imports({ initialOpenCreate = false }) {
   const notify = useNotification();
+  const { openExportModal } = useExport();
 
+  const [ledgerSupplier, setLedgerSupplier] = useState(null);
   const [importsList, setImportsList] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -41,6 +46,7 @@ export default function Imports({ initialOpenCreate = false }) {
 
   // Filters
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState('');
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
   const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
@@ -74,6 +80,7 @@ export default function Imports({ initialOpenCreate = false }) {
         page,
         pageSize: 15,
         supplierId: selectedSupplierId ? Number(selectedSupplierId) : null,
+        warehouse: selectedWarehouse || undefined,
       };
 
       if (timeMode === 'month') {
@@ -101,7 +108,7 @@ export default function Imports({ initialOpenCreate = false }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, selectedSupplierId, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
+  }, [currentPage, selectedSupplierId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
 
   // Load Dependencies via importService & warehouseService
   const loadDependencies = async () => {
@@ -122,7 +129,7 @@ export default function Imports({ initialOpenCreate = false }) {
   const handlePrint = (item = null) => {
     const target = item || selectedImport;
     if (!target) return;
-    const supp = suppliers.find((s) => s.id === target.supplierId || s.name === target.supplierName);
+    const supp = suppliers.find((s) => Number(s.id) === Number(target.supplierId) || s.name === target.supplierName);
     const html = generateImportHtml({ importData: target, ownerInfo, supplier: supp });
     printInNewTab(html);
   };
@@ -143,7 +150,7 @@ export default function Imports({ initialOpenCreate = false }) {
     } else {
       setCurrentPage(1);
     }
-  }, [selectedSupplierId, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+  }, [selectedSupplierId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
     loadDependencies();
@@ -310,6 +317,22 @@ export default function Imports({ initialOpenCreate = false }) {
           </p>
         </div>
         <div className="page-actions">
+          <button
+            className="btn btn-outline"
+            onClick={() =>
+              openExportModal({
+                tab: 'matrix',
+                partnerType: 'supplier',
+                supplierId: selectedSupplierId,
+                month: timeMode === 'month' ? selectedMonth : null,
+                warehouse: selectedWarehouse,
+              })
+            }
+            style={{ gap: '6px' }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Xuất Excel Ma Trận</span>
+          </button>
           <button className="btn btn-outline" onClick={loadImports} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Tải lại</span>
@@ -323,7 +346,7 @@ export default function Imports({ initialOpenCreate = false }) {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div style={{ minWidth: '260px' }}>
+        <div style={{ minWidth: '240px' }}>
           <SearchableSelect
             options={suppliers.map((s) => ({
               id: s.id,
@@ -339,6 +362,22 @@ export default function Imports({ initialOpenCreate = false }) {
             searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
             searchFields={['label', 'code', 'phone']}
           />
+        </div>
+
+        <div style={{ minWidth: '180px' }}>
+          <select
+            className="form-control"
+            value={selectedWarehouse}
+            onChange={(e) => setSelectedWarehouse(e.target.value)}
+            style={{ height: '38px', fontSize: '0.875rem' }}
+          >
+            <option value="">-- Tất cả kho --</option>
+            {warehouses.map((wh) => (
+              <option key={wh.id} value={wh.id}>
+                {wh.name || wh.shortName || wh.id}
+              </option>
+            ))}
+          </select>
         </div>
 
         <TimeFilter
@@ -399,7 +438,20 @@ export default function Imports({ initialOpenCreate = false }) {
                     {imp.voucherNumber}
                   </td>
                   <td style={{ fontSize: '0.8125rem' }}>{formatDate(imp.createdAt || imp.date, true)}</td>
-                  <td style={{ fontWeight: 600 }}>{imp.supplierName}</td>
+                  <td
+                    style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                    title="Bấm để xem sổ chi tiết Nhập / Xuất / Thu / Chi của nhà cung cấp này"
+                    onClick={() => {
+                      const s = suppliers.find((x) => x.id === imp.supplierId);
+                      setLedgerSupplier({
+                        id: imp.supplierId,
+                        name: imp.supplierName,
+                        code: s?.code || `NCC_${imp.supplierId}`,
+                      });
+                    }}
+                  >
+                    {imp.supplierName}
+                  </td>
                   <td>
                     <span className="badge badge-neutral">{warehouseService.getWarehouseName(imp.warehouse, warehouses)}</span>
                   </td>
@@ -783,6 +835,7 @@ export default function Imports({ initialOpenCreate = false }) {
                   <tr>
                     <th>STT</th>
                     <th>Tên Hàng Hóa</th>
+                    <th style={{ textAlign: 'center' }}>ĐVT</th>
                     <th style={{ textAlign: 'right' }}>Số Lượng</th>
                     <th style={{ textAlign: 'right' }}>Đơn Giá Nhập</th>
                     <th style={{ textAlign: 'right' }}>Thành Tiền</th>
@@ -795,6 +848,9 @@ export default function Imports({ initialOpenCreate = false }) {
                       <td>
                         <strong>{it.productName || it.sku}</strong>
                         {it.sku && <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '6px' }}>({it.sku})</span>}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="badge badge-neutral">{it.uom || '—'}</span>
                       </td>
                       <td style={{ textAlign: 'right' }} className="mono">{formatNumber(it.quantity)}</td>
                       <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.unitPrice)}</td>
@@ -844,6 +900,18 @@ export default function Imports({ initialOpenCreate = false }) {
         isDanger={true}
         isLoading={submitting}
       />
+
+      {/* Sổ Chi Tiết Nhập / Xuất / Thu / Chi Nhà Cung Cấp (Modal) */}
+      {ledgerSupplier && (
+        <EntityTransactionLedger
+          entityType="supplier"
+          entityId={ledgerSupplier.id}
+          entityName={ledgerSupplier.name}
+          entityCode={ledgerSupplier.code}
+          asModal={true}
+          onClose={() => setLedgerSupplier(null)}
+        />
+      )}
     </div>
   );
 }

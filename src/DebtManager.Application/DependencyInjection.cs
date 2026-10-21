@@ -21,6 +21,11 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IUserService, UserService>();
 
+        // Excel Export and Background Queue Services
+        services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+        services.AddSingleton<IExportJobManager, ExportJobManager>();
+        services.AddScoped<IExcelExportService, ExcelExportService>();
+
         return services;
     }
 }

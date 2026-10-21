@@ -18,10 +18,14 @@ import {
   ChevronRight,
   MapPin,
   MapPinned,
+  ReceiptText,
+  FileSpreadsheet,
+  ArrowDownLeft,
 } from 'lucide-react';
 import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { DEBT_ADJUST_REASONS, PAYMENT_METHODS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
+import { useExport } from '../context/ExportContext';
 import SearchBar from '../components/common/SearchBar';
 import SearchableSelect from '../components/common/SearchableSelect';
 import SortDropdown from '../components/common/SortDropdown';
@@ -31,7 +35,9 @@ import Drawer from '../components/common/Drawer';
 import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import Pagination from '../components/common/Pagination';
-import { supplierService, cashBookService, settingService } from '../services';
+import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
+import { supplierService, cashBookService, settingService, warehouseService } from '../services';
+import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -43,6 +49,7 @@ const SUPPLIER_SORT_OPTIONS = [
 
 export default function Suppliers() {
   const notify = useNotification();
+  const { openExportModal } = useExport();
 
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -60,12 +67,27 @@ export default function Suppliers() {
   const [allRegions, setAllRegions] = useState([]);
   const isFirstFilterChange = useRef(true);
 
+  const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
+  useEffect(() => {
+    warehouseService.getWarehouses().then((res) => {
+      if (Array.isArray(res) && res.length > 0) setWarehouses(res);
+    });
+  }, []);
+
+  // Checkbox metrics visibility (saved in localStorage, default all unticked)
+  const [visibleMetrics, setVisibleMetrics] = useState(() =>
+    loadSavedMetrics('dm_supplier_metrics_v3')
+  );
+
+  const [ledgerSupplier, setLedgerSupplier] = useState(null);
+
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printVoucher, setPrintVoucher] = useState(null);
   const [ownerInfo, setOwnerInfo] = useState(null);
@@ -114,6 +136,12 @@ export default function Suppliers() {
     notes: '',
   });
 
+  const [receiptData, setReceiptData] = useState({
+    amount: 0,
+    method: 'bank_transfer',
+    notes: '',
+  });
+
   const [submitting, setSubmitting] = useState(false);
 
   const loadRegions = async () => {
@@ -131,12 +159,15 @@ export default function Suppliers() {
   const loadSuppliers = useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
+      const timeParams = getMetricTimeParams(visibleMetrics);
       const res = await supplierService.getAll({
         page,
         pageSize: 15,
         q: searchQuery || undefined,
         region: selectedRegion !== 'ALL' ? selectedRegion : undefined,
         sortBy: sortBy !== 'default' ? sortBy : undefined,
+        fromDate: timeParams.fromDate,
+        toDate: timeParams.toDate,
       });
 
       if (res && res.items) {
@@ -156,7 +187,7 @@ export default function Suppliers() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedRegion, sortBy, notify]);
+  }, [currentPage, searchQuery, selectedRegion, sortBy, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, notify]);
 
   // Initial load
   useEffect(() => {
@@ -168,6 +199,16 @@ export default function Suppliers() {
   useEffect(() => {
     loadSuppliers(currentPage);
   }, [currentPage]);
+
+  // Reload current page when metric time filter changes
+  const isFirstTimeChange = useRef(true);
+  useEffect(() => {
+    if (isFirstTimeChange.current) {
+      isFirstTimeChange.current = false;
+      return;
+    }
+    loadSuppliers(currentPage);
+  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth]);
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
@@ -259,6 +300,17 @@ export default function Suppliers() {
       notes: `Chi tiền thanh toán công nợ NCC: ${supplier.name}`,
     });
     setIsPaymentOpen(true);
+  };
+
+  // Open Quick Receipt (Thu tiền hoàn lại / chiết khấu từ NCC)
+  const handleOpenReceipt = (supplier) => {
+    setSelectedSupplier(supplier);
+    setReceiptData({
+      amount: supplier.debt > 0 ? supplier.debt : 0,
+      method: 'bank_transfer',
+      notes: `Thu tiền hoàn trả / chiết khấu từ NCC: ${supplier.name}`,
+    });
+    setIsReceiptOpen(true);
   };
 
   // Submit Create via supplierService
@@ -367,6 +419,47 @@ export default function Suppliers() {
     }
   };
 
+  // Submit Receipt via cashBookService (Thu tiền từ NCC)
+  const handleReceiptSubmit = async (e) => {
+    e.preventDefault();
+    if (Number(receiptData.amount || 0) <= 0) {
+      notify.error('Số tiền thu phải lớn hơn 0');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const created = await cashBookService.createReceipt({
+        partnerType: 'supplier',
+        partnerId: selectedSupplier.id,
+        supplierId: selectedSupplier.id,
+        amount: Number(receiptData.amount),
+        method: receiptData.method,
+        notes: receiptData.notes,
+        date: new Date().toISOString(),
+      });
+      notify.success('Lập phiếu thu tiền từ NCC thành công!');
+      setIsReceiptOpen(false);
+      loadSuppliers();
+
+      if (created) {
+        setPrintVoucher({
+          voucher: {
+            ...created,
+            supplierName: selectedSupplier.name,
+            supplierAddress: parseJsonList(selectedSupplier.addressesJson),
+          },
+          type: 'receipt',
+        });
+        setIsPrintModalOpen(true);
+      }
+    } catch (err) {
+      notify.error(err.message || 'Lập phiếu thu thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   const scrollTabs = (direction) => {
     if (regionTabsRef.current) {
@@ -389,6 +482,14 @@ export default function Suppliers() {
           </p>
         </div>
         <div className="page-actions">
+          <button
+            className="btn btn-outline"
+            onClick={() => openExportModal({ tab: 'matrix', partnerType: 'supplier' })}
+            style={{ gap: '6px' }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Xuất Excel</span>
+          </button>
           <button className="btn btn-outline" onClick={loadSuppliers} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Tải lại</span>
@@ -414,6 +515,16 @@ export default function Suppliers() {
           onChange={setSortBy}
           options={SUPPLIER_SORT_OPTIONS}
           style={{ minWidth: '240px' }}
+        />
+
+        {/* Metric Checkboxes */}
+        <WarehouseMetricCheckboxes
+          warehouses={warehouses}
+          visibleMetrics={visibleMetrics}
+          onChange={setVisibleMetrics}
+          showCashBook={true}
+          primaryDirection="import"
+          storageKey="dm_supplier_metrics_v3"
         />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
@@ -676,6 +787,37 @@ export default function Suppliers() {
                 <th>Khu Vực</th>
                 <th>Số Điện Thoại</th>
                 <th>Ngân Hàng & STK</th>
+                {/* Cột Nhập theo từng kho & Tổng */}
+                {warehouses.map((wh) => (
+                  visibleMetrics.importWarehouses?.[wh.id] ? (
+                    <th key={`th-sup-imp-${wh.id}`} style={{ textAlign: 'right', color: '#1d4ed8' }}>
+                      Nhập {wh.shortName || wh.name}
+                    </th>
+                  ) : null
+                ))}
+                {visibleMetrics.importTotal && (
+                  <th style={{ textAlign: 'right', color: '#1d4ed8', fontWeight: 800 }}>
+                    Tổng Nhập
+                  </th>
+                )}
+
+                {visibleMetrics.payment && <th style={{ textAlign: 'right', color: '#dc2626' }}>Đã Chi</th>}
+
+                {/* Cột Xuất theo từng kho & Tổng */}
+                {warehouses.map((wh) => (
+                  visibleMetrics.exportWarehouses?.[wh.id] ? (
+                    <th key={`th-sup-exp-${wh.id}`} style={{ textAlign: 'right', color: '#ea580c' }}>
+                      Xuất {wh.shortName || wh.name}
+                    </th>
+                  ) : null
+                ))}
+                {visibleMetrics.exportTotal && (
+                  <th style={{ textAlign: 'right', color: '#ea580c', fontWeight: 800 }}>
+                    Tổng Xuất
+                  </th>
+                )}
+
+                {visibleMetrics.receipt && <th style={{ textAlign: 'right', color: '#16a34a' }}>Đã Thu</th>}
                 <th style={{ textAlign: 'right' }}>Phải Thu</th>
                 <th style={{ textAlign: 'right' }}>Phải Trả</th>
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
@@ -683,8 +825,18 @@ export default function Suppliers() {
             </thead>
             <tbody>
               {sortedSuppliers.map((s) => {
+                const isSelected = ledgerSupplier?.id === s.id;
                 return (
-                  <tr key={s.id}>
+                  <tr
+                    key={s.id}
+                    onClick={() => setLedgerSupplier(isSelected ? null : s)}
+                    style={{
+                      cursor: 'pointer',
+                      backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.08)' : undefined,
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    title="Bấm vào để xem sổ chi tiết Nhập / Xuất / Thu / Chi"
+                  >
                     <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
                       {s.code}
                     </td>
@@ -738,6 +890,80 @@ export default function Suppliers() {
                         '—'
                       )}
                     </td>
+                    {/* Các cột hiển thị theo Tick Box */}
+                    {/* Nhập từng kho */}
+                    {warehouses.map((wh) => {
+                      if (!visibleMetrics.importWarehouses?.[wh.id]) return null;
+                      const whImp = s.warehouseImports?.[wh.id] || s.warehouseImports?.[wh.id.toLowerCase()] || 0;
+                      return (
+                        <td key={`td-sup-imp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                          {whImp > 0 ? (
+                            <span style={{ fontWeight: 700, color: '#1d4ed8' }}>{formatVND(whImp)}</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    {/* Tổng Nhập */}
+                    {visibleMetrics.importTotal && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {s.totalImportAmount > 0 ? (
+                          <span style={{ fontWeight: 800, color: '#1d4ed8' }}>{formatVND(s.totalImportAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
+
+                    {/* Đã Chi */}
+                    {visibleMetrics.payment && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {s.totalPaymentAmount > 0 ? (
+                          <span style={{ fontWeight: 700, color: '#dc2626' }}>{formatVND(s.totalPaymentAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
+
+                    {/* Xuất từng kho */}
+                    {warehouses.map((wh) => {
+                      if (!visibleMetrics.exportWarehouses?.[wh.id]) return null;
+                      const whExp = s.warehouseExports?.[wh.id] || s.warehouseExports?.[wh.id.toLowerCase()] || 0;
+                      return (
+                        <td key={`td-sup-exp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                          {whExp > 0 ? (
+                            <span style={{ fontWeight: 700, color: '#ea580c' }}>{formatVND(whExp)}</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    {/* Tổng Xuất */}
+                    {visibleMetrics.exportTotal && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {s.totalExportAmount > 0 ? (
+                          <span style={{ fontWeight: 800, color: '#ea580c' }}>{formatVND(s.totalExportAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
+
+                    {/* Đã Thu */}
+                    {visibleMetrics.receipt && (
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {s.totalReceiptAmount > 0 ? (
+                          <span style={{ fontWeight: 700, color: '#16a34a' }}>{formatVND(s.totalReceiptAmount)}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                        )}
+                      </td>
+                    )}
                     {/* Cột 1: Phải Thu (Cửa hàng nộp tiền trước để lấy hàng) */}
                     <td style={{ textAlign: 'right' }}>
                       {s.debt > 0 ? (
@@ -769,7 +995,15 @@ export default function Suppliers() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.35rem' }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="btn btn-outline btn-icon"
+                          style={{ width: '32px', height: '32px', color: '#2563eb', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}
+                          title="Xem sổ chi tiết Nhập / Xuất / Thu / Chi (4 cột)"
+                          onClick={() => setLedgerSupplier(s)}
+                        >
+                          <ReceiptText size={15} />
+                        </button>
                         <button
                           className="btn btn-outline btn-icon"
                           style={{ width: '32px', height: '32px' }}
@@ -777,6 +1011,14 @@ export default function Suppliers() {
                           onClick={() => handleOpenEdit(s)}
                         >
                           <Edit2 size={15} />
+                        </button>
+                        <button
+                          className="btn btn-outline btn-icon"
+                          style={{ width: '32px', height: '32px', color: 'var(--success-text, #16a34a)', borderColor: '#bbf7d0', backgroundColor: '#f0fdf4' }}
+                          title="Lập phiếu thu tiền từ NCC (hoàn tiền/thưởng/hoàn cọc)"
+                          onClick={() => handleOpenReceipt(s)}
+                        >
+                          <ArrowDownLeft size={15} />
                         </button>
                         <button
                           className="btn btn-outline btn-icon"
@@ -810,6 +1052,18 @@ export default function Suppliers() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Modal Sổ Chi Tiết Giao Dịch & Công Nợ Nhà Cung Cấp */}
+      {ledgerSupplier && (
+        <EntityTransactionLedger
+          entityType="supplier"
+          entityId={ledgerSupplier.id}
+          entityName={ledgerSupplier.name}
+          entityCode={ledgerSupplier.code}
+          asModal={true}
+          onClose={() => setLedgerSupplier(null)}
+        />
       )}
 
       {/* Pagination (15 items per page) */}
@@ -1236,6 +1490,79 @@ export default function Suppliers() {
         </form>
       </Modal>
 
+      {/* Modal Lập Phiếu Thu Nhanh Từ NCC */}
+      <Modal
+        isOpen={isReceiptOpen}
+        onClose={() => setIsReceiptOpen(false)}
+        title={`Lập Phiếu Thu Tiền Từ NCC: ${selectedSupplier?.name || ''}`}
+        size="md"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setIsReceiptOpen(false)} disabled={submitting}>
+              Hủy
+            </button>
+            <button className="btn btn-success" onClick={handleReceiptSubmit} disabled={submitting}>
+              {submitting ? 'Đang lưu...' : 'Xác nhận thu tiền'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleReceiptSubmit}>
+          <div
+            style={{
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              background: '#ecfdf5',
+              color: '#065f46',
+              border: '1px solid #a7f3d0',
+              marginBottom: '1rem',
+              fontSize: '0.875rem',
+            }}
+          >
+            Dư nợ hiện tại: <strong>{selectedSupplier?.debt > 0 ? `Đang nộp trước ${formatVND(selectedSupplier.debt)}` : `Cần thanh toán ${formatVND(Math.abs(selectedSupplier?.debt || 0))}`}</strong>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              Số Tiền Thu <span className="req">*</span>
+            </label>
+            <input
+              type="number"
+              className="form-input mono"
+              min="1"
+              value={receiptData.amount}
+              onChange={(e) => setReceiptData({ ...receiptData, amount: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Phương Thức Thanh Toán</label>
+            <select
+              className="form-select"
+              value={receiptData.method}
+              onChange={(e) => setReceiptData({ ...receiptData, method: e.target.value })}
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ghi Chú Phiếu Thu</label>
+            <textarea
+              className="form-textarea"
+              rows={2}
+              value={receiptData.notes}
+              onChange={(e) => setReceiptData({ ...receiptData, notes: e.target.value })}
+            />
+          </div>
+        </form>
+      </Modal>
+
       {/* Drawer Sổ Nợ NCC */}
       <Drawer
         isOpen={isHistoryOpen}
@@ -1302,11 +1629,21 @@ export default function Suppliers() {
                     <tr key={r.id}>
                       <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt, true)}</td>
                       <td>
-                        <span className="badge badge-primary">
+                        <span className={
+                          r.sourceType === 'import'
+                            ? 'badge badge-primary'
+                            : r.sourceType === 'payment'
+                            ? 'badge badge-danger'
+                            : r.sourceType === 'receipt'
+                            ? 'badge badge-success'
+                            : 'badge badge-secondary'
+                        }>
                           {r.sourceType === 'import'
                             ? 'Nhập'
                             : r.sourceType === 'payment'
                             ? 'Chi tiền'
+                            : r.sourceType === 'receipt'
+                            ? 'Thu tiền'
                             : 'Điều chỉnh'}
                         </span>
                       </td>

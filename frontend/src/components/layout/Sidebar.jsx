@@ -36,13 +36,15 @@ export default function Sidebar({
 
   const navItems = [
     { id: 'dashboard', label: 'Tổng quan' },
-    { id: 'products', label: 'Sản phẩm & Kho', hasSubmenu: true },
+    { id: 'product-catalog', label: 'Sản phẩm' },
+    { id: 'products', label: 'Kho hàng', hasSubmenu: true },
     { id: 'exports', label: 'Xuất' },
     { id: 'imports', label: 'Nhập' },
     { id: 'customers', label: 'Khách hàng' },
     { id: 'suppliers', label: 'Nhà cung cấp' },
     { id: 'cashbook', label: 'Thu - Chi' },
     { id: 'reports', label: 'Báo cáo' },
+    { id: 'excel-export', label: 'Xuất Excel' },
     ...(isAdmin
       ? [
           { id: 'history', label: 'Lịch sử thao tác' },

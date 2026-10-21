@@ -29,6 +29,7 @@ public class ExportVoucherItemDto
     public decimal UnitCost { get; set; }
     public decimal SalePrice { get; set; }
     public decimal LineTotal { get; set; }
+    public string Uom { get; set; } = string.Empty;
 }
 
 public class ExportVoucherDto
@@ -39,6 +40,7 @@ public class ExportVoucherDto
     public string Warehouse { get; set; } = string.Empty;
     public int CustomerId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
+    public decimal CustomerDebt { get; set; }
     public decimal SubtotalSale { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TotalSale { get; set; }

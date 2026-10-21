@@ -173,4 +173,8 @@ export const customerService = {
   async getDebtHistory(id, month) {
     return await customersApi.getDebtHistory(id, month);
   },
+
+  async getLedger(id, params = {}) {
+    return await customersApi.getLedger(id, params);
+  },
 };

@@ -1,5 +1,6 @@
 using DebtManager.Application.Common;
 using DebtManager.Application.Common.Exceptions;
+using DebtManager.Application.DTOs.Common;
 using DebtManager.Application.DTOs.Products;
 using DebtManager.Application.Interfaces;
 using DebtManager.Application.Interfaces.Repositories;
@@ -52,6 +53,8 @@ public class ProductService : IProductService
         int page = 1,
         int pageSize = 15,
         string? category = null,
+        string? fromDate = null,
+        string? toDate = null,
         CancellationToken ct = default)
     {
         page = Math.Max(1, page);
@@ -71,9 +74,41 @@ public class ProductService : IProductService
                                      (p.Supplier != null && p.Supplier.Name.ToLower().Contains(s)));
         }
 
+        // Per-supplier counts (computed before supplierId filter, respecting search & category)
+        var supplierQuery = query;
+        if (!string.IsNullOrWhiteSpace(category) && category != "ALL")
+        {
+            if (category == "NONE")
+            {
+                supplierQuery = supplierQuery.Where(p => p.Category == null || p.Category.Trim() == "");
+            }
+            else
+            {
+                var c = category.Trim();
+                supplierQuery = supplierQuery.Where(p => p.Category != null && p.Category.Trim() == c);
+            }
+        }
+        var supplierGroups = await supplierQuery
+            .GroupBy(p => p.SupplierId ?? -1)
+            .Select(g => new { SupplierId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var supplierCounts = new Dictionary<string, int>();
+        foreach (var g in supplierGroups)
+        {
+            var key = g.SupplierId == -1 ? "NONE" : g.SupplierId.ToString();
+            supplierCounts[key] = supplierCounts.GetValueOrDefault(key) + g.Count;
+        }
+
         if (supplierId.HasValue)
         {
-            query = query.Where(p => p.SupplierId == supplierId.Value);
+            if (supplierId.Value == -1)
+            {
+                query = query.Where(p => p.SupplierId == null);
+            }
+            else
+            {
+                query = query.Where(p => p.SupplierId == supplierId.Value);
+            }
         }
 
         // Per-category counts (computed in DB before the category filter so every tab shows its own total)
@@ -167,10 +202,85 @@ public class ProductService : IProductService
         };
 
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        var productIds = items.Select(p => p.Id).ToList();
+
+        DateTime? startDate = null;
+        DateTime? endDate = null;
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+        }
+
+        var importItemsQuery = _uow.ImportVoucherItems.Query()
+            .Where(i => productIds.Contains(i.ProductId) && i.ImportVoucher.Status != "cancelled");
+        if (startDate.HasValue)
+        {
+            importItemsQuery = importItemsQuery.Where(i => i.ImportVoucher.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            importItemsQuery = importItemsQuery.Where(i => i.ImportVoucher.Date <= endDate.Value);
+        }
+
+        var importItemBreakdown = await importItemsQuery
+            .GroupBy(i => new { i.ProductId, Warehouse = i.ImportVoucher.Warehouse.ToLower() })
+            .Select(g => new { g.Key.ProductId, g.Key.Warehouse, Qty = g.Sum(x => x.Quantity), Amount = g.Sum(x => x.LineTotal) })
+            .ToListAsync(ct);
+
+        var exportItemsQuery = _uow.ExportVoucherItems.Query()
+            .Where(i => productIds.Contains(i.ProductId) && i.ExportVoucher.Status != "cancelled");
+        if (startDate.HasValue)
+        {
+            exportItemsQuery = exportItemsQuery.Where(i => i.ExportVoucher.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            exportItemsQuery = exportItemsQuery.Where(i => i.ExportVoucher.Date <= endDate.Value);
+        }
+
+        var exportItemBreakdown = await exportItemsQuery
+            .GroupBy(i => new { i.ProductId, Warehouse = i.ExportVoucher.Warehouse.ToLower() })
+            .Select(g => new { g.Key.ProductId, g.Key.Warehouse, Qty = g.Sum(x => x.Quantity), Amount = g.Sum(x => x.LineTotal) })
+            .ToListAsync(ct);
+
+        var dtos = items.Select(p =>
+        {
+            var dto = MapToDto(p);
+            var pImports = importItemBreakdown.Where(x => x.ProductId == p.Id).ToList();
+            var pExports = exportItemBreakdown.Where(x => x.ProductId == p.Id).ToList();
+
+            var allWhs = pImports.Select(x => x.Warehouse).Union(pExports.Select(x => x.Warehouse)).Distinct();
+            foreach (var w in allWhs)
+            {
+                var im = pImports.FirstOrDefault(x => x.Warehouse == w);
+                var ex = pExports.FirstOrDefault(x => x.Warehouse == w);
+                dto.WarehouseMetrics[w] = new ProductWarehouseMetricDto
+                {
+                    ImportQty = im?.Qty ?? 0,
+                    ImportAmount = im?.Amount ?? 0,
+                    ExportQty = ex?.Qty ?? 0,
+                    ExportAmount = ex?.Amount ?? 0,
+                    ReceiptAmount = ex?.Amount ?? 0,
+                    PaymentAmount = im?.Amount ?? 0
+                };
+            }
+
+            dto.TotalImportQty = pImports.Sum(x => x.Qty);
+            dto.TotalImportAmount = pImports.Sum(x => x.Amount);
+            dto.TotalExportQty = pExports.Sum(x => x.Qty);
+            dto.TotalExportAmount = pExports.Sum(x => x.Amount);
+            dto.TotalReceiptAmount = dto.TotalExportAmount;
+            dto.TotalPaymentAmount = dto.TotalImportAmount;
+            return dto;
+        }).ToList();
 
         return new ProductPagedResult
         {
-            Items = items.Select(MapToDto).ToList(),
+            Items = dtos,
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize,
@@ -178,7 +288,14 @@ public class ProductService : IProductService
             TotalCostVal = totalCostVal,
             TotalWholesaleVal = totalWholesaleVal,
             TotalRetailVal = totalRetailVal,
-            CategoryCounts = categoryCounts
+            TotalImportQty = dtos.Sum(d => d.TotalImportQty),
+            TotalImportAmount = dtos.Sum(d => d.TotalImportAmount),
+            TotalExportQty = dtos.Sum(d => d.TotalExportQty),
+            TotalExportAmount = dtos.Sum(d => d.TotalExportAmount),
+            TotalReceiptAmount = dtos.Sum(d => d.TotalReceiptAmount),
+            TotalPaymentAmount = dtos.Sum(d => d.TotalPaymentAmount),
+            CategoryCounts = categoryCounts,
+            SupplierCounts = supplierCounts
         };
     }
 
@@ -456,5 +573,170 @@ public class ProductService : IProductService
             .ToListAsync(ct);
 
         return categories ?? new List<string>();
+    }
+
+    public async Task<EntityLedgerResponseDto> GetLedgerAsync(int productId, string? warehouse = null, string? month = null, CancellationToken ct = default)
+    {
+        var product = await _uow.Products.Query()
+            .Include(p => p.Supplier)
+            .FirstOrDefaultAsync(p => p.Id == productId, ct)
+            ?? throw new NotFoundException($"Không tìm thấy sản phẩm với ID {productId}");
+
+        var wh = (warehouse ?? "").Trim().ToLower();
+        var isAllWh = string.IsNullOrEmpty(wh) || wh == "all" || wh == "overview";
+
+        DateTime? startDate = null;
+        DateTime? endDate = null;
+        if (!string.IsNullOrWhiteSpace(month))
+        {
+            if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                startDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddDays(1);
+            }
+            else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                startDate = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddMonths(1);
+            }
+        }
+
+        var ledgerItems = new List<EntityLedgerItemDto>();
+
+        // 1. Imports (Nhập kho)
+        var importQuery = _uow.ImportVoucherItems.Query()
+            .Include(i => i.ImportVoucher)
+                .ThenInclude(v => v.Supplier)
+            .Where(i => i.ProductId == productId && i.ImportVoucher.Status != "cancelled");
+        if (!isAllWh)
+        {
+            importQuery = importQuery.Where(i => i.ImportVoucher.Warehouse.ToLower() == wh);
+        }
+        if (startDate.HasValue)
+        {
+            importQuery = importQuery.Where(i => i.ImportVoucher.Date >= startDate.Value.AddDays(-1) && i.ImportVoucher.Date <= endDate!.Value.AddDays(1));
+        }
+        var imports = await importQuery.ToListAsync(ct);
+        foreach (var im in imports)
+        {
+            ledgerItems.Add(new EntityLedgerItemDto
+            {
+                Id = im.Id,
+                Date = im.ImportVoucher.Date,
+                VoucherNumber = im.ImportVoucher.VoucherNumber,
+                VoucherType = "import",
+                VoucherTypeLabel = "Phiếu nhập",
+                Warehouse = im.ImportVoucher.Warehouse,
+                Description = $"Nhập {im.Quantity} {product.Uom ?? "cái"} x {im.UnitPrice:N0}₫ từ {im.ImportVoucher.Supplier?.Name ?? "NCC"}",
+                ImportQty = im.Quantity,
+                ImportAmount = im.LineTotal,
+                ExportQty = 0,
+                ExportAmount = 0,
+                ReceiptAmount = 0,
+                PaymentAmount = im.LineTotal
+            });
+        }
+
+        // 2. Exports (Xuất kho)
+        var exportQuery = _uow.ExportVoucherItems.Query()
+            .Include(i => i.ExportVoucher)
+                .ThenInclude(v => v.Customer)
+            .Where(i => i.ProductId == productId && i.ExportVoucher.Status != "cancelled");
+        if (!isAllWh)
+        {
+            exportQuery = exportQuery.Where(i => i.ExportVoucher.Warehouse.ToLower() == wh);
+        }
+        if (startDate.HasValue)
+        {
+            exportQuery = exportQuery.Where(i => i.ExportVoucher.Date >= startDate.Value.AddDays(-1) && i.ExportVoucher.Date <= endDate!.Value.AddDays(1));
+        }
+        var exports = await exportQuery.ToListAsync(ct);
+        foreach (var ex in exports)
+        {
+            ledgerItems.Add(new EntityLedgerItemDto
+            {
+                Id = ex.Id,
+                Date = ex.ExportVoucher.Date,
+                VoucherNumber = ex.ExportVoucher.VoucherNumber,
+                VoucherType = "export",
+                VoucherTypeLabel = "Phiếu xuất",
+                Warehouse = ex.ExportVoucher.Warehouse,
+                Description = $"Xuất {ex.Quantity} {product.Uom ?? "cái"} x {ex.SalePrice:N0}₫ cho {ex.ExportVoucher.Customer?.Name ?? "Khách"}",
+                ImportQty = 0,
+                ImportAmount = 0,
+                ExportQty = ex.Quantity,
+                ExportAmount = ex.LineTotal,
+                ReceiptAmount = ex.LineTotal,
+                PaymentAmount = 0
+            });
+        }
+
+        // 3. Stock Adjustments
+        var historyQuery = _uow.StockHistories.Query()
+            .Where(h => h.ProductId == productId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment);
+        if (!isAllWh)
+        {
+            historyQuery = historyQuery.Where(h => h.Warehouse.ToLower() == wh);
+        }
+        if (startDate.HasValue)
+        {
+            historyQuery = historyQuery.Where(h => h.ChangeDate >= startDate.Value.AddDays(-1) && h.ChangeDate <= endDate!.Value.AddDays(1));
+        }
+        var histories = await historyQuery.ToListAsync(ct);
+        foreach (var h in histories)
+        {
+            var isPos = h.Delta > 0;
+            var absQty = Math.Abs(h.Delta);
+            var val = absQty * product.UnitCost;
+            ledgerItems.Add(new EntityLedgerItemDto
+            {
+                Id = h.Id,
+                Date = h.ChangeDate,
+                VoucherNumber = h.ReferenceId ?? $"KK{h.Id:D5}",
+                VoucherType = "adjust",
+                VoucherTypeLabel = isPos ? "Điều chỉnh tăng" : "Điều chỉnh giảm",
+                Warehouse = h.Warehouse,
+                Description = string.IsNullOrWhiteSpace(h.Note) ? (h.Reason ?? "Kiểm kê điều chỉnh kho") : $"{h.Reason} - {h.Note}",
+                ImportQty = isPos ? absQty : 0,
+                ImportAmount = isPos ? val : 0,
+                ExportQty = !isPos ? absQty : 0,
+                ExportAmount = !isPos ? val : 0,
+                ReceiptAmount = 0,
+                PaymentAmount = isPos ? val : 0
+            });
+        }
+
+        var sorted = ledgerItems.OrderBy(i => i.Date).ThenBy(i => i.Id).ToList();
+        decimal runningStock = 0;
+        foreach (var item in sorted)
+        {
+            runningStock += (item.ImportQty - item.ExportQty);
+            item.Balance = runningStock;
+        }
+
+        var resultList = sorted.OrderByDescending(i => i.Date).ThenByDescending(i => i.Id).ToList();
+
+        decimal currentBalance = isAllWh
+            ? product.TotalStock
+            : (wh == "warehouse1" ? product.StockWarehouse1
+               : wh == "warehouse2" ? product.StockWarehouse2
+               : wh == "warehouse3" ? product.StockWarehouse3
+               : product.GetAllWarehouseStocks().GetValueOrDefault(wh, 0));
+
+        return new EntityLedgerResponseDto
+        {
+            EntityId = product.Id,
+            EntityCode = product.Sku,
+            EntityName = product.Name,
+            Warehouse = isAllWh ? "Tất cả kho" : wh,
+            TotalImport = resultList.Sum(i => i.ImportAmount),
+            TotalExport = resultList.Sum(i => i.ExportAmount),
+            TotalReceipt = resultList.Sum(i => i.ReceiptAmount),
+            TotalPayment = resultList.Sum(i => i.PaymentAmount),
+            TotalImportQty = resultList.Sum(i => i.ImportQty),
+            TotalExportQty = resultList.Sum(i => i.ExportQty),
+            CurrentBalance = currentBalance,
+            Items = resultList
+        };
     }
 }

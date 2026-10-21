@@ -172,4 +172,8 @@ export const supplierService = {
   async getDebtHistory(id, month) {
     return await suppliersApi.getDebtHistory(id, month);
   },
+
+  async getLedger(id, params = {}) {
+    return await suppliersApi.getLedger(id, params);
+  },
 };

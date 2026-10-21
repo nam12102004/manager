@@ -12,9 +12,11 @@ import {
   ArrowDownLeft,
   Building,
   Users,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { useNotification } from '../context/NotificationContext';
+import { useExport } from '../context/ExportContext';
 import StatCard from '../components/common/StatCard';
 import EmptyState from '../components/common/EmptyState';
 import TimeFilter from '../components/common/TimeFilter';
@@ -22,6 +24,7 @@ import { reportService, warehouseService } from '../services';
 
 export default function Reports() {
   const notify = useNotification();
+  const { openExportModal } = useExport();
 
   const [activeReportTab, setActiveReportTab] = useState('stock'); // 'stock' | 'debts'
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day'
@@ -97,17 +100,25 @@ export default function Reports() {
           </p>
         </div>
         <div className="page-actions">
+          <button
+            className="btn btn-primary"
+            onClick={() => openExportModal({ tab: 'matrix', month: selectedMonth })}
+            style={{ gap: '6px' }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Xuất Excel Ma Trận Ngày</span>
+          </button>
           <button className="btn btn-outline" onClick={handleExportCSV}>
             <Download size={16} />
-            <span>Xuất file Excel/CSV</span>
+            <span>Xuất CSV Nhanh</span>
           </button>
           <button className="btn btn-outline" onClick={handlePrint}>
             <Printer size={16} />
             <span>In Báo Cáo</span>
           </button>
-          <button className="btn btn-primary" onClick={loadReport} disabled={loading}>
+          <button className="btn btn-outline" onClick={loadReport} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            <span>Tải dữ liệu</span>
+            <span>Tải lại</span>
           </button>
         </div>
       </div>

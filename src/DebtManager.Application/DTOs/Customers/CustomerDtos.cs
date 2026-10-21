@@ -12,6 +12,12 @@ public class CustomerDto
     public string? Region { get; set; }
     public decimal Debt { get; set; }
     public decimal CreditLimit { get; set; }
+    public decimal TotalExportAmount { get; set; }
+    public decimal TotalReceiptAmount { get; set; }
+    public decimal TotalImportAmount { get; set; }
+    public decimal TotalPaymentAmount { get; set; }
+    public Dictionary<string, decimal> WarehouseExports { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, decimal> WarehouseImports { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

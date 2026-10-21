@@ -1,4 +1,4 @@
-import { exportsApi, customersApi, productsApi, ownersApi } from '../api/endpoints';
+import { exportsApi, customersApi, suppliersApi, productsApi, ownersApi } from '../api/endpoints';
 import { auditService } from './auditService';
 
 /**
@@ -157,15 +157,17 @@ export const exportService = {
   },
 
   async getDependencies() {
-    const [custs, prods, owner] = await Promise.allSettled([
+    const [custs, prods, owner, supps] = await Promise.allSettled([
       customersApi.getAll({ all: true }),
       productsApi.getAll({ all: true }),
       ownersApi.get(),
+      suppliersApi.getAll({ all: true }),
     ]);
 
     return {
       customers: custs.status === 'fulfilled' && Array.isArray(custs.value) ? custs.value : [],
       products: prods.status === 'fulfilled' && Array.isArray(prods.value) ? prods.value : [],
+      suppliers: supps.status === 'fulfilled' && Array.isArray(supps.value) ? supps.value : [],
       ownerInfo: owner.status === 'fulfilled' ? owner.value : null,
     };
   },

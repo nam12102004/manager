@@ -20,6 +20,8 @@ public class SuppliersController : BaseApiController
         [FromQuery] string? q,
         [FromQuery] string? region,
         [FromQuery] string? sortBy,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -27,7 +29,7 @@ public class SuppliersController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _supplierService.GetPagedSuppliersAsync(q, region, sortBy, page.Value, pageSize, ct);
+            var paged = await _supplierService.GetPagedSuppliersAsync(q, region, sortBy, page.Value, pageSize, fromDate, toDate, ct);
             return Success(paged);
         }
 
@@ -74,4 +76,12 @@ public class SuppliersController : BaseApiController
         [FromBody] SupplierDebtAdjustDto dto,
         CancellationToken ct)
         => Success(await _supplierService.AdjustDebtAsync(id, dto, ct), "Điều chỉnh công nợ thành công");
+
+    [HttpGet("{id:int}/ledger")]
+    public async Task<ActionResult<ApiResponse<DebtManager.Application.DTOs.Common.EntityLedgerResponseDto>>> GetLedger(
+        int id,
+        [FromQuery] string? warehouse,
+        [FromQuery] string? month,
+        CancellationToken ct)
+        => Success(await _supplierService.GetLedgerAsync(id, warehouse, month, ct));
 }

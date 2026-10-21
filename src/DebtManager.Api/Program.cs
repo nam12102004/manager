@@ -33,6 +33,7 @@ builder.Services.AddCors(opts =>
 // Add Clean Architecture Services
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
+builder.Services.AddHostedService<DebtManager.Api.Services.ExportBackgroundWorker>();
 
 var app = builder.Build();
 

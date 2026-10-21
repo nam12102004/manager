@@ -23,6 +23,7 @@ public class ExportsController : BaseApiController
         [FromQuery] string? fromDate,
         [FromQuery] string? toDate,
         [FromQuery] string? q,
+        [FromQuery] string? warehouse,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -30,11 +31,11 @@ public class ExportsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _exportService.GetPagedExportsAsync(customerId, month, date, fromDate, toDate, q, page.Value, pageSize, ct);
+            var paged = await _exportService.GetPagedExportsAsync(customerId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, ct);
             return Success(paged);
         }
 
-        var list = await _exportService.GetExportsAsync(customerId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, ct);
+        var list = await _exportService.GetExportsAsync(customerId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, ct);
         return Success(list);
     }
 

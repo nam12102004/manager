@@ -18,7 +18,7 @@ public class ImportService : IImportService
         _uow = uow;
     }
 
-    public async Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
+    public async Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
     {
         var query = _uow.ImportVouchers.Query()
             .Include(v => v.Supplier)
@@ -29,6 +29,11 @@ public class ImportService : IImportService
         if (supplierId.HasValue)
         {
             query = query.Where(v => v.SupplierId == supplierId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(v => v.Warehouse == warehouse.Trim());
         }
 
         if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
@@ -73,6 +78,7 @@ public class ImportService : IImportService
         string? fromDate = null,
         string? toDate = null,
         string? search = null,
+        string? warehouse = null,
         int page = 1,
         int pageSize = 15,
         CancellationToken ct = default)
@@ -89,6 +95,11 @@ public class ImportService : IImportService
         if (supplierId.HasValue)
         {
             query = query.Where(v => v.SupplierId == supplierId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(v => v.Warehouse == warehouse.Trim());
         }
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -507,7 +518,8 @@ public class ImportService : IImportService
             Sku = i.Sku,
             Quantity = i.Quantity,
             UnitPrice = i.UnitPrice,
-            LineTotal = i.LineTotal
+            LineTotal = i.LineTotal,
+            Uom = i.Product?.Uom ?? string.Empty
         }).ToList()
     };
 }

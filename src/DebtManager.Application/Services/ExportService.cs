@@ -18,7 +18,7 @@ public class ExportService : IExportService
         _uow = uow;
     }
 
-    public async Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
+    public async Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
     {
         var query = _uow.ExportVouchers.Query()
             .Include(v => v.Customer)
@@ -29,6 +29,11 @@ public class ExportService : IExportService
         if (customerId.HasValue)
         {
             query = query.Where(v => v.CustomerId == customerId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(v => v.Warehouse == warehouse.Trim());
         }
 
         if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
@@ -73,6 +78,7 @@ public class ExportService : IExportService
         string? fromDate = null,
         string? toDate = null,
         string? search = null,
+        string? warehouse = null,
         int page = 1,
         int pageSize = 15,
         CancellationToken ct = default)
@@ -89,6 +95,11 @@ public class ExportService : IExportService
         if (customerId.HasValue)
         {
             query = query.Where(v => v.CustomerId == customerId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(v => v.Warehouse == warehouse.Trim());
         }
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -191,6 +202,7 @@ public class ExportService : IExportService
                 Date = voucherDate,
                 Warehouse = warehouse,
                 CustomerId = customer.Id,
+                Customer = customer,
                 Status = DomainConstants.VoucherStatuses.Active,
                 Notes = dto.Notes?.Trim(),
                 CreatedAt = DateTime.UtcNow
@@ -288,6 +300,7 @@ public class ExportService : IExportService
                 var debtHistory = new CustomerDebtHistory
                 {
                     CustomerId = customer.Id,
+                Customer = customer,
                     SourceType = DomainConstants.SourceTypes.Export,
                     ReferenceType = DomainConstants.ReferenceTypes.ExportVoucher,
                     ReferenceId = voucherNumber,
@@ -510,6 +523,7 @@ public class ExportService : IExportService
         Warehouse = v.Warehouse,
         CustomerId = v.CustomerId,
         CustomerName = v.Customer?.Name ?? string.Empty,
+        CustomerDebt = v.Customer?.Debt ?? 0,
         SubtotalSale = v.SubtotalSale,
         DiscountAmount = v.DiscountAmount,
         TotalSale = v.TotalSale,
@@ -529,7 +543,8 @@ public class ExportService : IExportService
             Quantity = i.Quantity,
             UnitCost = i.UnitCost,
             SalePrice = i.SalePrice,
-            LineTotal = i.LineTotal
+            LineTotal = i.LineTotal,
+            Uom = i.Product?.Uom ?? string.Empty
         }).ToList()
     };
 }

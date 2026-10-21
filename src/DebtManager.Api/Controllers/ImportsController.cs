@@ -24,6 +24,7 @@ public class ImportsController : BaseApiController
         [FromQuery] string? fromDate,
         [FromQuery] string? toDate,
         [FromQuery] string? q,
+        [FromQuery] string? warehouse,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -31,11 +32,11 @@ public class ImportsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _importService.GetPagedImportsAsync(supplierId, month, date, fromDate, toDate, q, page.Value, pageSize, ct);
+            var paged = await _importService.GetPagedImportsAsync(supplierId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, ct);
             return Success(paged);
         }
 
-        var list = await _importService.GetImportsAsync(supplierId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, ct);
+        var list = await _importService.GetImportsAsync(supplierId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, ct);
         return Success(list);
     }
 

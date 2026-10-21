@@ -48,6 +48,10 @@ export const customersApi = {
     const res = await api.post(`/customers/${id}/debt-adjust`, data);
     return res.data; // boolean
   },
+  getLedger: async (id, params = {}) => {
+    const res = await api.get(`/customers/${id}/ledger`, { params });
+    return res.data; // EntityLedgerResponseDto
+  },
 };
 
 // ==========================================
@@ -87,6 +91,10 @@ export const suppliersApi = {
   adjustDebt: async (id, data) => {
     const res = await api.post(`/suppliers/${id}/debt-adjust`, data);
     return res.data; // boolean
+  },
+  getLedger: async (id, params = {}) => {
+    const res = await api.get(`/suppliers/${id}/ledger`, { params });
+    return res.data; // EntityLedgerResponseDto
   },
 };
 
@@ -129,6 +137,10 @@ export const productsApi = {
   getCategories: async () => {
     const res = await api.get('/products/categories');
     return res.data; // List<string>
+  },
+  getLedger: async (id, params = {}) => {
+    const res = await api.get(`/products/${id}/ledger`, { params });
+    return res.data; // EntityLedgerResponseDto
   },
 };
 
@@ -248,6 +260,10 @@ export const reportsApi = {
     const res = await api.get('/reports/debts', { params });
     return res.data; // DebtReportResponseDto
   },
+  getWarehouseSales: async (params = {}) => {
+    const res = await api.get('/reports/warehouse-sales', { params });
+    return res.data; // WarehouseSalesResponseDto
+  },
 };
 
 // ==========================================
@@ -313,6 +329,38 @@ export const usersApi = {
   delete: async (id) => {
     const res = await api.delete(`/users/${id}`);
     return res.data; // boolean
+  },
+};
+
+// ==========================================
+// 13. Export API (Xuất dữ liệu Excel chạy ngầm)
+// ==========================================
+export const exportApi = {
+  startMatrix: async (data) => {
+    const res = await api.post('/export/start-matrix', data);
+    return res.data; // ExportJobStatusDto
+  },
+  startReport: async (data) => {
+    const res = await api.post('/export/start-report', data);
+    return res.data; // ExportJobStatusDto
+  },
+  startFullDb: async (data) => {
+    const res = await api.post('/export/start-full-db', data);
+    return res.data; // ExportJobStatusDto
+  },
+  getPreview: async (data) => {
+    const res = await api.post('/export/preview', data);
+    return res.data;
+  },
+  getStatus: async (jobId) => {
+    const res = await api.get(`/export/status/${jobId}`);
+    return res.data; // ExportJobStatusDto
+  },
+  downloadFile: async (jobId) => {
+    const res = await api.get(`/export/download/${jobId}`, {
+      responseType: 'blob',
+    });
+    return res;
   },
 };
 
