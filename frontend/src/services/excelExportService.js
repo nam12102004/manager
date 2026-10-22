@@ -35,17 +35,24 @@ export const excelExportService = {
   /**
    * Download the generated Excel file by Job ID
    */
-  async downloadFile(jobId, defaultFileName = 'BaoCao_Export.xlsx') {
+  async downloadFile(jobId, defaultFileName = 'BaoCao_Export.xlsx', customFileName = null) {
     const response = await exportApi.downloadFile(jobId);
     
-    // Extract filename from headers if available
-    let filename = defaultFileName;
-    const disposition = response.headers?.['content-disposition'];
-    if (disposition && disposition.includes('filename=')) {
-      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-      if (match && match[1]) {
-        filename = match[1].replace(/['"]/g, '');
+    // Determine filename: prefer customFileName if provided
+    let filename = (customFileName && customFileName.trim()) || defaultFileName;
+    if (!customFileName) {
+      const disposition = response.headers?.['content-disposition'];
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match && match[1]) {
+          filename = match[1].replace(/['"]/g, '');
+        }
       }
+    }
+
+    // Ensure valid extension
+    if (!filename.toLowerCase().endsWith('.xlsx') && !filename.toLowerCase().endsWith('.csv')) {
+      filename += '.xlsx';
     }
 
     const blob = new Blob([response.data], {

@@ -99,6 +99,7 @@ export default function ExportMatrixModal() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
   const [fromDate, setFromDate] = useState(getCurrentDateStr());
   const [toDate, setToDate] = useState(getCurrentDateStr());
+  const [customFileName, setCustomFileName] = useState('');
   const [includeQuantity, setIncludeQuantity] = useState(true);
   const [includeRevenue, setIncludeRevenue] = useState(true);
   const [includePrice, setIncludePrice] = useState(false);
@@ -292,7 +293,7 @@ export default function ExportMatrixModal() {
     };
 
     closeExportModal();
-    await startDailyMatrixExport(payload, titleParts.join(' '));
+    await startDailyMatrixExport(payload, titleParts.join(' '), customFileName.trim() || undefined);
   };
 
   return (
@@ -720,6 +721,23 @@ export default function ExportMatrixModal() {
                     <span>Đơn giá trung bình</span>
                   </label>
                 </div>
+              </div>
+
+              {/* Custom File Name Input */}
+              <div style={{ marginTop: '12px', marginBottom: '8px' }}>
+                <label className="form-label" style={{ fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <FileSpreadsheet size={14} color="var(--primary)" />
+                  <span>Tên file Excel khi tải về:</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>(Tùy chọn)</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ fontSize: '0.8125rem' }}
+                  placeholder="Ví dụ: MaTran_XuatHang_Thang10.xlsx (Để trống dùng tên mặc định)"
+                  value={customFileName}
+                  onChange={(e) => setCustomFileName(e.target.value)}
+                />
               </div>
 
               {/* Submit Buttons */}

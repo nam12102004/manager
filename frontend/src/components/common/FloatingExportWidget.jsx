@@ -18,6 +18,7 @@ export default function FloatingExportWidget() {
   const {
     jobs,
     downloadJob,
+    updateJobFileName,
     dismissJob,
     clearCompletedJobs,
     isWidgetVisible,
@@ -226,31 +227,56 @@ export default function FloatingExportWidget() {
                 {isFinished && (
                   <div
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginTop: '4px',
+                      marginTop: '6px',
                       paddingTop: '6px',
                       borderTop: '1px dashed var(--border-color, #e2e8f0)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
                     }}
                   >
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {job.fileSize ? formatBytes(job.fileSize) : 'Sẵn sàng'}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => downloadJob(job.jobId, job.fileName)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Tên file:</span>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={job.customFileName || job.fileName || ''}
+                        onChange={(e) => updateJobFileName(job.jobId, e.target.value)}
+                        placeholder="Tên file tải về..."
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 6px',
+                          height: '24px',
+                          flex: 1,
+                        }}
+                        title="Nhấp để đổi tên file tải về"
+                      />
+                    </div>
+                    <div
                       style={{
-                        padding: '4px 10px',
-                        fontSize: '0.75rem',
-                        gap: '4px',
-                        height: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      <Download size={13} />
-                      <span>Tải file</span>
-                    </button>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {job.fileSize ? formatBytes(job.fileSize) : 'Sẵn sàng'}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => downloadJob(job.jobId, job.fileName)}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.75rem',
+                          gap: '4px',
+                          height: 'auto',
+                        }}
+                      >
+                        <Download size={13} />
+                        <span>Tải file</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

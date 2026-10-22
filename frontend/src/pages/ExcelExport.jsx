@@ -250,14 +250,6 @@ const BUILT_IN_PRESETS = [
     includePrice: false,
     includeDetailSheet: true,
   },
-  {
-    id: 'preset-employee-sales',
-    name: '👔 Doanh số & SP Nhân viên',
-    isBuiltIn: true,
-    tab: 'employee',
-    empTargetMode: 'all',
-    empTimeMode: 'month',
-  },
 ];
 
 const REPORT_ACCENTS = {
@@ -463,10 +455,11 @@ const REPORT_ICONS = {
 
 export default function ExcelExport() {
   const notify = useNotification();
-  const { jobs, startReportExport, downloadJob, dismissJob } = useExport();
+  const { jobs, startReportExport, downloadJob, updateJobFileName, dismissJob } = useExport();
 
-  const [activeTab, setActiveTab] = useState('report'); // 'report' | 'employee'
+  const [activeTab, setActiveTab] = useState('report'); // 'report'
   const [submitting, setSubmitting] = useState(false);
+  const [customFileName, setCustomFileName] = useState('');
 
   // Dependencies
   const [customers, setCustomers] = useState([]);
@@ -702,12 +695,9 @@ export default function ExcelExport() {
 
   const handleApplyPreset = (preset) => {
     setActivePresetId(preset.id);
-    if (preset.tab) setActiveTab(preset.tab === 'matrix' ? 'report' : preset.tab);
+    setActiveTab('report');
 
     if (preset.tab === 'employee') {
-      if (preset.empTargetMode) setEmpTargetMode(preset.empTargetMode);
-      if (preset.empTimeMode) setEmpTimeMode(preset.empTimeMode);
-      if (preset.selectedEmployeeId) setSelectedEmployeeId(preset.selectedEmployeeId);
       return;
     }
 
@@ -878,6 +868,20 @@ export default function ExcelExport() {
   const reportTypeMeta = REPORT_TYPES.find((r) => r.value === reportType);
   const periodText = formatPeriodDescription(periodMode, periodParams);
   const granularityLabel = GRANULARITIES.find((g) => g.value === granularity)?.label || 'Theo ngày';
+
+  const defaultReportFileName = useMemo(() => {
+    const typeMap = {
+      sales: 'BaoCao_XuatHang_DoanhSo',
+      purchases: 'BaoCao_NhapHang_ChiPhi',
+      inventory: 'BaoCao_TonKho',
+      inout: 'BaoCao_XuatNhapTon',
+      cashflow: 'BaoCao_DongTien_ThuChi',
+      debt: 'BaoCao_TongHop_CongNo',
+    };
+    const base = typeMap[reportType] || 'BaoCao';
+    const cleanPeriod = (periodText || '').replace(/[\s\/\\]+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
+    return `${base}_${cleanPeriod || 'DuLieu'}.xlsx`;
+  }, [reportType, periodText]);
 
   const getGroupByDisplayLabel = (val) => {
     const partnerWord = isSupplier ? 'Nhà cung cấp' : 'Khách hàng';
@@ -1077,7 +1081,8 @@ export default function ExcelExport() {
         if (selectedProductIds.length > 0) titleParts.push(`${selectedProductIds.length} SP`);
         if (selectedEmployeeIds.length > 0) titleParts.push(`${selectedEmployeeIds.length} NV`);
 
-        await startReportExport(previewRequestDto, titleParts.join(' · '));
+        const finalFileName = customFileName.trim() || defaultReportFileName;
+        await startReportExport(previewRequestDto, titleParts.join(' · '), finalFileName);
       } else if (activeTab === 'employee') {
         const params = {};
         if (empTargetMode === 'single' && selectedEmployeeId) {
@@ -1161,25 +1166,7 @@ export default function ExcelExport() {
         </div>
       </div>
 
-      {/* Main Mode switcher */}
-      <div className="xe-mode-grid">
-        <button
-          type="button"
-          className={`xe-mode-card ${activeTab === 'report' ? 'active' : ''}`}
-          onClick={() => setActiveTab('report')}
-        >
-          <div className="xe-mode-icon"><CalendarDays size={20} /></div>
-          <div className="xe-mode-title">Báo cáo đa chiều</div>
-        </button>
-        <button
-          type="button"
-          className={`xe-mode-card ${activeTab === 'employee' ? 'active' : ''}`}
-          onClick={() => setActiveTab('employee')}
-        >
-          <div className="xe-mode-icon"><UserCheck size={20} /></div>
-          <div className="xe-mode-title">Doanh số & SP Nhân viên</div>
-        </button>
-      </div>
+
 
       {/* Quick Presets */}
       <div className="xe-presets">
@@ -2319,6 +2306,25 @@ export default function ExcelExport() {
               )}
             </div>
 
+            <div style={{ margin: '12px 14px 4px 14px', padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', color: 'var(--text-primary)' }}>
+                <FileSpreadsheet size={14} color="var(--primary)" />
+                <span>Tên file tải về (.xlsx):</span>
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                style={{ fontSize: '0.8125rem', padding: '6px 8px' }}
+                placeholder={defaultReportFileName}
+                value={customFileName}
+                onChange={(e) => setCustomFileName(e.target.value)}
+                title="Sửa tên file Excel tải về theo ý muốn"
+              />
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                * Để trống sẽ dùng mặc định: <em>{defaultReportFileName}</em>
+              </div>
+            </div>
+
             <div className="xe-summary-foot">
               <button
                 type="button"
@@ -2422,6 +2428,25 @@ export default function ExcelExport() {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="xe-job-title">{job.title}</div>
+                          {done && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Tên file:</span>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={job.customFileName || job.fileName || ''}
+                                onChange={(e) => updateJobFileName(job.jobId, e.target.value)}
+                                placeholder="Tên file tải về..."
+                                style={{
+                                  fontSize: '0.75rem',
+                                  padding: '2px 6px',
+                                  height: '24px',
+                                  maxWidth: '240px',
+                                }}
+                                title="Bấm để sửa tên file trước khi tải về"
+                              />
+                            </div>
+                          )}
                           <div className="xe-job-meta">
                             {done
                               ? [formatBytes(job.fileSize), 'Lưu trên máy chủ 2 giờ']

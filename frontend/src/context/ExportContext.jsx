@@ -45,10 +45,11 @@ export function ExportProvider({ children }) {
           );
 
           if (statusDto.status === 'completed') {
-            notify.success(`Đã xuất xong file: ${statusDto.fileName || 'Excel'}! Đang tải về...`);
+            const targetFileName = job.customFileName || job.fileName || statusDto.fileName || 'BaoCao_Export.xlsx';
+            notify.success(`Đã xuất xong file: ${targetFileName}! Đang tải về...`);
             // Auto download on completion
             try {
-              await excelExportService.downloadFile(job.jobId, statusDto.fileName);
+              await excelExportService.downloadFile(job.jobId, targetFileName, job.customFileName);
             } catch (dlErr) {
               console.error('Auto download error:', dlErr);
             }
@@ -75,7 +76,7 @@ export function ExportProvider({ children }) {
   }, []);
 
   const startReportExport = useCallback(
-    async (requestDto, customTitle = 'Báo cáo Excel') => {
+    async (requestDto, customTitle = 'Báo cáo Excel', customFileName = null) => {
       try {
         const res = await excelExportService.startReport(requestDto);
         if (!res || !res.jobId) {
@@ -89,7 +90,8 @@ export function ExportProvider({ children }) {
           status: res.status || 'queued',
           progressPercentage: res.progressPercentage || 0,
           message: res.message || 'Đang chuẩn bị hàng đợi...',
-          fileName: res.fileName,
+          fileName: customFileName || res.fileName,
+          customFileName: customFileName,
           createdAt: new Date(),
         };
 
@@ -107,7 +109,7 @@ export function ExportProvider({ children }) {
   );
 
   const startDailyMatrixExport = useCallback(
-    async (params, customTitle = 'Ma trận xuất hàng theo ngày') => {
+    async (params, customTitle = 'Ma trận xuất hàng theo ngày', customFileName = null) => {
       try {
         const res = await excelExportService.startDailyMatrix(params);
         if (!res || !res.jobId) {
@@ -121,7 +123,8 @@ export function ExportProvider({ children }) {
           status: res.status || 'queued',
           progressPercentage: res.progressPercentage || 0,
           message: res.message || 'Đang chuẩn bị hàng đợi...',
-          fileName: res.fileName,
+          fileName: customFileName || res.fileName,
+          customFileName: customFileName,
           createdAt: new Date(),
         };
 
@@ -170,10 +173,25 @@ export function ExportProvider({ children }) {
     [notify]
   );
 
+  const updateJobFileName = useCallback((jobId, newFileName) => {
+    setJobs((prev) =>
+      prev.map((item) => {
+        if (item.jobId !== jobId) return item;
+        return {
+          ...item,
+          fileName: newFileName,
+          customFileName: newFileName,
+        };
+      })
+    );
+  }, []);
+
   const downloadJob = useCallback(
-    async (jobId, fallbackFileName) => {
+    async (jobId, fallbackFileName, customFileName = null) => {
       try {
-        await excelExportService.downloadFile(jobId, fallbackFileName);
+        const currentJob = jobsRef.current.find((j) => j.jobId === jobId);
+        const targetName = customFileName || currentJob?.customFileName || fallbackFileName || currentJob?.fileName;
+        await excelExportService.downloadFile(jobId, targetName, targetName);
         notify.success('Đang tải file xuống...');
       } catch (err) {
         notify.error(err.message || 'Không thể tải file xuất');
@@ -202,6 +220,7 @@ export function ExportProvider({ children }) {
         startDailyMatrixExport,
         startFullDbExport,
         downloadJob,
+        updateJobFileName,
         dismissJob,
         clearCompletedJobs,
         isWidgetVisible,
