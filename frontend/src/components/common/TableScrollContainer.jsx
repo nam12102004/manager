@@ -12,6 +12,7 @@ export default function TableScrollContainer({
   style = {},
   sticky = true,
   stickyTop = 'var(--header-height, 68px)',
+  alwaysShow = true,
 }) {
   const wrapperRef = useRef(null);
   const topScrollRef = useRef(null);
@@ -34,6 +35,13 @@ export default function TableScrollContainer({
     if (!bottomEl || !topEl) return;
 
     let isSyncing = false;
+
+    // Keep initial positions matched
+    if (bottomEl.scrollLeft > 0) {
+      topEl.scrollLeft = bottomEl.scrollLeft;
+    } else if (topEl.scrollLeft > 0) {
+      bottomEl.scrollLeft = topEl.scrollLeft;
+    }
 
     const syncTopToBottom = () => {
       if (isSyncing) return;
@@ -60,25 +68,26 @@ export default function TableScrollContainer({
       topEl.removeEventListener('scroll', syncTopToBottom);
       bottomEl.removeEventListener('scroll', syncBottomToTop);
     };
-  }, [getBottomEl, canScroll]);
+  }, [getBottomEl, scrollWidth, canScroll]);
 
   // Measure scrollWidth and clientWidth to determine if horizontal scrolling is needed
   const updateMetrics = useCallback(() => {
     const bottomEl = getBottomEl();
-    if (!bottomEl) {
-      setCanScroll(false);
-      return;
-    }
+    if (!bottomEl) return;
 
-    const sw = bottomEl.scrollWidth;
-    const cw = bottomEl.clientWidth;
-    const overflowed = sw > cw + 2;
+    const tableEl = bottomEl.querySelector('table');
+    const sw = Math.max(
+      bottomEl.scrollWidth || 0,
+      tableEl ? tableEl.scrollWidth || 0 : 0,
+      tableEl ? tableEl.offsetWidth || 0 : 0
+    );
+    const cw = bottomEl.clientWidth || 0;
+    const overflowed = sw > cw + 1;
 
     setScrollWidth(sw);
     setCanScroll(overflowed);
 
-    // Keep top scrollbar position in sync if it was already scrolled
-    if (topScrollRef.current && overflowed) {
+    if (topScrollRef.current) {
       if (Math.abs(topScrollRef.current.scrollLeft - bottomEl.scrollLeft) > 1) {
         topScrollRef.current.scrollLeft = bottomEl.scrollLeft;
       }
@@ -91,6 +100,11 @@ export default function TableScrollContainer({
     if (!wrapper) return;
 
     updateMetrics();
+
+    // Staggered timers to ensure metric measurements after CSS/data render
+    const t1 = setTimeout(updateMetrics, 50);
+    const t2 = setTimeout(updateMetrics, 200);
+    const t3 = setTimeout(updateMetrics, 600);
 
     let ro = null;
     if (typeof ResizeObserver !== 'undefined') {
@@ -115,6 +129,9 @@ export default function TableScrollContainer({
     window.addEventListener('resize', updateMetrics);
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       if (ro) ro.disconnect();
       mo.disconnect();
       window.removeEventListener('resize', updateMetrics);
@@ -139,8 +156,8 @@ export default function TableScrollContainer({
         ...style,
       }}
     >
-      {/* Top horizontal scrollbar bar */}
-      {canScroll && (
+      {/* Top horizontal scrollbar bar: always rendered directly above the table list */}
+      {(alwaysShow || canScroll) && (
         <div
           ref={topScrollRef}
           className="table-top-scrollbar"
@@ -152,18 +169,24 @@ export default function TableScrollContainer({
             overflowX: 'auto',
             overflowY: 'hidden',
             width: '100%',
-            height: '16px',
+            height: '20px',
             boxSizing: 'border-box',
-            backgroundColor: 'var(--bg-secondary, #f8fafc)',
+            backgroundColor: 'var(--bg-tertiary, #f1f5f9)',
             border: '1px solid var(--border-color, #e2e8f0)',
             borderRadius: 'var(--radius-sm, 6px)',
             marginBottom: '4px',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
           }}
-          title="Cuộn ngang danh sách (phía trên)"
+          title="Thanh cuộn ngang danh sách (phía trên)"
         >
           {/* Dummy element that establishes the exact scrollWidth */}
-          <div style={{ width: `${scrollWidth}px`, height: '1px', pointerEvents: 'none' }} />
+          <div
+            style={{
+              width: `${scrollWidth ? `${scrollWidth}px` : '100%'}`,
+              height: '2px',
+              pointerEvents: 'none',
+            }}
+          />
         </div>
       )}
 

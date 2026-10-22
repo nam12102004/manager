@@ -30,8 +30,11 @@ import Pagination from '../components/common/Pagination';
 import { exportService, warehouseService, getProductStockForWarehouse } from '../services';
 import { generateExportHtml, printInNewTab } from '../utils/printVoucher';
 import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
+import useDragScroll from '../hooks/useDragScroll';
+import TableScrollContainer from '../components/common/TableScrollContainer';
 
 export default function Exports({ initialOpenCreate = false }) {
+  const tableContainerRef = useDragScroll();
   const notify = useNotification();
   const { openExportModal } = useExport();
 
@@ -456,7 +459,8 @@ export default function Exports({ initialOpenCreate = false }) {
           }
         />
       ) : (
-        <div className="table-responsive">
+        <TableScrollContainer targetRef={tableContainerRef} className="table-scroll-wide">
+        <div ref={tableContainerRef} className="table-responsive">
           <table className="data-table">
             <thead>
               <tr>
@@ -587,6 +591,7 @@ export default function Exports({ initialOpenCreate = false }) {
             </tbody>
           </table>
         </div>
+        </TableScrollContainer>
       )}
 
       {/* Pagination (15 items per page) */}

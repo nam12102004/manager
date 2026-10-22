@@ -519,14 +519,15 @@ h1, h2, h3, h4, h5, h6 {
 .table-top-scrollbar {
   overflow-x: auto;
   overflow-y: hidden;
-  height: 16px;
+  height: 20px;
+  min-height: 20px;
   box-sizing: border-box;
-  background: var(--bg-secondary, #f8fafc);
+  background: var(--bg-tertiary, #f1f5f9);
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: var(--radius-sm, 6px);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   scrollbar-width: thin;
-  scrollbar-color: #94a3b8 var(--bg-secondary, #f8fafc);
+  scrollbar-color: #94a3b8 var(--bg-tertiary, #f1f5f9);
 }
 
 .table-top-scrollbar::-webkit-scrollbar {
@@ -534,7 +535,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .table-top-scrollbar::-webkit-scrollbar-track {
-  background: var(--bg-secondary, #f8fafc);
+  background: var(--bg-tertiary, #f1f5f9);
   border-radius: 4px;
 }
 
@@ -546,6 +547,15 @@ h1, h2, h3, h4, h5, h6 {
 
 .table-top-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--primary, #3b82f6);
+}
+
+/* Ensure data tables inside table-scroll-wrapper maintain comfortable column widths */
+.table-scroll-wrapper .data-table {
+  min-width: 1250px;
+}
+
+.table-scroll-wrapper.table-scroll-wide .data-table {
+  min-width: 1400px;
 }
 
 .table-responsive {

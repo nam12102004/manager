@@ -30,8 +30,12 @@ import Pagination from '../components/common/Pagination';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import SearchableSelect from '../components/common/SearchableSelect';
 import { cashBookService } from '../services';
+import useDragScroll from '../hooks/useDragScroll';
+import TableScrollContainer from '../components/common/TableScrollContainer';
 
 export default function CashBook({ initialOpenReceipt = false, initialOpenPayment = false }) {
+  const receiptsTableRef = useDragScroll();
+  const paymentsTableRef = useDragScroll();
   const notify = useNotification();
 
   const [activeSubTab, setActiveSubTab] = useState('receipts'); // 'receipts' | 'payments'
@@ -428,7 +432,8 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           />
         ) : (
           <>
-            <div className="table-responsive">
+            <TableScrollContainer targetRef={receiptsTableRef}>
+            <div ref={receiptsTableRef} className="table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -491,6 +496,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                 </tbody>
               </table>
             </div>
+            </TableScrollContainer>
             <Pagination
               currentPage={receiptsPage}
               totalPages={receiptsTotalPages}
@@ -522,7 +528,8 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           />
         ) : (
           <>
-            <div className="table-responsive">
+            <TableScrollContainer targetRef={paymentsTableRef}>
+            <div ref={paymentsTableRef} className="table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -591,6 +598,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                 </tbody>
               </table>
             </div>
+            </TableScrollContainer>
             <Pagination
               currentPage={paymentsPage}
               totalPages={paymentsTotalPages}
