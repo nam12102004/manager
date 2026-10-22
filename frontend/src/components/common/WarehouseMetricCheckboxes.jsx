@@ -44,6 +44,11 @@ export const getMetricTimeParams = (visibleMetrics) => {
     const { fromDate, toDate } = getWeekBounds(visibleMetrics?.timeDate);
     return { fromDate, toDate };
   }
+  if (mode === 'range') {
+    const from = visibleMetrics?.timeFromDate || getTodayYMD();
+    const to = visibleMetrics?.timeToDate || getTodayYMD();
+    return { fromDate: from, toDate: to };
+  }
   if (mode === 'month') {
     const mStr = visibleMetrics?.timeMonth || getCurrentYM();
     const [y, m] = mStr.split('-').map(Number);
@@ -66,16 +71,18 @@ export const DEFAULT_VISIBLE_METRICS = {
   importWarehouses: {},
   receipt: false,
   payment: false,
-  timeMode: 'all', // 'all' | 'day' | 'week' | 'month'
+  timeMode: 'all', // 'all' | 'day' | 'week' | 'month' | 'range'
   timeDate: getTodayYMD(),
   timeMonth: getCurrentYM(),
+  timeFromDate: getTodayYMD(),
+  timeToDate: getTodayYMD(),
 };
 
 export const loadSavedMetrics = (storageKey, defaults = DEFAULT_VISIBLE_METRICS) => {
-  if (!storageKey) return { ...defaults, timeDate: getTodayYMD(), timeMonth: getCurrentYM() };
+  if (!storageKey) return { ...defaults, timeDate: getTodayYMD(), timeMonth: getCurrentYM(), timeFromDate: getTodayYMD(), timeToDate: getTodayYMD() };
   try {
     const saved = localStorage.getItem(storageKey);
-    if (!saved) return { ...defaults, timeDate: getTodayYMD(), timeMonth: getCurrentYM() };
+    if (!saved) return { ...defaults, timeDate: getTodayYMD(), timeMonth: getCurrentYM(), timeFromDate: getTodayYMD(), timeToDate: getTodayYMD() };
     const parsed = JSON.parse(saved);
     return {
       exportTotal: parsed.exportTotal ?? parsed.export ?? defaults.exportTotal ?? false,
@@ -87,9 +94,11 @@ export const loadSavedMetrics = (storageKey, defaults = DEFAULT_VISIBLE_METRICS)
       timeMode: parsed.timeMode || 'all',
       timeDate: parsed.timeDate || getTodayYMD(),
       timeMonth: parsed.timeMonth || getCurrentYM(),
+      timeFromDate: parsed.timeFromDate || getTodayYMD(),
+      timeToDate: parsed.timeToDate || getTodayYMD(),
     };
   } catch {
-    return { ...defaults, timeDate: getTodayYMD(), timeMonth: getCurrentYM() };
+    return { ...defaults, timeDate: getTodayYMD(), timeMonth: getCurrentYM(), timeFromDate: getTodayYMD(), timeToDate: getTodayYMD() };
   }
 };
 
@@ -208,9 +217,27 @@ export default function WarehouseMetricCheckboxes({
     });
   };
 
+  const setTimeFromDate = (fromVal) => {
+    if (!fromVal) return;
+    updateMetrics({
+      ...visibleMetrics,
+      timeFromDate: fromVal,
+    });
+  };
+
+  const setTimeToDate = (toVal) => {
+    if (!toVal) return;
+    updateMetrics({
+      ...visibleMetrics,
+      timeToDate: toVal,
+    });
+  };
+
   const curTimeMode = visibleMetrics.timeMode || 'all';
   const curTimeDate = visibleMetrics.timeDate || getTodayYMD();
   const curTimeMonth = visibleMetrics.timeMonth || getCurrentYM();
+  const curTimeFromDate = visibleMetrics.timeFromDate || getTodayYMD();
+  const curTimeToDate = visibleMetrics.timeToDate || getTodayYMD();
   const weekInfo = curTimeMode === 'week' ? getWeekBounds(curTimeDate) : null;
 
   // Section renderers
@@ -467,6 +494,7 @@ export default function WarehouseMetricCheckboxes({
         { id: 'day', label: 'Ngày' },
         { id: 'week', label: 'Tuần' },
         { id: 'month', label: 'Tháng' },
+        { id: 'range', label: 'Khoảng' },
       ].map((t) => {
         const isActive = curTimeMode === t.id;
         return (
@@ -543,6 +571,45 @@ export default function WarehouseMetricCheckboxes({
           }}
           title="Chọn tháng xem chỉ số"
         />
+      )}
+
+      {curTimeMode === 'range' && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Từ:</span>
+          <input
+            type="date"
+            value={curTimeFromDate}
+            onChange={(e) => setTimeFromDate(e.target.value)}
+            style={{
+              padding: '1px 5px',
+              borderRadius: '4px',
+              border: '1px solid #94a3b8',
+              fontSize: '0.75rem',
+              fontFamily: 'inherit',
+              backgroundColor: '#ffffff',
+              color: '#0f172a',
+              cursor: 'pointer',
+            }}
+            title="Từ ngày"
+          />
+          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Đến:</span>
+          <input
+            type="date"
+            value={curTimeToDate}
+            onChange={(e) => setTimeToDate(e.target.value)}
+            style={{
+              padding: '1px 5px',
+              borderRadius: '4px',
+              border: '1px solid #94a3b8',
+              fontSize: '0.75rem',
+              fontFamily: 'inherit',
+              backgroundColor: '#ffffff',
+              color: '#0f172a',
+              cursor: 'pointer',
+            }}
+            title="Đến ngày"
+          />
+        </div>
       )}
     </div>
   );

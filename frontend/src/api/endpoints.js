@@ -40,8 +40,11 @@ export const customersApi = {
     const res = await api.put(`/customers/${id}`, data);
     return res.data; // CustomerDto
   },
-  getDebtHistory: async (id, month) => {
-    const res = await api.get(`/customers/${id}/debt-history`, { params: { month: month || undefined } });
+  getDebtHistory: async (id, paramsOrMonth) => {
+    const params = typeof paramsOrMonth === 'string'
+      ? { month: paramsOrMonth || undefined }
+      : (paramsOrMonth || {});
+    const res = await api.get(`/customers/${id}/debt-history`, { params });
     return res.data; // List<CustomerDebtHistoryDto>
   },
   adjustDebt: async (id, data) => {
@@ -84,8 +87,11 @@ export const suppliersApi = {
     const res = await api.put(`/suppliers/${id}`, data);
     return res.data; // SupplierDto
   },
-  getDebtHistory: async (id, month) => {
-    const res = await api.get(`/suppliers/${id}/debt-history`, { params: { month: month || undefined } });
+  getDebtHistory: async (id, paramsOrMonth) => {
+    const params = typeof paramsOrMonth === 'string'
+      ? { month: paramsOrMonth || undefined }
+      : (paramsOrMonth || {});
+    const res = await api.get(`/suppliers/${id}/debt-history`, { params });
     return res.data; // List<SupplierDebtHistoryDto>
   },
   adjustDebt: async (id, data) => {
@@ -128,9 +134,10 @@ export const productsApi = {
     const res = await api.post(`/products/${id}/stock-adjust`, data);
     return res.data; // boolean
   },
-  getStockHistory: async (id, month = '') => {
-    const params = {};
-    if (month) params.month = month;
+  getStockHistory: async (id, paramsOrMonth = '') => {
+    const params = typeof paramsOrMonth === 'string'
+      ? (paramsOrMonth ? { month: paramsOrMonth } : {})
+      : (paramsOrMonth || {});
     const res = await api.get(`/products/${id}/stock-history`, { params });
     return res.data; // List<StockHistoryDto>
   },
@@ -364,3 +371,31 @@ export const exportApi = {
   },
 };
 
+// ==========================================
+// 14. Employees API (Quản lý Nhân viên & Doanh số xuất hàng)
+// ==========================================
+export const employeesApi = {
+  getAll: async (params = {}) => {
+    const res = await api.get('/employees', { params: params || {} });
+    return res.data; // List<EmployeeDto>
+  },
+  getById: async (id) => {
+    const res = await api.get(`/employees/${id}`);
+    return res.data; // EmployeeDto
+  },
+  create: async (data) => {
+    const res = await api.post('/employees', data);
+    return res.data; // EmployeeDto
+  },
+  delete: async (id) => {
+    const res = await api.delete(`/employees/${id}`);
+    return res.data; // boolean
+  },
+  exportExcel: async (params = {}) => {
+    const res = await api.get('/employees/export-excel', {
+      params,
+      responseType: 'blob',
+    });
+    return res;
+  },
+};

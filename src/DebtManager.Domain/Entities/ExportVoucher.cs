@@ -10,6 +10,10 @@ public class ExportVoucher
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
 
+    public int? EmployeeId { get; set; }
+    public Employee? Employee { get; set; }
+    public string? EmployeeName { get; set; }
+
     public decimal SubtotalSale { get; set; } = 0;
     public decimal DiscountAmount { get; set; } = 0;
     public decimal TotalSale { get; set; } = 0;

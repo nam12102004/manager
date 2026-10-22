@@ -42,6 +42,7 @@ export default function Sidebar({
     { id: 'imports', label: 'Nhập' },
     { id: 'customers', label: 'Khách hàng' },
     { id: 'suppliers', label: 'Nhà cung cấp' },
+    { id: 'employees', label: 'Nhân viên' },
     { id: 'cashbook', label: 'Thu - Chi' },
     { id: 'reports', label: 'Báo cáo' },
     { id: 'excel-export', label: 'Xuất Excel' },

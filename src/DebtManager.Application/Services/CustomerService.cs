@@ -284,7 +284,7 @@ public class CustomerService : ICustomerService
         return MapToDto(customer);
     }
 
-    public async Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, CancellationToken ct = default)
+    public async Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var customerExists = await _uow.Customers.Query().AnyAsync(c => c.Id == customerId, ct);
         if (!customerExists)
@@ -294,24 +294,39 @@ public class CustomerService : ICustomerService
 
         var query = _uow.CustomerDebtHistories.Query().Where(h => h.CustomerId == customerId);
 
-        if (!string.IsNullOrWhiteSpace(month))
+        DateTime? startDate = null;
+        DateTime? endDate = null;
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
-                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
-                var end = start.AddDays(1);
-                var windowStart = start.AddDays(-1);
-                var windowEnd = end.AddDays(1);
-                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+                startDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddDays(1);
             }
             else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
             {
-                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                var end = start.AddMonths(1);
-                var windowStart = start.AddDays(-1);
-                var windowEnd = end.AddDays(1);
-                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+                startDate = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddMonths(1);
             }
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(h => h.CreatedAt >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            query = query.Where(h => h.CreatedAt < endDate.Value);
         }
 
         var list = await query
@@ -374,7 +389,7 @@ public class CustomerService : ICustomerService
         return true;
     }
 
-    public async Task<EntityLedgerResponseDto> GetLedgerAsync(int customerId, string? warehouse = null, string? month = null, CancellationToken ct = default)
+    public async Task<EntityLedgerResponseDto> GetLedgerAsync(int customerId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var customer = await _uow.Customers.GetByIdAsync(customerId, ct)
             ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {customerId}");
@@ -384,7 +399,17 @@ public class CustomerService : ICustomerService
 
         DateTime? startDate = null;
         DateTime? endDate = null;
-        if (!string.IsNullOrWhiteSpace(month))
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
@@ -409,7 +434,11 @@ public class CustomerService : ICustomerService
         }
         if (startDate.HasValue)
         {
-            exportQuery = exportQuery.Where(v => v.Date >= startDate.Value.AddDays(-1) && v.Date <= endDate!.Value.AddDays(1));
+            exportQuery = exportQuery.Where(v => v.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            exportQuery = exportQuery.Where(v => v.Date < endDate.Value);
         }
         var exports = await exportQuery.ToListAsync(ct);
         foreach (var ex in exports)
@@ -434,7 +463,11 @@ public class CustomerService : ICustomerService
         var receiptQuery = _uow.Receipts.Query().Where(r => r.CustomerId == customerId);
         if (startDate.HasValue)
         {
-            receiptQuery = receiptQuery.Where(r => r.Date >= startDate.Value.AddDays(-1) && r.Date <= endDate!.Value.AddDays(1));
+            receiptQuery = receiptQuery.Where(r => r.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            receiptQuery = receiptQuery.Where(r => r.Date < endDate.Value);
         }
         var receipts = await receiptQuery.ToListAsync(ct);
         foreach (var rc in receipts)
@@ -468,7 +501,11 @@ public class CustomerService : ICustomerService
         var paymentQuery = _uow.Payments.Query().Where(p => p.CustomerId == customerId && p.Status != "cancelled");
         if (startDate.HasValue)
         {
-            paymentQuery = paymentQuery.Where(p => p.Date >= startDate.Value.AddDays(-1) && p.Date <= endDate!.Value.AddDays(1));
+            paymentQuery = paymentQuery.Where(p => p.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            paymentQuery = paymentQuery.Where(p => p.Date < endDate.Value);
         }
         var payments = await paymentQuery.ToListAsync(ct);
         foreach (var pm in payments)
@@ -494,7 +531,11 @@ public class CustomerService : ICustomerService
             .Where(h => h.CustomerId == customerId && (h.SourceType == DomainConstants.SourceTypes.ManualAdjustment || h.SourceType == "init"));
         if (startDate.HasValue)
         {
-            historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value.AddDays(-1) && h.CreatedAt <= endDate!.Value.AddDays(1));
+            historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            historyQuery = historyQuery.Where(h => h.CreatedAt < endDate.Value);
         }
         var histories = await historyQuery.ToListAsync(ct);
         foreach (var h in histories)

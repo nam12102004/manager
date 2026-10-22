@@ -4,7 +4,6 @@ import {
   TrendingUp,
   CreditCard,
   Building,
-  ArrowUpRight,
   ArrowDownLeft,
   AlertTriangle,
   Receipt,
@@ -18,7 +17,7 @@ import StatCard from '../components/common/StatCard';
 import { dashboardService } from '../services';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr } from '../utils/formatters';
 
-export default function Dashboard({ onNavigate, onQuickAction }) {
+export default function Dashboard({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     metrics: {

@@ -7,6 +7,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IRepository<User> Users { get; }
     IRepository<Customer> Customers { get; }
     IRepository<Supplier> Suppliers { get; }
+    IRepository<Employee> Employees { get; }
     IRepository<Product> Products { get; }
     IRepository<StockHistory> StockHistories { get; }
     IRepository<CustomerDebtHistory> CustomerDebtHistories { get; }

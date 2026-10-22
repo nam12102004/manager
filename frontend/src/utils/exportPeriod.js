@@ -21,7 +21,14 @@ export const REPORT_TYPES = [
     label: 'Xuất bán',
     desc: 'Doanh số và số lượng hàng xuất',
     defaultGroupBy: 'product',
-    allowedGroupBys: ['product', 'product_partner', 'partner', 'partner_product', 'warehouse_product'],
+    allowedGroupBys: ['product', 'product_partner', 'partner', 'partner_product', 'warehouse_product', 'employee', 'employee_product', 'employee_partner'],
+  },
+  {
+    value: 'employee_sales',
+    label: 'Doanh số nhân viên',
+    desc: 'Doanh số, số lượng và chi tiết mặt hàng theo nhân viên',
+    defaultGroupBy: 'employee',
+    allowedGroupBys: ['employee', 'employee_product', 'employee_partner', 'product'],
   },
   {
     value: 'purchases',
@@ -54,7 +61,7 @@ export const REPORT_TYPES = [
   {
     value: 'debt',
     label: 'Công nợ theo kỳ',
-    desc: 'Nợ đầu kỳ, tăng giảm và nợ cuối kỳ',
+    desc: 'Nợ đầu kỳ (ĐK) và nợ cuối kỳ (CK)',
     defaultGroupBy: 'partner',
     allowedGroupBys: ['partner'],
   },
@@ -66,6 +73,9 @@ export const GROUP_BY_OPTIONS = [
   { value: 'partner', label: 'Theo đối tác' },
   { value: 'partner_product', label: 'Theo đối tác và sản phẩm' },
   { value: 'warehouse_product', label: 'Theo kho và sản phẩm' },
+  { value: 'employee', label: 'Theo nhân viên phụ trách' },
+  { value: 'employee_product', label: 'Theo nhân viên và sản phẩm' },
+  { value: 'employee_partner', label: 'Theo nhân viên và khách hàng' },
 ];
 
 /**

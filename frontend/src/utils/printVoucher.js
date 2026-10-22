@@ -30,7 +30,7 @@ function parseOwner(ownerInfo) {
 export function generateExportHtml({ exportData, ownerInfo = null, customer = null }) {
   const store = parseOwner(ownerInfo);
   
-  const vDate = exportData.createdAt ? new Date(exportData.createdAt) : (exportData.date ? new Date(exportData.date) : new Date());
+  const vDate = exportData.date ? new Date(exportData.date) : (exportData.createdAt ? new Date(exportData.createdAt) : new Date());
   const hours = String(vDate.getHours()).padStart(2, '0');
   const minutes = String(vDate.getMinutes()).padStart(2, '0');
   const day = String(vDate.getDate()).padStart(2, '0');
@@ -364,7 +364,7 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
  */
 export function generateImportHtml({ importData, ownerInfo = null, supplier = null }) {
   const store = parseOwner(ownerInfo);
-  const vDate = importData.createdAt ? new Date(importData.createdAt) : (importData.date ? new Date(importData.date) : new Date());
+  const vDate = importData.date ? new Date(importData.date) : (importData.createdAt ? new Date(importData.createdAt) : new Date());
   const hours = String(vDate.getHours()).padStart(2, '0');
   const minutes = String(vDate.getMinutes()).padStart(2, '0');
   const day = String(vDate.getDate()).padStart(2, '0');
@@ -618,7 +618,7 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
   const formCode = isReceipt ? 'Mẫu số 01 - TT' : 'Mẫu số 02 - TT';
   const voucherNum = isReceipt ? (voucher.receiptNumber || voucher.id) : (voucher.paymentNumber || voucher.id);
   
-  const vDate = voucher.createdAt ? new Date(voucher.createdAt) : (voucher.date ? new Date(voucher.date) : new Date());
+  const vDate = voucher.date ? new Date(voucher.date) : (voucher.createdAt ? new Date(voucher.createdAt) : new Date());
   const hours = String(vDate.getHours()).padStart(2, '0');
   const minutes = String(vDate.getMinutes()).padStart(2, '0');
   const day = String(vDate.getDate()).padStart(2, '0');

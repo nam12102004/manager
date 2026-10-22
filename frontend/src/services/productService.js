@@ -153,8 +153,8 @@ export const productService = {
     return result;
   },
 
-  async getStockHistory(id, month) {
-    return await productsApi.getStockHistory(id, month);
+  async getStockHistory(id, paramsOrMonth) {
+    return await productsApi.getStockHistory(id, paramsOrMonth);
   },
 
   async getCategories() {

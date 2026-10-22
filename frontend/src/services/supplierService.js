@@ -169,8 +169,8 @@ export const supplierService = {
     return result;
   },
 
-  async getDebtHistory(id, month) {
-    return await suppliersApi.getDebtHistory(id, month);
+  async getDebtHistory(id, paramsOrMonth) {
+    return await suppliersApi.getDebtHistory(id, paramsOrMonth);
   },
 
   async getLedger(id, params = {}) {

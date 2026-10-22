@@ -25,6 +25,7 @@ public class ReportExportEngine
         request.CustomerIds ??= new();
         request.SupplierIds ??= new();
         request.Warehouses ??= new();
+        request.EmployeeIds ??= new();
 
         var reportTitle = GetReportTitle(request);
         var jobId = _jobManager.CreateJob($"Đang khởi tạo {reportTitle}...");
@@ -52,7 +53,7 @@ public class ReportExportEngine
                 _jobManager.UpdateProgress(jobId, 30, "Đang truy vấn dữ liệu từ máy chủ...");
 
                 var sheets = new Dictionary<string, object>();
-                var fileNamePrefix = GetFileNamePrefix(request.ReportType);
+                var fileNamePrefix = GetFileNamePrefix(request.ReportType, request.DebtMode);
                 var fileName = $"{fileNamePrefix}_{periodLabel}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
                 var filePath = Path.Combine(tempDir, $"{jobId}.xlsx");
 
@@ -79,6 +80,7 @@ public class ReportExportEngine
                         break;
 
                     case "sales":
+                    case "employee_sales":
                     default:
                         await BuildSalesReportAsync(sheets, request, buckets, rangeStart, rangeEndExclusive, uow, ct);
                         break;
@@ -107,6 +109,7 @@ public class ReportExportEngine
         request.CustomerIds ??= new();
         request.SupplierIds ??= new();
         request.Warehouses ??= new();
+        request.EmployeeIds ??= new();
 
         var reportTitle = GetReportTitle(request);
         var (rangeStart, rangeEndExclusive, periodLabel) = await PeriodResolver.ResolveAsync(
@@ -143,6 +146,7 @@ public class ReportExportEngine
                 await BuildDebtReportAsync(sheets, request, buckets, rangeStart, rangeEndExclusive, uow, ct);
                 break;
             case "sales":
+            case "employee_sales":
             default:
                 await BuildSalesReportAsync(sheets, request, buckets, rangeStart, rangeEndExclusive, uow, ct);
                 break;
@@ -242,9 +246,57 @@ public class ReportExportEngine
                 result.DetailColumns = detailList[0].Keys.ToList();
                 result.DetailRows = detailList.Take(35).Select(r => r.ToDictionary(k => k.Key, v => (object?)v.Value)).ToList();
             }
+            else
+            {
+                result.DetailColumns = GetDefaultDetailColumns(rType);
+                result.DetailRows = new();
+            }
+        }
+        else if (request.IncludeDetailSheet)
+        {
+            result.TotalDetailRows = 0;
+            result.DetailColumns = GetDefaultDetailColumns(rType);
+            result.DetailRows = new();
         }
 
         return result;
+    }
+
+    private static List<string> GetDefaultDetailColumns(string rType)
+    {
+        return rType.ToLowerInvariant() switch
+        {
+            "inout" => new List<string>
+            {
+                "STT", "Ngày chứng từ", "Loại nghiệp vụ", "Số chứng từ", "Kho hàng", "Mã SKU", "Tên sản phẩm", "ĐVT",
+                "Loại đối tác", "Đối tác", "SL Nhập", "Đơn giá nhập", "Thành tiền nhập", "SL Xuất", "Đơn giá xuất", "Doanh số xuất"
+            },
+            "cashflow" => new List<string>
+            {
+                "STT", "Ngày ghi nhận", "Loại chứng từ", "Số phiếu", "Loại đối tác", "Mã đối tác", "Tên đối tác",
+                "Phương thức", "Tiền thu (VNĐ)", "Tiền chi (VNĐ)", "Ghi chú / Diễn giải"
+            },
+            "debt" => new List<string>
+            {
+                "STT", "Thời gian", "Loại đối tác", "Mã đối tác", "Tên đối tác", "Loại chứng từ", "Số chứng từ",
+                "Diễn giải", "Nợ tăng (VNĐ)", "Nợ giảm (VNĐ)", "Dư nợ sau GD (VNĐ)"
+            },
+            "inventory" => new List<string>
+            {
+                "STT", "Kho hàng", "Mã SKU", "Tên sản phẩm", "Danh mục", "ĐVT", "Số lượng tồn", "Định mức tối thiểu",
+                "Đơn giá vốn", "Giá trị tồn", "Trạng thái"
+            },
+            "purchases" => new List<string>
+            {
+                "Ngày chứng từ", "Số phiếu", "Mã NCC", "Nhà cung cấp", "Kho nhập", "Mã SKU", "Tên sản phẩm", "ĐVT",
+                "Số lượng", "Đơn giá nhập", "Thành tiền", "Ghi chú"
+            },
+            _ => new List<string>
+            {
+                "Ngày chứng từ", "Số phiếu", "Nhân viên", "Mã KH", "Khách hàng", "Kho xuất", "Mã SKU", "Tên sản phẩm", "ĐVT",
+                "Số lượng", "Đơn giá", "Thành tiền", "Ghi chú"
+            }
+        };
     }
 
     private static string FormatWarehouseLabel(string wh)
@@ -289,9 +341,21 @@ public class ReportExportEngine
         result.BreakdownByWarehouse = isWhBreakdown;
         result.Warehouses = whs.Select(FormatWarehouseLabel).ToList();
 
-        if (rType == "sales" || rType == "purchases")
+        if (rType == "sales" || rType == "purchases" || rType == "employee_sales")
         {
-            if (gb == "partner")
+            if (gb == "employee")
+            {
+                result.FixedColumns = new List<string> { "STT", "Nhân viên phụ trách" };
+            }
+            else if (gb == "employee_product")
+            {
+                result.FixedColumns = new List<string> { "STT", "Nhân viên phụ trách", "Mã SKU", "Tên sản phẩm", "ĐVT" };
+            }
+            else if (gb == "employee_partner")
+            {
+                result.FixedColumns = new List<string> { "STT", "Nhân viên phụ trách", "Mã đối tác", partnerHeader };
+            }
+            else if (gb == "partner")
             {
                 result.FixedColumns = new List<string> { "STT", "Mã đối tác", partnerHeader };
             }
@@ -432,14 +496,12 @@ public class ReportExportEngine
         }
         else if (rType == "debt")
         {
-            result.FixedColumns = new List<string> { "STT", "Loại", "Mã", "Tên đối tác", "Đầu kỳ" };
-            result.BucketMetrics.Add(new BucketMetricDto { Key = "inc", Label = "Tăng", Suffix = " (Tăng)" });
-            result.BucketMetrics.Add(new BucketMetricDto { Key = "dec", Label = "Giảm", Suffix = " (Giảm)" });
-            result.BucketMetrics.Add(new BucketMetricDto { Key = "bal", Label = "Dư nợ", Suffix = " (Dư nợ)" });
+            result.FixedColumns = new List<string> { "STT", "Loại", "Mã", "Tên đối tác" };
+            result.BucketMetrics.Add(new BucketMetricDto { Key = "dk", Label = "ĐK", Suffix = " (ĐK)" });
+            result.BucketMetrics.Add(new BucketMetricDto { Key = "ck", Label = "CK", Suffix = " (CK)" });
 
-            result.TotalColumns.Add("Tổng Tăng");
-            result.TotalColumns.Add("Tổng Giảm");
-            result.TotalColumns.Add("Cuối kỳ");
+            result.TotalColumns.Add("Tổng ĐK");
+            result.TotalColumns.Add("Tổng CK");
         }
         else if (rType == "inventory")
         {
@@ -509,12 +571,17 @@ public class ReportExportEngine
             "inventory" => "báo cáo tồn kho hiện tại",
             "inout" => "báo cáo nhập xuất sản phẩm",
             "cashflow" => "báo cáo thu chi",
-            "debt" => "báo cáo công nợ theo kỳ",
-            _ => "báo cáo xuất bán hàng"
+            "debt" => string.Equals(req.DebtMode, "in_period", StringComparison.OrdinalIgnoreCase)
+                ? "báo cáo công nợ phát sinh trong kỳ"
+                : "báo cáo công nợ từ đầu (lũy kế)",
+            "employee_sales" => "báo cáo doanh số nhân viên",
+            _ => (req.GroupBy?.ToLowerInvariant().StartsWith("employee") == true
+                ? "báo cáo doanh số nhân viên"
+                : "báo cáo xuất bán hàng")
         };
     }
 
-    private static string GetFileNamePrefix(string reportType)
+    private static string GetFileNamePrefix(string reportType, string? debtMode = null)
     {
         return reportType.ToLowerInvariant() switch
         {
@@ -522,7 +589,10 @@ public class ReportExportEngine
             "inventory" => "BaoCao_TonKho_HienTai",
             "inout" => "BaoCao_NhapXuat_SP",
             "cashflow" => "BaoCao_ThuChi",
-            "debt" => "BaoCao_CongNo_TheoKy",
+            "debt" => string.Equals(debtMode, "in_period", StringComparison.OrdinalIgnoreCase)
+                ? "BaoCao_CongNo_PhatSinh"
+                : "BaoCao_CongNo_TuDau",
+            "employee_sales" => "BaoCao_DoanhSo_NhanVien",
             _ => "BaoCao_XuatHang"
         };
     }
@@ -548,6 +618,8 @@ public class ReportExportEngine
             itemQuery = itemQuery.Where(i => request.Warehouses.Contains(i.ExportVoucher.Warehouse));
         if (request.ProductIds.Count > 0)
             itemQuery = itemQuery.Where(i => request.ProductIds.Contains(i.ProductId));
+        if (request.EmployeeIds.Count > 0)
+            itemQuery = itemQuery.Where(i => i.ExportVoucher.EmployeeId.HasValue && request.EmployeeIds.Contains(i.ExportVoucher.EmployeeId.Value));
 
         var records = await itemQuery.Select(i => new
         {
@@ -556,6 +628,10 @@ public class ReportExportEngine
             CustomerId = i.ExportVoucher.CustomerId,
             CustomerCode = i.ExportVoucher.Customer != null ? i.ExportVoucher.Customer.Code : "",
             CustomerName = i.ExportVoucher.Customer != null ? i.ExportVoucher.Customer.Name : "Khách lẻ",
+            EmployeeId = i.ExportVoucher.EmployeeId,
+            EmployeeName = !string.IsNullOrEmpty(i.ExportVoucher.EmployeeName)
+                ? i.ExportVoucher.EmployeeName
+                : (i.ExportVoucher.Employee != null ? i.ExportVoucher.Employee.Name : "Chưa phân công"),
             Warehouse = i.ExportVoucher.Warehouse ?? "",
             ProductId = i.ProductId,
             ProductSku = i.Product != null ? i.Product.Sku : $"SP{i.ProductId:D3}",
@@ -577,6 +653,8 @@ public class ReportExportEngine
                 PartnerId = r.CustomerId,
                 PartnerCode = r.CustomerCode,
                 PartnerName = r.CustomerName,
+                EmployeeId = r.EmployeeId,
+                EmployeeName = r.EmployeeName,
                 Warehouse = r.Warehouse,
                 Quantity = r.Quantity,
                 Amount = r.Amount,
@@ -600,6 +678,7 @@ public class ReportExportEngine
             {
                 ["Ngày chứng từ"] = r.Date.ToString("dd/MM/yyyy"),
                 ["Số phiếu"] = r.VoucherNumber,
+                ["Nhân viên"] = r.EmployeeName,
                 ["Mã KH"] = r.CustomerCode,
                 ["Khách hàng"] = r.CustomerName,
                 ["Kho"] = r.Warehouse,
@@ -722,12 +801,15 @@ public class ReportExportEngine
         var imports = await impQuery.Select(i => new
         {
             Date = i.ImportVoucher.Date,
+            VoucherNumber = i.ImportVoucher.VoucherNumber,
             Warehouse = i.ImportVoucher.Warehouse ?? "",
+            SupplierName = i.ImportVoucher.Supplier != null ? i.ImportVoucher.Supplier.Name : "",
             ProductId = i.ProductId,
             ProductSku = i.Product != null ? i.Product.Sku : (i.Sku ?? $"SP{i.ProductId:D3}"),
             ProductName = i.Product != null ? i.Product.Name : (i.ProductName ?? $"Sản phẩm #{i.ProductId}"),
             Unit = i.Product != null ? (i.Product.Uom ?? "") : "",
             Quantity = (decimal)i.Quantity,
+            UnitPrice = i.UnitPrice,
             Amount = i.LineTotal
         }).ToListAsync(ct);
 
@@ -742,12 +824,15 @@ public class ReportExportEngine
         var exports = await expQuery.Select(i => new
         {
             Date = i.ExportVoucher.Date,
+            VoucherNumber = i.ExportVoucher.VoucherNumber,
             Warehouse = i.ExportVoucher.Warehouse ?? "",
+            CustomerName = i.ExportVoucher.Customer != null ? i.ExportVoucher.Customer.Name : "",
             ProductId = i.ProductId,
             ProductSku = i.Product != null ? i.Product.Sku : $"SP{i.ProductId:D3}",
             ProductName = i.Product != null ? i.Product.Name : $"Sản phẩm #{i.ProductId}",
             Unit = i.Product != null ? (i.Product.Uom ?? "") : "",
             Quantity = (decimal)i.Quantity,
+            UnitPrice = i.SalePrice,
             Amount = i.LineTotal
         }).ToListAsync(ct);
 
@@ -866,6 +951,80 @@ public class ReportExportEngine
 
         rows.Add(totalRow);
         sheets["Nhap_Xuat_SP"] = rows;
+
+        if (request.IncludeDetailSheet)
+        {
+            var detailRows = new List<Dictionary<string, object>>();
+            int dStt = 1;
+
+            var inRecords = imports.Select(i => new
+            {
+                i.Date,
+                ActionType = "Nhập kho",
+                i.VoucherNumber,
+                i.Warehouse,
+                i.ProductSku,
+                i.ProductName,
+                i.Unit,
+                PartnerType = "Nhà cung cấp",
+                Partner = i.SupplierName,
+                InQty = i.Quantity,
+                InPrice = i.UnitPrice,
+                InAmt = i.Amount,
+                OutQty = 0m,
+                OutPrice = 0m,
+                OutAmt = 0m
+            });
+
+            var outRecords = exports.Select(e => new
+            {
+                e.Date,
+                ActionType = "Xuất kho",
+                e.VoucherNumber,
+                e.Warehouse,
+                e.ProductSku,
+                e.ProductName,
+                e.Unit,
+                PartnerType = "Khách hàng",
+                Partner = e.CustomerName,
+                InQty = 0m,
+                InPrice = 0m,
+                InAmt = 0m,
+                OutQty = e.Quantity,
+                OutPrice = e.UnitPrice,
+                OutAmt = e.Amount
+            });
+
+            var combined = inRecords.Concat(outRecords)
+                .OrderBy(r => r.Date)
+                .ThenBy(r => r.VoucherNumber)
+                .ToList();
+
+            foreach (var r in combined)
+            {
+                detailRows.Add(new Dictionary<string, object>
+                {
+                    ["STT"] = dStt++,
+                    ["Ngày chứng từ"] = r.Date.ToString("dd/MM/yyyy HH:mm"),
+                    ["Loại nghiệp vụ"] = r.ActionType,
+                    ["Số chứng từ"] = r.VoucherNumber,
+                    ["Kho hàng"] = FormatWarehouseLabel(r.Warehouse),
+                    ["Mã SKU"] = r.ProductSku,
+                    ["Tên sản phẩm"] = r.ProductName,
+                    ["ĐVT"] = r.Unit,
+                    ["Loại đối tác"] = r.PartnerType,
+                    ["Đối tác"] = r.Partner,
+                    ["SL Nhập"] = r.InQty,
+                    ["Đơn giá nhập"] = r.InPrice,
+                    ["Thành tiền nhập"] = r.InAmt,
+                    ["SL Xuất"] = r.OutQty,
+                    ["Đơn giá xuất"] = r.OutPrice,
+                    ["Doanh số xuất"] = r.OutAmt
+                });
+            }
+
+            sheets["Chi_Tiet"] = detailRows;
+        }
     }
 
     // ==========================================
@@ -899,6 +1058,8 @@ public class ReportExportEngine
             Date = r.Date,
             ReceiptNumber = r.ReceiptNumber,
             Amount = r.Amount,
+            Method = r.Method,
+            Notes = r.Notes,
             IsCustomer = r.CustomerId.HasValue,
             PartnerId = r.CustomerId ?? r.SupplierId ?? 0,
             PartnerCode = r.Customer != null ? r.Customer.Code : (r.Supplier != null ? r.Supplier.Code : ""),
@@ -924,6 +1085,8 @@ public class ReportExportEngine
             Date = p.Date,
             PaymentNumber = p.PaymentNumber,
             Amount = p.Amount,
+            Method = p.Method,
+            Notes = p.Notes,
             IsCustomer = p.CustomerId.HasValue,
             PartnerId = p.CustomerId ?? p.SupplierId ?? 0,
             PartnerCode = p.Customer != null ? p.Customer.Code : (p.Supplier != null ? p.Supplier.Code : ""),
@@ -1010,6 +1173,65 @@ public class ReportExportEngine
         rows.Add(totalRow);
 
         sheets["Thu_Chi"] = rows;
+
+        if (request.IncludeDetailSheet)
+        {
+            var detailRows = new List<Dictionary<string, object>>();
+            int dStt = 1;
+
+            var recRecords = receipts.Select(r => new
+            {
+                r.Date,
+                VoucherType = "Phiếu thu",
+                VoucherNumber = r.ReceiptNumber,
+                PartnerType = r.IsCustomer ? "Khách hàng" : "Nhà cung cấp",
+                r.PartnerCode,
+                r.PartnerName,
+                Method = FormatPaymentMethod(r.Method),
+                Thu = r.Amount,
+                Chi = 0m,
+                r.Notes
+            });
+
+            var payRecords = payments.Select(p => new
+            {
+                p.Date,
+                VoucherType = "Phiếu chi",
+                VoucherNumber = p.PaymentNumber,
+                PartnerType = p.IsCustomer ? "Khách hàng" : "Nhà cung cấp",
+                p.PartnerCode,
+                p.PartnerName,
+                Method = FormatPaymentMethod(p.Method),
+                Thu = 0m,
+                Chi = p.Amount,
+                p.Notes
+            });
+
+            var combined = recRecords.Concat(payRecords)
+                .OrderBy(c => c.Date)
+                .ThenBy(c => c.VoucherNumber)
+                .ToList();
+
+            foreach (var c in combined)
+            {
+                detailRows.Add(new Dictionary<string, object>
+                {
+                    ["STT"] = dStt++,
+                    ["Ngày ghi nhận"] = c.Date.ToString("dd/MM/yyyy HH:mm"),
+                    ["Loại chứng từ"] = c.VoucherType,
+                    ["Số phiếu"] = c.VoucherNumber,
+                    ["Loại đối tác"] = c.PartnerType,
+                    ["Mã đối tác"] = c.PartnerCode,
+                    ["Tên đối tác"] = c.PartnerName,
+                    ["Phương thức"] = c.Method,
+                    ["Tiền thu (VNĐ)"] = c.Thu,
+                    ["Tiền chi (VNĐ)"] = c.Chi,
+                    ["Ghi chú / Diễn giải"] = c.Notes ?? ""
+                });
+            }
+
+            sheets["Chi_Tiet"] = detailRows;
+        }
     }
 
     // ==========================================
@@ -1025,15 +1247,17 @@ public class ReportExportEngine
         CancellationToken ct)
     {
         var rows = new List<Dictionary<string, object>>();
+        var detailRows = new List<Dictionary<string, object>>();
         int stt = 1;
 
         var totalDauKy = 0m;
-        var totalTang = 0m;
-        var totalGiam = 0m;
         var totalCuoiKy = 0m;
 
-        var totalTangByBucket = new decimal[buckets.Count];
-        var totalGiamByBucket = new decimal[buckets.Count];
+        var totalDauKyByBucket = new decimal[buckets.Count];
+        var totalCuoiKyByBucket = new decimal[buckets.Count];
+
+        // Debt calculation mode: "from_beginning" (mặc định - công nợ từ đầu) hoặc "in_period" (chỉ tính phát sinh trong khoảng thời gian lọc)
+        var isFromBeginning = !string.Equals(request.DebtMode, "in_period", StringComparison.OrdinalIgnoreCase);
 
         // Process Customers if in scope
         if (request.PartnerScope != "supplier")
@@ -1043,45 +1267,68 @@ public class ReportExportEngine
                 custQuery = custQuery.Where(c => request.CustomerIds.Contains(c.Id));
 
             var customers = await custQuery.Select(c => new { c.Id, c.Code, c.Name, c.Debt }).ToListAsync(ct);
+            var customerIds = customers.Select(c => c.Id).ToList();
+
+            var allCustHistoriesAfterStart = await uow.CustomerDebtHistories.Query()
+                .Where(h => customerIds.Contains(h.CustomerId) && h.CreatedAt >= start)
+                .OrderBy(h => h.CreatedAt)
+                .Select(h => new
+                {
+                    h.CustomerId,
+                    h.CreatedAt,
+                    h.Delta,
+                    h.SourceType,
+                    h.ReferenceId,
+                    h.Reason,
+                    h.Note,
+                    h.BeforeDebt,
+                    h.AfterDebt
+                })
+                .ToListAsync(ct);
+
+            var custHistoriesByCustomer = allCustHistoriesAfterStart
+                .GroupBy(h => h.CustomerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             foreach (var c in customers)
             {
-                var lastBefore = await uow.CustomerDebtHistories.Query()
-                    .Where(h => h.CustomerId == c.Id && h.CreatedAt < start)
-                    .OrderByDescending(h => h.CreatedAt)
-                    .Select(h => (decimal?)h.AfterDebt)
-                    .FirstOrDefaultAsync(ct);
+                var historiesAfterStart = custHistoriesByCustomer.TryGetValue(c.Id, out var chList) ? chList : new();
 
-                var dauKy = lastBefore ?? 0m;
+                // Công nợ đầu kỳ:
+                // Nếu "from_beginning" (mặc định): Công nợ đầu kỳ = c.Debt - tổng phát sinh từ mốc start trở đi
+                // Nếu "in_period": 0
+                decimal dauKy = isFromBeginning ? (c.Debt - historiesAfterStart.Sum(h => h.Delta)) : 0m;
 
-                var histories = await uow.CustomerDebtHistories.Query()
-                    .Where(h => h.CustomerId == c.Id && h.CreatedAt >= start && h.CreatedAt < end)
-                    .Select(h => new { h.CreatedAt, h.Delta })
-                    .ToListAsync(ct);
+                var inPeriodHistories = historiesAfterStart.Where(h => h.CreatedAt < end).ToList();
 
                 decimal rowTang = 0;
                 decimal rowGiam = 0;
                 decimal runningBal = dauKy;
 
                 var bucketData = new Dictionary<string, object>();
+                var bucketDk = new decimal[buckets.Count];
+                var bucketCk = new decimal[buckets.Count];
+
                 for (int b = 0; b < buckets.Count; b++)
                 {
                     var bucket = buckets[b];
-                    var inBucket = histories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive);
+                    var inBucket = inPeriodHistories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive);
 
                     decimal bTang = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
                     decimal bGiam = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
 
                     rowTang += bTang;
                     rowGiam += bGiam;
-                    runningBal += (bTang - bGiam);
 
-                    totalTangByBucket[b] += bTang;
-                    totalGiamByBucket[b] += bGiam;
+                    decimal bDk = runningBal;
+                    decimal bCk = bDk + bTang - bGiam;
+                    runningBal = bCk;
 
-                    bucketData[$"{bucket.Header} (Tăng)"] = bTang;
-                    bucketData[$"{bucket.Header} (Giảm)"] = bGiam;
-                    bucketData[$"{bucket.Header} (Dư nợ)"] = runningBal;
+                    bucketDk[b] = bDk;
+                    bucketCk[b] = bCk;
+
+                    bucketData[$"{bucket.Header} (ĐK)"] = bDk;
+                    bucketData[$"{bucket.Header} (CK)"] = bCk;
                 }
 
                 decimal cuoiKy = dauKy + rowTang - rowGiam;
@@ -1091,26 +1338,55 @@ public class ReportExportEngine
                     continue;
                 }
 
+                for (int b = 0; b < buckets.Count; b++)
+                {
+                    totalDauKyByBucket[b] += bucketDk[b];
+                    totalCuoiKyByBucket[b] += bucketCk[b];
+                }
+
                 var row = new Dictionary<string, object>
                 {
                     ["STT"] = stt++,
                     ["Loại"] = "Khách hàng",
                     ["Mã"] = c.Code,
-                    ["Tên đối tác"] = c.Name,
-                    ["Đầu kỳ"] = dauKy
+                    ["Tên đối tác"] = c.Name
                 };
 
                 foreach (var kvp in bucketData) row[kvp.Key] = kvp.Value;
 
-                row["Tổng Tăng"] = rowTang;
-                row["Tổng Giảm"] = rowGiam;
-                row["Cuối kỳ"] = cuoiKy;
+                row["Tổng ĐK"] = dauKy;
+                row["Tổng CK"] = cuoiKy;
 
                 totalDauKy += dauKy;
-                totalTang += rowTang;
-                totalGiam += rowGiam;
                 totalCuoiKy += cuoiKy;
                 rows.Add(row);
+
+                // Detail sheet items
+                if (request.IncludeDetailSheet)
+                {
+                    foreach (var h in inPeriodHistories)
+                    {
+                        var reasonDesc = string.IsNullOrWhiteSpace(h.Note)
+                            ? (h.Reason ?? "")
+                            : (string.IsNullOrWhiteSpace(h.Reason) ? h.Note : $"{h.Reason} - {h.Note}");
+
+                        detailRows.Add(new Dictionary<string, object>
+                        {
+                            ["_rawDate"] = h.CreatedAt,
+                            ["STT"] = 0,
+                            ["Thời gian"] = h.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                            ["Loại đối tác"] = "Khách hàng",
+                            ["Mã đối tác"] = c.Code,
+                            ["Tên đối tác"] = c.Name,
+                            ["Loại chứng từ"] = FormatSourceType(h.SourceType),
+                            ["Số chứng từ"] = h.ReferenceId ?? "",
+                            ["Diễn giải"] = reasonDesc,
+                            ["Nợ tăng (VNĐ)"] = h.Delta > 0 ? h.Delta : 0,
+                            ["Nợ giảm (VNĐ)"] = h.Delta < 0 ? Math.Abs(h.Delta) : 0,
+                            ["Dư nợ sau GD (VNĐ)"] = h.AfterDebt
+                        });
+                    }
+                }
             }
         }
 
@@ -1122,45 +1398,68 @@ public class ReportExportEngine
                 suppQuery = suppQuery.Where(s => request.SupplierIds.Contains(s.Id));
 
             var suppliers = await suppQuery.Select(s => new { s.Id, s.Code, s.Name, s.Debt }).ToListAsync(ct);
+            var supplierIds = suppliers.Select(s => s.Id).ToList();
+
+            var allSuppHistoriesAfterStart = await uow.SupplierDebtHistories.Query()
+                .Where(h => supplierIds.Contains(h.SupplierId) && h.CreatedAt >= start)
+                .OrderBy(h => h.CreatedAt)
+                .Select(h => new
+                {
+                    h.SupplierId,
+                    h.CreatedAt,
+                    h.Delta,
+                    h.SourceType,
+                    h.ReferenceId,
+                    h.Reason,
+                    h.Note,
+                    h.BeforeDebt,
+                    h.AfterDebt
+                })
+                .ToListAsync(ct);
+
+            var suppHistoriesBySupplier = allSuppHistoriesAfterStart
+                .GroupBy(h => h.SupplierId)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             foreach (var s in suppliers)
             {
-                var lastBefore = await uow.SupplierDebtHistories.Query()
-                    .Where(h => h.SupplierId == s.Id && h.CreatedAt < start)
-                    .OrderByDescending(h => h.CreatedAt)
-                    .Select(h => (decimal?)h.AfterDebt)
-                    .FirstOrDefaultAsync(ct);
+                var historiesAfterStart = suppHistoriesBySupplier.TryGetValue(s.Id, out var shList) ? shList : new();
 
-                var dauKy = lastBefore ?? 0m;
+                // Công nợ đầu kỳ:
+                // Nếu "from_beginning" (mặc định): Công nợ đầu kỳ = s.Debt - tổng phát sinh từ mốc start trở đi
+                // Nếu "in_period": 0
+                decimal dauKy = isFromBeginning ? (s.Debt - historiesAfterStart.Sum(h => h.Delta)) : 0m;
 
-                var histories = await uow.SupplierDebtHistories.Query()
-                    .Where(h => h.SupplierId == s.Id && h.CreatedAt >= start && h.CreatedAt < end)
-                    .Select(h => new { h.CreatedAt, h.Delta })
-                    .ToListAsync(ct);
+                var inPeriodHistories = historiesAfterStart.Where(h => h.CreatedAt < end).ToList();
 
                 decimal rowTang = 0;
                 decimal rowGiam = 0;
                 decimal runningBal = dauKy;
 
                 var bucketData = new Dictionary<string, object>();
+                var bucketDk = new decimal[buckets.Count];
+                var bucketCk = new decimal[buckets.Count];
+
                 for (int b = 0; b < buckets.Count; b++)
                 {
                     var bucket = buckets[b];
-                    var inBucket = histories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive);
+                    var inBucket = inPeriodHistories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive);
 
                     decimal bTang = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
                     decimal bGiam = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
 
                     rowTang += bTang;
                     rowGiam += bGiam;
-                    runningBal += (bTang - bGiam);
 
-                    totalTangByBucket[b] += bTang;
-                    totalGiamByBucket[b] += bGiam;
+                    decimal bDk = runningBal;
+                    decimal bCk = bDk + bTang - bGiam;
+                    runningBal = bCk;
 
-                    bucketData[$"{bucket.Header} (Tăng)"] = bTang;
-                    bucketData[$"{bucket.Header} (Giảm)"] = bGiam;
-                    bucketData[$"{bucket.Header} (Dư nợ)"] = runningBal;
+                    bucketDk[b] = bDk;
+                    bucketCk[b] = bCk;
+
+                    bucketData[$"{bucket.Header} (ĐK)"] = bDk;
+                    bucketData[$"{bucket.Header} (CK)"] = bCk;
                 }
 
                 decimal cuoiKy = dauKy + rowTang - rowGiam;
@@ -1170,26 +1469,55 @@ public class ReportExportEngine
                     continue;
                 }
 
+                for (int b = 0; b < buckets.Count; b++)
+                {
+                    totalDauKyByBucket[b] += bucketDk[b];
+                    totalCuoiKyByBucket[b] += bucketCk[b];
+                }
+
                 var row = new Dictionary<string, object>
                 {
                     ["STT"] = stt++,
                     ["Loại"] = "Nhà cung cấp",
                     ["Mã"] = s.Code,
-                    ["Tên đối tác"] = s.Name,
-                    ["Đầu kỳ"] = dauKy
+                    ["Tên đối tác"] = s.Name
                 };
 
                 foreach (var kvp in bucketData) row[kvp.Key] = kvp.Value;
 
-                row["Tổng Tăng"] = rowTang;
-                row["Tổng Giảm"] = rowGiam;
-                row["Cuối kỳ"] = cuoiKy;
+                row["Tổng ĐK"] = dauKy;
+                row["Tổng CK"] = cuoiKy;
 
                 totalDauKy += dauKy;
-                totalTang += rowTang;
-                totalGiam += rowGiam;
                 totalCuoiKy += cuoiKy;
                 rows.Add(row);
+
+                // Detail sheet items
+                if (request.IncludeDetailSheet)
+                {
+                    foreach (var h in inPeriodHistories)
+                    {
+                        var reasonDesc = string.IsNullOrWhiteSpace(h.Note)
+                            ? (h.Reason ?? "")
+                            : (string.IsNullOrWhiteSpace(h.Reason) ? h.Note : $"{h.Reason} - {h.Note}");
+
+                        detailRows.Add(new Dictionary<string, object>
+                        {
+                            ["_rawDate"] = h.CreatedAt,
+                            ["STT"] = 0,
+                            ["Thời gian"] = h.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                            ["Loại đối tác"] = "Nhà cung cấp",
+                            ["Mã đối tác"] = s.Code,
+                            ["Tên đối tác"] = s.Name,
+                            ["Loại chứng từ"] = FormatSourceType(h.SourceType),
+                            ["Số chứng từ"] = h.ReferenceId ?? "",
+                            ["Diễn giải"] = reasonDesc,
+                            ["Nợ tăng (VNĐ)"] = h.Delta > 0 ? h.Delta : 0,
+                            ["Nợ giảm (VNĐ)"] = h.Delta < 0 ? Math.Abs(h.Delta) : 0,
+                            ["Dư nợ sau GD (VNĐ)"] = h.AfterDebt
+                        });
+                    }
+                }
             }
         }
 
@@ -1199,24 +1527,64 @@ public class ReportExportEngine
             ["STT"] = "TỔNG",
             ["Loại"] = "CỘNG",
             ["Mã"] = "",
-            ["Tên đối tác"] = $"Toàn bộ ({rows.Count} đối tác)",
-            ["Đầu kỳ"] = totalDauKy
+            ["Tên đối tác"] = $"Toàn bộ ({rows.Count} đối tác)"
         };
 
         for (int b = 0; b < buckets.Count; b++)
         {
             var bucket = buckets[b];
-            totalRow[$"{bucket.Header} (Tăng)"] = totalTangByBucket[b];
-            totalRow[$"{bucket.Header} (Giảm)"] = totalGiamByBucket[b];
-            totalRow[$"{bucket.Header} (Dư nợ)"] = "";
+            totalRow[$"{bucket.Header} (ĐK)"] = totalDauKyByBucket[b];
+            totalRow[$"{bucket.Header} (CK)"] = totalCuoiKyByBucket[b];
         }
 
-        totalRow["Tổng Tăng"] = totalTang;
-        totalRow["Tổng Giảm"] = totalGiam;
-        totalRow["Cuối kỳ"] = totalCuoiKy;
+        totalRow["Tổng ĐK"] = totalDauKy;
+        totalRow["Tổng CK"] = totalCuoiKy;
         rows.Add(totalRow);
 
-        sheets["Cong_No"] = rows;
+        var sheetTitle = isFromBeginning ? "Cong_No_Tu_Dau" : "Cong_No_Phat_Sinh";
+        sheets[sheetTitle] = rows;
+
+        if (request.IncludeDetailSheet)
+        {
+            var sortedDetail = detailRows
+                .OrderBy(d => (DateTime)d["_rawDate"])
+                .Select((d, idx) =>
+                {
+                    d["STT"] = idx + 1;
+                    d.Remove("_rawDate");
+                    return d;
+                })
+                .ToList();
+
+            sheets["Chi_Tiet"] = sortedDetail;
+        }
+    }
+
+    private static string FormatPaymentMethod(string? m)
+    {
+        return (m ?? "").ToLowerInvariant() switch
+        {
+            "cash" or "tien_mat" => "Tiền mặt",
+            "bank" or "chuyen_khoan" or "transfer" => "Chuyển khoản",
+            "debt" or "cong_no" => "Ghi nợ",
+            _ => string.IsNullOrWhiteSpace(m) ? "Tiền mặt" : m
+        };
+    }
+
+    private static string FormatSourceType(string? sourceType)
+    {
+        return (sourceType ?? "").ToLowerInvariant() switch
+        {
+            "export" => "Xuất bán",
+            "import" => "Nhập hàng",
+            "receipt" => "Thu tiền",
+            "payment" => "Chi tiền",
+            "init" => "Số dư đầu",
+            "manual_adjustment" => "Điều chỉnh nợ",
+            "export_cancelled" => "Hủy phiếu xuất",
+            "import_cancelled" => "Hủy phiếu nhập",
+            _ => sourceType ?? "Giao dịch"
+        };
     }
 
     // ==========================================
@@ -1232,6 +1600,8 @@ public class ReportExportEngine
         public int PartnerId { get; set; }
         public string PartnerCode { get; set; } = string.Empty;
         public string PartnerName { get; set; } = string.Empty;
+        public int? EmployeeId { get; set; }
+        public string EmployeeName { get; set; } = string.Empty;
         public string Warehouse { get; set; } = string.Empty;
         public decimal Quantity { get; set; }
         public decimal Amount { get; set; }
@@ -1421,7 +1791,158 @@ public class ReportExportEngine
             }
         }
 
-        if (gb == "partner")
+        if (gb == "employee")
+        {
+            var empGroups = records.GroupBy(r => (r.EmployeeId, r.EmployeeName))
+                .OrderBy(g => g.Key.EmployeeName)
+                .ToList();
+
+            foreach (var g in empGroups)
+            {
+                var row = new Dictionary<string, object>
+                {
+                    ["STT"] = stt++,
+                    ["Nhân viên phụ trách"] = string.IsNullOrWhiteSpace(g.Key.EmployeeName) ? "Chưa phân công" : g.Key.EmployeeName
+                };
+
+                decimal rowQty = 0;
+                decimal rowAmt = 0;
+
+                for (int b = 0; b < buckets.Count; b++)
+                {
+                    var bucket = buckets[b];
+                    var inBucket = g.Where(r => r.Date >= bucket.Start && r.Date < bucket.EndExclusive);
+                    PopulateRowBucketMetrics(row, inBucket, bucket, b, ref rowQty, ref rowAmt);
+                }
+
+                PopulateRowFinalTotals(row, g, rowQty, rowAmt);
+
+                grandTotalQty += rowQty;
+                grandTotalAmt += rowAmt;
+                rows.Add(row);
+            }
+        }
+        else if (gb == "employee_product")
+        {
+            var empGroups = records.GroupBy(r => (r.EmployeeId, r.EmployeeName))
+                .OrderBy(g => g.Key.EmployeeName)
+                .ToList();
+
+            foreach (var eg in empGroups)
+            {
+                var empName = string.IsNullOrWhiteSpace(eg.Key.EmployeeName) ? "Chưa phân công" : eg.Key.EmployeeName;
+                var pRow = new Dictionary<string, object>
+                {
+                    ["STT"] = stt++,
+                    ["Nhân viên phụ trách"] = empName,
+                    ["Mã SKU"] = "TẤT CẢ",
+                    ["Tên sản phẩm"] = "(Tất cả SP)",
+                    ["ĐVT"] = ""
+                };
+
+                decimal pQty = 0;
+                decimal pAmt = 0;
+
+                for (int b = 0; b < buckets.Count; b++)
+                {
+                    var bucket = buckets[b];
+                    var inBucket = eg.Where(r => r.Date >= bucket.Start && r.Date < bucket.EndExclusive);
+                    PopulateRowBucketMetrics(pRow, inBucket, bucket, b, ref pQty, ref pAmt);
+                }
+
+                PopulateRowFinalTotals(pRow, eg, pQty, pAmt);
+
+                grandTotalQty += pQty;
+                grandTotalAmt += pAmt;
+                rows.Add(pRow);
+
+                var prodSub = eg.GroupBy(r => (r.ProductId, r.ProductSku, r.ProductName, r.Unit)).OrderBy(g => g.Key.ProductSku);
+                foreach (var sg in prodSub)
+                {
+                    var subRow = new Dictionary<string, object>
+                    {
+                        ["STT"] = "",
+                        ["Nhân viên phụ trách"] = "",
+                        ["Mã SKU"] = sg.Key.ProductSku,
+                        ["Tên sản phẩm"] = $"↳ {sg.Key.ProductName}",
+                        ["ĐVT"] = sg.Key.Unit
+                    };
+
+                    decimal sQty = 0;
+                    decimal sAmt = 0;
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        var bucket = buckets[b];
+                        var inBucket = sg.Where(r => r.Date >= bucket.Start && r.Date < bucket.EndExclusive);
+                        PopulateRowBucketMetrics(subRow, inBucket, bucket, b, ref sQty, ref sAmt, isSubRow: true);
+                    }
+
+                    PopulateRowFinalTotals(subRow, sg, sQty, sAmt, isSubRow: true);
+                    rows.Add(subRow);
+                }
+            }
+        }
+        else if (gb == "employee_partner")
+        {
+            var empGroups = records.GroupBy(r => (r.EmployeeId, r.EmployeeName))
+                .OrderBy(g => g.Key.EmployeeName)
+                .ToList();
+
+            foreach (var eg in empGroups)
+            {
+                var empName = string.IsNullOrWhiteSpace(eg.Key.EmployeeName) ? "Chưa phân công" : eg.Key.EmployeeName;
+                var pRow = new Dictionary<string, object>
+                {
+                    ["STT"] = stt++,
+                    ["Nhân viên phụ trách"] = empName,
+                    ["Mã đối tác"] = "TẤT CẢ",
+                    [partnerHeader] = "(Tất cả KH)"
+                };
+
+                decimal pQty = 0;
+                decimal pAmt = 0;
+
+                for (int b = 0; b < buckets.Count; b++)
+                {
+                    var bucket = buckets[b];
+                    var inBucket = eg.Where(r => r.Date >= bucket.Start && r.Date < bucket.EndExclusive);
+                    PopulateRowBucketMetrics(pRow, inBucket, bucket, b, ref pQty, ref pAmt);
+                }
+
+                PopulateRowFinalTotals(pRow, eg, pQty, pAmt);
+
+                grandTotalQty += pQty;
+                grandTotalAmt += pAmt;
+                rows.Add(pRow);
+
+                var partnerSub = eg.GroupBy(r => (r.PartnerId, r.PartnerCode, r.PartnerName)).OrderBy(g => g.Key.PartnerCode);
+                foreach (var sg in partnerSub)
+                {
+                    var subRow = new Dictionary<string, object>
+                    {
+                        ["STT"] = "",
+                        ["Nhân viên phụ trách"] = "",
+                        ["Mã đối tác"] = sg.Key.PartnerCode,
+                        [partnerHeader] = $"↳ {sg.Key.PartnerName}"
+                    };
+
+                    decimal sQty = 0;
+                    decimal sAmt = 0;
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        var bucket = buckets[b];
+                        var inBucket = sg.Where(r => r.Date >= bucket.Start && r.Date < bucket.EndExclusive);
+                        PopulateRowBucketMetrics(subRow, inBucket, bucket, b, ref sQty, ref sAmt, isSubRow: true);
+                    }
+
+                    PopulateRowFinalTotals(subRow, sg, sQty, sAmt, isSubRow: true);
+                    rows.Add(subRow);
+                }
+            }
+        }
+        else if (gb == "partner")
         {
             var partnerGroups = records.GroupBy(r => (r.PartnerId, r.PartnerCode, r.PartnerName))
                 .OrderBy(g => g.Key.PartnerCode)
@@ -1622,7 +2143,30 @@ public class ReportExportEngine
             ["Tên sản phẩm"] = $"Toàn bộ ({rows.Count} dòng)",
             ["ĐVT"] = ""
         };
-        if (gb == "partner")
+        if (gb == "employee")
+        {
+            totalRow["Nhân viên phụ trách"] = $"Toàn bộ ({rows.Count} nhân viên)";
+            totalRow.Remove("Mã SKU");
+            totalRow.Remove("Tên sản phẩm");
+            totalRow.Remove("ĐVT");
+        }
+        else if (gb == "employee_product")
+        {
+            totalRow["Nhân viên phụ trách"] = $"Toàn bộ ({rows.Count} dòng)";
+            totalRow["Mã SKU"] = "";
+            totalRow["Tên sản phẩm"] = "";
+            totalRow["ĐVT"] = "";
+        }
+        else if (gb == "employee_partner")
+        {
+            totalRow["Nhân viên phụ trách"] = $"Toàn bộ ({rows.Count} dòng)";
+            totalRow["Mã đối tác"] = "";
+            totalRow[partnerHeader] = "";
+            totalRow.Remove("Mã SKU");
+            totalRow.Remove("Tên sản phẩm");
+            totalRow.Remove("ĐVT");
+        }
+        else if (gb == "partner")
         {
             totalRow["Mã đối tác"] = "CỘNG";
             totalRow[partnerHeader] = $"Toàn bộ ({rows.Count} dòng)";

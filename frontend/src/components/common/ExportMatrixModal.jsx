@@ -10,7 +10,6 @@ import {
   Square,
   Play,
   X,
-  Database,
   Info,
   Bookmark,
   BookmarkPlus,
@@ -71,22 +70,6 @@ const BUILT_IN_PRESETS = [
     includePrice: false,
     separateSheets: true,
   },
-  {
-    id: 'preset-backup-all',
-    name: '💾 Sao lưu CSDL',
-    isBuiltIn: true,
-    tab: 'full_db',
-    dbTimeScope: 'all',
-    selectedTables: {
-      products: true,
-      customers: true,
-      suppliers: true,
-      exports: true,
-      imports: true,
-      receipts: true,
-      payments: true,
-    },
-  },
 ];
 
 export default function ExportMatrixModal() {
@@ -95,11 +78,9 @@ export default function ExportMatrixModal() {
     closeExportModal,
     modalConfig,
     startDailyMatrixExport,
-    startFullDbExport,
   } = useExport();
 
   const notify = useNotification();
-  const [activeTab, setActiveTab] = useState('matrix'); // 'matrix' | 'full_db'
 
   // Dependencies
   const [customers, setCustomers] = useState([]);
@@ -123,21 +104,6 @@ export default function ExportMatrixModal() {
   const [includePrice, setIncludePrice] = useState(false);
   const [separateSheets, setSeparateSheets] = useState(true);
 
-  // Form State: Full DB Backup
-  const [selectedTables, setSelectedTables] = useState({
-    products: true,
-    customers: true,
-    suppliers: true,
-    exports: true,
-    imports: true,
-    receipts: true,
-    payments: true,
-  });
-  const [dbTimeScope, setDbTimeScope] = useState('all'); // 'all' | 'month' | 'custom'
-  const [dbMonth, setDbMonth] = useState(getCurrentMonthStr());
-  const [dbFromDate, setDbFromDate] = useState(getCurrentDateStr());
-  const [dbToDate, setDbToDate] = useState(getCurrentDateStr());
-
   // Presets State
   const [customPresets, setCustomPresets] = useState(() => {
     try {
@@ -155,27 +121,18 @@ export default function ExportMatrixModal() {
 
   const handleApplyPreset = (preset) => {
     setActivePresetId(preset.id);
-    if (preset.tab) setActiveTab(preset.tab);
 
-    if (preset.tab === 'matrix' || (!preset.tab && preset.timeScope)) {
-      if (preset.selectedCustomerId !== undefined) setSelectedCustomerId(preset.selectedCustomerId);
-      if (preset.selectedWarehouse !== undefined) setSelectedWarehouse(preset.selectedWarehouse);
-      if (preset.selectedProductId !== undefined) setSelectedProductId(preset.selectedProductId);
-      if (preset.timeScope !== undefined) setTimeScope(preset.timeScope);
-      if (preset.selectedMonth !== undefined) setSelectedMonth(preset.selectedMonth);
-      if (preset.fromDate !== undefined) setFromDate(preset.fromDate);
-      if (preset.toDate !== undefined) setToDate(preset.toDate);
-      if (preset.includeQuantity !== undefined) setIncludeQuantity(preset.includeQuantity);
-      if (preset.includeRevenue !== undefined) setIncludeRevenue(preset.includeRevenue);
-      if (preset.includePrice !== undefined) setIncludePrice(preset.includePrice);
-      if (preset.separateSheets !== undefined) setSeparateSheets(preset.separateSheets);
-    } else if (preset.tab === 'full_db') {
-      if (preset.selectedTables) setSelectedTables({ ...preset.selectedTables });
-      if (preset.dbTimeScope) setDbTimeScope(preset.dbTimeScope);
-      if (preset.dbMonth) setDbMonth(preset.dbMonth);
-      if (preset.dbFromDate) setDbFromDate(preset.dbFromDate);
-      if (preset.dbToDate) setDbToDate(preset.dbToDate);
-    }
+    if (preset.selectedCustomerId !== undefined) setSelectedCustomerId(preset.selectedCustomerId);
+    if (preset.selectedWarehouse !== undefined) setSelectedWarehouse(preset.selectedWarehouse);
+    if (preset.selectedProductId !== undefined) setSelectedProductId(preset.selectedProductId);
+    if (preset.timeScope !== undefined) setTimeScope(preset.timeScope);
+    if (preset.selectedMonth !== undefined) setSelectedMonth(preset.selectedMonth);
+    if (preset.fromDate !== undefined) setFromDate(preset.fromDate);
+    if (preset.toDate !== undefined) setToDate(preset.toDate);
+    if (preset.includeQuantity !== undefined) setIncludeQuantity(preset.includeQuantity);
+    if (preset.includeRevenue !== undefined) setIncludeRevenue(preset.includeRevenue);
+    if (preset.includePrice !== undefined) setIncludePrice(preset.includePrice);
+    if (preset.separateSheets !== undefined) setSeparateSheets(preset.separateSheets);
 
     notify.info(`Đã áp dụng mẫu: ${preset.name}`);
   };
@@ -190,7 +147,7 @@ export default function ExportMatrixModal() {
       id: 'custom-' + Date.now(),
       name: '⭐ ' + newPresetName.trim(),
       isBuiltIn: false,
-      tab: activeTab,
+      tab: 'matrix',
       selectedCustomerId,
       selectedWarehouse,
       selectedProductId,
@@ -202,11 +159,6 @@ export default function ExportMatrixModal() {
       includeRevenue,
       includePrice,
       separateSheets,
-      selectedTables,
-      dbTimeScope,
-      dbMonth,
-      dbFromDate,
-      dbToDate,
       createdAt: new Date().toISOString(),
     };
 
@@ -343,57 +295,6 @@ export default function ExportMatrixModal() {
     await startDailyMatrixExport(payload, titleParts.join(' '));
   };
 
-  const handleStartFullDbExport = async (e) => {
-    e.preventDefault();
-
-    const activeTableKeys = Object.keys(selectedTables).filter(
-      (k) => selectedTables[k]
-    );
-
-    if (activeTableKeys.length === 0) {
-      alert('Vui lòng chọn ít nhất 1 bảng dữ liệu để sao lưu!');
-      return;
-    }
-
-    const payload = {
-      tables: activeTableKeys,
-      timeScope: dbTimeScope,
-      month: dbTimeScope === 'month' ? dbMonth : null,
-      fromDate: dbTimeScope === 'custom' && dbFromDate ? dbFromDate : null,
-      toDate: dbTimeScope === 'custom' && dbToDate ? dbToDate : null,
-    };
-
-    const title = `Sao lưu CSDL (${activeTableKeys.length} bảng) - ${
-      dbTimeScope === 'all'
-        ? 'Toàn bộ lịch sử'
-        : dbTimeScope === 'month'
-        ? `Tháng ${dbMonth}`
-        : `${dbFromDate} đến ${dbToDate}`
-    }`;
-
-    closeExportModal();
-    await startFullDbExport(payload, title);
-  };
-
-  const toggleTable = (tableKey) => {
-    setSelectedTables((prev) => ({
-      ...prev,
-      [tableKey]: !prev[tableKey],
-    }));
-  };
-
-  const selectAllTables = (selectAll) => {
-    setSelectedTables({
-      products: selectAll,
-      customers: selectAll,
-      suppliers: selectAll,
-      exports: selectAll,
-      imports: selectAll,
-      receipts: selectAll,
-      payments: selectAll,
-    });
-  };
-
   return (
     <Modal
       isOpen={isModalOpen}
@@ -402,27 +303,6 @@ export default function ExportMatrixModal() {
       size="lg"
     >
       <div>
-        {/* Tab switch */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', borderBottom: '1px solid var(--border-color, #e2e8f0)', paddingBottom: '8px' }}>
-          <button
-            type="button"
-            className={`btn ${activeTab === 'matrix' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setActiveTab('matrix')}
-            style={{ fontSize: '0.875rem', gap: '6px' }}
-          >
-            <Calendar size={16} />
-            <span>Ma Trận Theo Ngày</span>
-          </button>
-          <button
-            type="button"
-            className={`btn ${activeTab === 'full_db' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setActiveTab('full_db')}
-            style={{ fontSize: '0.875rem', gap: '6px' }}
-          >
-            <Database size={16} />
-            <span>Sao Lưu Cơ Sở Dữ Liệu</span>
-          </button>
-        </div>
 
         {/* Presets Toolbar */}
         <div
@@ -560,9 +440,8 @@ export default function ExportMatrixModal() {
           </div>
         </div>
 
-        {/* TAB 1: DAILY MATRIX EXPORT */}
-        {activeTab === 'matrix' && (
-          <form onSubmit={handleStartMatrixExport}>
+        {/* MATRIX EXPORT */}
+        <form onSubmit={handleStartMatrixExport}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Partner Type Selector: Khách Hàng vs Nhà Cung Cấp */}
               <div style={{ background: 'var(--bg-secondary, #f8fafc)', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '8px', padding: '10px 12px' }}>
@@ -860,175 +739,6 @@ export default function ExportMatrixModal() {
               </div>
             </div>
           </form>
-        )}
-
-        {/* TAB 2: FULL DB BACKUP EXPORT */}
-        {activeTab === 'full_db' && (
-          <form onSubmit={handleStartFullDbExport}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Các Bảng Dữ Liệu Cần Xuất:</span>
-                  <div style={{ display: 'flex', gap: '8px', fontSize: '0.75rem' }}>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      onClick={() => selectAllTables(true)}
-                      style={{ padding: '2px 6px', height: 'auto', fontSize: '0.75rem' }}
-                    >
-                      Chọn tất cả
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      onClick={() => selectAllTables(false)}
-                      style={{ padding: '2px 6px', height: 'auto', fontSize: '0.75rem' }}
-                    >
-                      Bỏ chọn hết
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '10px',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-color, #e2e8f0)',
-                    background: 'var(--bg-secondary, #f8fafc)',
-                  }}
-                >
-                  {[
-                    { key: 'products', label: '1. Danh mục Sản phẩm & Tồn kho' },
-                    { key: 'customers', label: '2. Khách hàng & Sổ nợ' },
-                    { key: 'suppliers', label: '3. Nhà cung cấp & Sổ nợ' },
-                    { key: 'exports', label: '4. Phiếu xuất kho & Bán hàng' },
-                    { key: 'imports', label: '5. Phiếu nhập kho & Mua hàng' },
-                    { key: 'receipts', label: '6. Phiếu thu tiền mặt' },
-                    { key: 'payments', label: '7. Phiếu chi tiền mặt' },
-                  ].map((tbl) => (
-                    <label
-                      key={tbl.key}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        cursor: 'pointer',
-                        fontSize: '0.8125rem',
-                        userSelect: 'none',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!!selectedTables[tbl.key]}
-                        onChange={() => toggleTable(tbl.key)}
-                      />
-                      <span>{tbl.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Time scope for DB */}
-              <div
-                style={{
-                  background: 'var(--bg-secondary, #f8fafc)',
-                  border: '1px solid var(--border-color, #e2e8f0)',
-                  borderRadius: '8px',
-                  padding: '12px',
-                }}
-              >
-                <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '8px' }}>
-                  Giới Hạn Thời Gian Chứng Từ
-                </div>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    <input
-                      type="radio"
-                      name="dbTimeScope"
-                      value="all"
-                      checked={dbTimeScope === 'all'}
-                      onChange={() => setDbTimeScope('all')}
-                    />
-                    <span>Toàn bộ từ trước tới nay</span>
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    <input
-                      type="radio"
-                      name="dbTimeScope"
-                      value="month"
-                      checked={dbTimeScope === 'month'}
-                      onChange={() => setDbTimeScope('month')}
-                    />
-                    <span>Theo tháng</span>
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    <input
-                      type="radio"
-                      name="dbTimeScope"
-                      value="custom"
-                      checked={dbTimeScope === 'custom'}
-                      onChange={() => setDbTimeScope('custom')}
-                    />
-                    <span>Khoảng ngày tùy chọn</span>
-                  </label>
-                </div>
-
-                {dbTimeScope === 'month' && (
-                  <div style={{ maxWidth: '240px' }}>
-                    <input
-                      type="month"
-                      className="form-input"
-                      value={dbMonth}
-                      onChange={(e) => setDbMonth(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-
-                {dbTimeScope === 'custom' && (
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.8125rem' }}>Từ ngày:</span>
-                      <input
-                        type="date"
-                        className="form-input"
-                        value={dbFromDate}
-                        onChange={(e) => setDbFromDate(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.8125rem' }}>Đến ngày:</span>
-                      <input
-                        type="date"
-                        className="form-input"
-                        value={dbToDate}
-                        onChange={(e) => setDbToDate(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Submit Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
-                <button type="button" className="btn btn-outline" onClick={closeExportModal}>
-                  Hủy Bỏ
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
-                  <Play size={16} />
-                  <span>Sao Lưu Dữ Liệu</span>
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
       </div>
     </Modal>
   );

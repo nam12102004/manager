@@ -153,6 +153,7 @@ public static class PeriodResolver
                 else earliest = eCustDebt ?? eSuppDebt;
                 break;
 
+            case "employee_sales":
             case "sales":
             default:
                 earliest = await uow.ExportVouchers.Query()

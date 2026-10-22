@@ -18,7 +18,7 @@ public class ImportService : IImportService
         _uow = uow;
     }
 
-    public async Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
+    public async Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, string? search = null, CancellationToken ct = default)
     {
         var query = _uow.ImportVouchers.Query()
             .Include(v => v.Supplier)
@@ -34,6 +34,23 @@ public class ImportService : IImportService
         if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
         {
             query = query.Where(v => v.Warehouse == warehouse.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(v => v.VoucherNumber.ToLower().Contains(s) ||
+                                     (v.Supplier != null && v.Supplier.Name.ToLower().Contains(s)) ||
+                                     (v.Notes != null && v.Notes.ToLower().Contains(s)) ||
+                                     v.Items.Any(i =>
+                                         (i.Sku != null && i.Sku.ToLower().Contains(s)) ||
+                                         (i.ProductName != null && i.ProductName.ToLower().Contains(s)) ||
+                                         (i.Product != null && (
+                                             (i.Product.Sku != null && i.Product.Sku.ToLower().Contains(s)) ||
+                                             (i.Product.Name != null && i.Product.Name.ToLower().Contains(s)) ||
+                                             (i.Product.Barcode != null && i.Product.Barcode.ToLower().Contains(s))
+                                         ))
+                                     ));
         }
 
         if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
@@ -107,8 +124,18 @@ public class ImportService : IImportService
             var s = search.Trim().ToLower();
             query = query.Where(v => v.VoucherNumber.ToLower().Contains(s) ||
                                      (v.Supplier != null && v.Supplier.Name.ToLower().Contains(s)) ||
-                                     (v.Notes != null && v.Notes.ToLower().Contains(s)));
+                                     (v.Notes != null && v.Notes.ToLower().Contains(s)) ||
+                                     v.Items.Any(i =>
+                                         (i.Sku != null && i.Sku.ToLower().Contains(s)) ||
+                                         (i.ProductName != null && i.ProductName.ToLower().Contains(s)) ||
+                                         (i.Product != null && (
+                                             (i.Product.Sku != null && i.Product.Sku.ToLower().Contains(s)) ||
+                                             (i.Product.Name != null && i.Product.Name.ToLower().Contains(s)) ||
+                                             (i.Product.Barcode != null && i.Product.Barcode.ToLower().Contains(s))
+                                         ))
+                                     ));
         }
+
 
         var effectiveDate = !string.IsNullOrWhiteSpace(date) ? date : month;
 
@@ -183,13 +210,14 @@ public class ImportService : IImportService
         }
 
         await _uow.BeginTransactionAsync(ct);
+        var voucherDate = DateTime.UtcNow;
         try
         {
             var supplier = await _uow.Suppliers.GetByIdAsync(dto.SupplierId, ct)
                 ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {dto.SupplierId}");
 
             var warehouse = string.IsNullOrWhiteSpace(dto.Warehouse) ? DomainConstants.Warehouses.Warehouse1 : dto.Warehouse;
-            var voucherDate = dto.Date.HasValue
+            voucherDate = dto.Date.HasValue
                 ? (dto.Date.Value.TimeOfDay == TimeSpan.Zero ? dto.Date.Value.Date.Add(DateTime.UtcNow.TimeOfDay) : dto.Date.Value)
                 : DateTime.UtcNow;
             var voucherNumber = $"PN{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
@@ -253,7 +281,7 @@ public class ImportService : IImportService
                     BeforeTotalStock = beforeTotal,
                     AfterTotalStock = afterTotal,
                     ChangeDate = voucherDate,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = voucherDate
                 }, ct);
             }
 
@@ -288,7 +316,7 @@ public class ImportService : IImportService
                     BeforeDebt = beforeDebt,
                     Delta = delta,
                     AfterDebt = afterDebt,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = voucherDate
                 }, ct);
             }
 
@@ -319,6 +347,7 @@ public class ImportService : IImportService
         }
 
         await _uow.BeginTransactionAsync(ct);
+        var voucherDate = DateTime.UtcNow;
         try
         {
             if (action.Equals("cancel", StringComparison.OrdinalIgnoreCase))
@@ -355,7 +384,7 @@ public class ImportService : IImportService
                         BeforeTotalStock = beforeTotal,
                         AfterTotalStock = afterTotal,
                         ChangeDate = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -379,7 +408,7 @@ public class ImportService : IImportService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -420,7 +449,7 @@ public class ImportService : IImportService
                         BeforeTotalStock = beforeTotal,
                         AfterTotalStock = afterTotal,
                         ChangeDate = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -444,7 +473,7 @@ public class ImportService : IImportService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -473,6 +502,7 @@ public class ImportService : IImportService
             ?? throw new NotFoundException($"Không tìm thấy phiếu nhập có ID {id}");
 
         await _uow.BeginTransactionAsync(ct);
+        var voucherDate = DateTime.UtcNow;
         try
         {
             if (voucher.Status == DomainConstants.VoucherStatuses.Confirmed)

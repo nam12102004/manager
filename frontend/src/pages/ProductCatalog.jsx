@@ -173,7 +173,7 @@ export default function ProductCatalog() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedSupplierId, sortBy, selectedCategory, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, notify]);
+  }, [currentPage, searchQuery, selectedSupplierId, sortBy, selectedCategory, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate, notify]);
 
   useEffect(() => {
     loadProducts(currentPage);
@@ -185,7 +185,7 @@ export default function ProductCatalog() {
       return;
     }
     loadProducts(currentPage);
-  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth]);
+  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate]);
 
   useEffect(() => {
     if (isFirstFilterChange.current) {

@@ -1,4 +1,4 @@
-import { exportsApi, customersApi, suppliersApi, productsApi, ownersApi } from '../api/endpoints';
+import { exportsApi, customersApi, suppliersApi, productsApi, ownersApi, employeesApi } from '../api/endpoints';
 import { auditService } from './auditService';
 
 /**
@@ -91,6 +91,8 @@ export const exportService = {
 
     return {
       customerId: Number(formData.customerId),
+      employeeId: formData.employeeId ? Number(formData.employeeId) : null,
+      employeeName: formData.employeeName?.trim() || undefined,
       warehouse: formData.warehouse || 'kho_1',
       date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
       discountPercent: formData.discountType === 'percent' ? Number(formData.discountValue || 0) : undefined,
@@ -127,7 +129,7 @@ export const exportService = {
       entityName: 'ExportVoucher',
       entityId: result?.voucherNumber || result?.id || 'Mới',
       entityDisplayName: `Phiếu xuất #${result?.voucherNumber || result?.id}`,
-      details: `Lập phiếu bán hàng xuất kho, Tổng tiền: ${(result?.totalSale || formData.totalSale || 0).toLocaleString()}₫`,
+      details: `Lập phiếu bán hàng xuất kho${result?.employeeName ? ` (NV: ${result.employeeName})` : ''}, Tổng tiền: ${(result?.totalSale || formData.totalSale || 0).toLocaleString()}₫`,
     });
     return result;
   },
@@ -157,17 +159,19 @@ export const exportService = {
   },
 
   async getDependencies() {
-    const [custs, prods, owner, supps] = await Promise.allSettled([
+    const [custs, prods, owner, supps, emps] = await Promise.allSettled([
       customersApi.getAll({ all: true }),
       productsApi.getAll({ all: true }),
       ownersApi.get(),
       suppliersApi.getAll({ all: true }),
+      employeesApi.getAll(),
     ]);
 
     return {
       customers: custs.status === 'fulfilled' && Array.isArray(custs.value) ? custs.value : [],
       products: prods.status === 'fulfilled' && Array.isArray(prods.value) ? prods.value : [],
       suppliers: supps.status === 'fulfilled' && Array.isArray(supps.value) ? supps.value : [],
+      employees: emps.status === 'fulfilled' && Array.isArray(emps.value) ? emps.value : [],
       ownerInfo: owner.status === 'fulfilled' ? owner.value : null,
     };
   },

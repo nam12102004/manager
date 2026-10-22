@@ -22,6 +22,9 @@ public class ExportReportRequestDto
     public string PartnerScope { get; set; } = "customer"; // customer | supplier | both (for cashflow & debt)
     public string? PartnerType { get => PartnerScope; set => PartnerScope = value ?? "customer"; }
 
+    // Debt calculation mode: "from_beginning" (default - công nợ từ đầu) | "in_period" (công nợ phát sinh trong khoảng thời gian lọc)
+    public string DebtMode { get; set; } = "from_beginning";
+
     private List<int>? _productIds;
     public List<int> ProductIds { get => _productIds ??= new(); set => _productIds = value ?? new(); }
 
@@ -33,6 +36,9 @@ public class ExportReportRequestDto
 
     private List<string>? _warehouses;
     public List<string> Warehouses { get => _warehouses ??= new(); set => _warehouses = value ?? new(); }
+
+    private List<int>? _employeeIds;
+    public List<int> EmployeeIds { get => _employeeIds ??= new(); set => _employeeIds = value ?? new(); }
 
     // Metric options
     public bool IncludeQuantity { get; set; } = true;

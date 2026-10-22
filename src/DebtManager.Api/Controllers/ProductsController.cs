@@ -72,8 +72,10 @@ public class ProductsController : BaseApiController
     public async Task<ActionResult<ApiResponse<List<StockHistoryDto>>>> GetStockHistory(
         int id,
         [FromQuery] string? month,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
         CancellationToken ct)
-        => Success(await _productService.GetStockHistoryAsync(id, month, ct));
+        => Success(await _productService.GetStockHistoryAsync(id, month, fromDate, toDate, ct));
 
     [HttpGet("categories")]
     public async Task<ActionResult<ApiResponse<List<string>>>> GetCategories(CancellationToken ct)
@@ -84,6 +86,8 @@ public class ProductsController : BaseApiController
         int id,
         [FromQuery] string? warehouse,
         [FromQuery] string? month,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
         CancellationToken ct)
-        => Success(await _productService.GetLedgerAsync(id, warehouse, month, ct));
+        => Success(await _productService.GetLedgerAsync(id, warehouse, month, fromDate, toDate, ct));
 }

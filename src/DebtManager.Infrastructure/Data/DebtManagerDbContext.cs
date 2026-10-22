@@ -12,6 +12,7 @@ public class DebtManagerDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<StockHistory> StockHistories => Set<StockHistory>();
     public DbSet<CustomerDebtHistory> CustomerDebtHistories => Set<CustomerDebtHistory>();
@@ -73,6 +74,16 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.BankAccount).HasMaxLength(100);
             entity.Property(e => e.TaxNumber).HasMaxLength(50);
             entity.Property(e => e.Notes).HasMaxLength(1000);
+        });
+
+        // 3b. Employees
+        modelBuilder.Entity<Employee>(entity =>
+        {
+            entity.ToTable("Employees");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Phone).HasMaxLength(50);
+            entity.Property(e => e.Notes).HasMaxLength(500);
         });
 
         // 4. Products
@@ -187,6 +198,7 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.Warehouse).HasMaxLength(20).IsRequired();
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("active");
             entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.Property(e => e.EmployeeName).HasMaxLength(200);
 
             entity.Property(e => e.SubtotalSale).HasPrecision(18, 2);
             entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);
@@ -196,11 +208,17 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.TotalCost).HasPrecision(18, 2);
 
             entity.HasIndex(e => new { e.CustomerId, e.Date });
+            entity.HasIndex(e => new { e.EmployeeId, e.Date });
 
             entity.HasOne(e => e.Customer)
                 .WithMany(c => c.ExportVouchers)
                 .HasForeignKey(e => e.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Employee)
+                .WithMany(emp => emp.ExportVouchers)
+                .HasForeignKey(e => e.EmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ExportVoucherItem>(entity =>

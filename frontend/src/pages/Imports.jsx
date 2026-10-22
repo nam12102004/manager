@@ -19,6 +19,7 @@ import { useExport } from '../context/ExportContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
+import SearchBar from '../components/common/SearchBar';
 import SearchableSelect from '../components/common/SearchableSelect';
 import TimeFilter from '../components/common/TimeFilter';
 import Pagination from '../components/common/Pagination';
@@ -45,6 +46,7 @@ export default function Imports({ initialOpenCreate = false }) {
   const isFirstFilterChange = React.useRef(true);
 
   // Filters
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedWarehouse, setSelectedWarehouse] = useState('');
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
@@ -81,6 +83,7 @@ export default function Imports({ initialOpenCreate = false }) {
         pageSize: 15,
         supplierId: selectedSupplierId ? Number(selectedSupplierId) : null,
         warehouse: selectedWarehouse || undefined,
+        q: searchQuery.trim() || undefined,
       };
 
       if (timeMode === 'month') {
@@ -108,7 +111,7 @@ export default function Imports({ initialOpenCreate = false }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, selectedSupplierId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
+  }, [currentPage, searchQuery, selectedSupplierId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
 
   // Load Dependencies via importService & warehouseService
   const loadDependencies = async () => {
@@ -150,7 +153,7 @@ export default function Imports({ initialOpenCreate = false }) {
     } else {
       setCurrentPage(1);
     }
-  }, [selectedSupplierId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+  }, [searchQuery, selectedSupplierId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
     loadDependencies();
@@ -346,7 +349,14 @@ export default function Imports({ initialOpenCreate = false }) {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div style={{ minWidth: '240px' }}>
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Tìm theo số phiếu, NCC, tên SP, mã SP (SKU)..."
+          style={{ flex: 1, minWidth: '260px' }}
+        />
+
+        <div style={{ minWidth: '220px' }}>
           <SearchableSelect
             options={suppliers.map((s) => ({
               id: s.id,
@@ -364,7 +374,7 @@ export default function Imports({ initialOpenCreate = false }) {
           />
         </div>
 
-        <div style={{ minWidth: '180px' }}>
+        <div style={{ minWidth: '170px' }}>
           <select
             className="form-control"
             value={selectedWarehouse}
@@ -400,7 +410,9 @@ export default function Imports({ initialOpenCreate = false }) {
           icon={ArrowDownLeft}
           title="Không tìm thấy phiếu nhập nào"
           description={
-            timeMode === 'day'
+            searchQuery
+              ? `Không tìm thấy phiếu nhập nào phù hợp với từ khóa "${searchQuery}".`
+              : timeMode === 'day'
               ? `Chưa có phiếu nhập hàng nào trong ngày ${selectedDate || ''} hoặc theo nhà cung cấp đã chọn.`
               : timeMode === 'month'
               ? `Chưa có phiếu nhập hàng nào trong tháng ${selectedMonth || ''} hoặc theo nhà cung cấp đã chọn.`
@@ -435,9 +447,26 @@ export default function Imports({ initialOpenCreate = false }) {
               {importsList.map((imp) => (
                 <tr key={imp.id}>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                    {imp.voucherNumber}
+                    <div>{imp.voucherNumber}</div>
+                    {imp.items && imp.items.length > 0 && (
+                      <div
+                        style={{
+                          fontSize: '0.725rem',
+                          color: 'var(--text-secondary)',
+                          fontWeight: 400,
+                          maxWidth: '180px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          marginTop: '2px',
+                        }}
+                        title={imp.items.map((i) => `${i.productName} (${i.sku || ''})`).join(', ')}
+                      >
+                        {imp.items.map((i) => i.productName).join(', ')}
+                      </div>
+                    )}
                   </td>
-                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(imp.createdAt || imp.date, true)}</td>
+                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(imp.date || imp.createdAt, true)}</td>
                   <td
                     style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
                     title="Bấm để xem sổ chi tiết Nhập / Xuất / Thu / Chi của nhà cung cấp này"
@@ -821,7 +850,7 @@ export default function Imports({ initialOpenCreate = false }) {
                 <p style={{ fontSize: '0.8125rem' }}>Nhà cung cấp: <strong>{selectedImport.supplierName}</strong></p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '0.8125rem' }}>Thời gian nhập: <strong>{formatDate(selectedImport.createdAt || selectedImport.date, true)}</strong></p>
+                <p style={{ fontSize: '0.8125rem' }}>Thời gian nhập: <strong>{formatDate(selectedImport.date || selectedImport.createdAt, true)}</strong></p>
                 <p style={{ fontSize: '0.8125rem' }}>Kho nhận: <strong>{warehouseService.getWarehouseName(selectedImport.warehouse, warehouses)}</strong></p>
                 <span className={`badge badge-${selectedImport.status === 'cancelled' ? 'danger' : 'info'}`}>
                   {selectedImport.status === 'cancelled' ? 'Đã hủy' : 'Đã nhập kho'}

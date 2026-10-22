@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FileSpreadsheet,
   CalendarDays,
@@ -7,7 +7,6 @@ import {
   Package,
   Play,
   X,
-  Database,
   Bookmark,
   BookmarkPlus,
   Check,
@@ -32,13 +31,15 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronRight as ArrowStep,
+  Users,
+  UserCheck,
 } from 'lucide-react';
 import { useExport } from '../context/ExportContext';
 import { useNotification } from '../context/NotificationContext';
 import MultiSearchableSelect from '../components/common/MultiSearchableSelect';
 import ExcelPreview from '../components/common/ExcelPreview';
-import { exportService, warehouseService } from '../services';
-import { getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
+import { exportService, warehouseService, employeeService } from '../services';
+import { getCurrentMonthStr, getCurrentDateStr, formatVND, formatNumber } from '../utils/formatters';
 import {
   PERIOD_MODES,
   GRANULARITIES,
@@ -51,27 +52,52 @@ import {
 
 const PRESET_STORAGE_KEY = 'debtmanager_export_presets_v2';
 
-const ALL_TABLES_ON = {
-  products: true,
-  customers: true,
-  suppliers: true,
-  exports: true,
-  imports: true,
-  receipts: true,
-  payments: true,
-};
-
-const TABLE_OPTIONS = [
-  { key: 'products', label: 'Sản phẩm & Tồn kho' },
-  { key: 'customers', label: 'Khách hàng & Công nợ' },
-  { key: 'suppliers', label: 'Nhà cung cấp & Công nợ' },
-  { key: 'exports', label: 'Phiếu xuất kho' },
-  { key: 'imports', label: 'Phiếu nhập kho' },
-  { key: 'receipts', label: 'Phiếu thu' },
-  { key: 'payments', label: 'Phiếu chi' },
-];
-
 const BUILT_IN_PRESETS = [
+  {
+    id: 'preset-sales-employee-day',
+    name: '🧑‍💼 Doanh số nhân viên theo ngày',
+    isBuiltIn: true,
+    tab: 'report',
+    reportType: 'sales',
+    periodMode: 'month',
+    granularity: 'day',
+    groupBy: 'employee',
+    partnerType: 'customer',
+    includeQuantity: true,
+    includeRevenue: true,
+    includePrice: false,
+    includeDetailSheet: true,
+  },
+  {
+    id: 'preset-sales-employee-product',
+    name: '📦 Nhân viên & Sản phẩm theo tuần',
+    isBuiltIn: true,
+    tab: 'report',
+    reportType: 'sales',
+    periodMode: 'month',
+    granularity: 'week',
+    groupBy: 'employee_product',
+    partnerType: 'customer',
+    includeQuantity: true,
+    includeRevenue: true,
+    includePrice: true,
+    includeDetailSheet: true,
+  },
+  {
+    id: 'preset-sales-employee-partner',
+    name: '🤝 Nhân viên & Khách hàng theo tháng',
+    isBuiltIn: true,
+    tab: 'report',
+    reportType: 'sales',
+    periodMode: 'year',
+    granularity: 'month',
+    groupBy: 'employee_partner',
+    partnerType: 'customer',
+    includeQuantity: true,
+    includeRevenue: true,
+    includePrice: false,
+    includeDetailSheet: true,
+  },
   {
     id: 'preset-sales-product-day',
     name: '📊 Doanh số sản phẩm theo ngày',
@@ -194,10 +220,11 @@ const BUILT_IN_PRESETS = [
   },
   {
     id: 'preset-debt-period',
-    name: '📑 Công nợ theo kỳ',
+    name: '📑 Công nợ từ đầu (Lũy kế)',
     isBuiltIn: true,
     tab: 'report',
     reportType: 'debt',
+    debtMode: 'from_beginning',
     periodMode: 'month',
     granularity: 'month',
     groupBy: 'partner',
@@ -208,12 +235,28 @@ const BUILT_IN_PRESETS = [
     includeDetailSheet: true,
   },
   {
-    id: 'preset-backup-all',
-    name: '💾 Sao lưu CSDL',
+    id: 'preset-debt-in-period',
+    name: '⚡ Công nợ phát sinh trong kỳ',
     isBuiltIn: true,
-    tab: 'full_db',
-    dbTimeScope: 'all',
-    selectedTables: ALL_TABLES_ON,
+    tab: 'report',
+    reportType: 'debt',
+    debtMode: 'in_period',
+    periodMode: 'month',
+    granularity: 'month',
+    groupBy: 'partner',
+    partnerType: 'customer',
+    includeQuantity: false,
+    includeRevenue: true,
+    includePrice: false,
+    includeDetailSheet: true,
+  },
+  {
+    id: 'preset-employee-sales',
+    name: '👔 Doanh số & SP Nhân viên',
+    isBuiltIn: true,
+    tab: 'employee',
+    empTargetMode: 'all',
+    empTimeMode: 'month',
   },
 ];
 
@@ -366,12 +409,6 @@ const STYLES = `
 .xe-group-card.disabled:hover { border-color: var(--border-color) !important; color: var(--text-secondary) !important; }
 .xe-toggle.disabled, .xe-toggle:disabled { opacity: 0.45; cursor: not-allowed; border-color: var(--border-color) !important; background: var(--bg-tertiary) !important; }
 .xe-toggle.disabled:hover { border-color: var(--border-color) !important; }
-.xe-table-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
-.xe-table-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); border: 1.5px solid var(--border-color); cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); background: var(--bg-secondary); transition: all var(--transition-fast); user-select: none; }
-.xe-table-item:hover { border-color: var(--primary); }
-.xe-table-item.on { border-color: var(--primary); background: var(--primary-light); color: var(--text-primary); }
-.xe-box { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border-color); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--bg-secondary); }
-.xe-table-item.on .xe-box { background: var(--primary); border-color: var(--primary); color: #fff; }
 `;
 
 const formatBytes = (bytes) => {
@@ -426,9 +463,9 @@ const REPORT_ICONS = {
 
 export default function ExcelExport() {
   const notify = useNotification();
-  const { jobs, startReportExport, startFullDbExport, downloadJob, dismissJob } = useExport();
+  const { jobs, startReportExport, downloadJob, dismissJob } = useExport();
 
-  const [activeTab, setActiveTab] = useState('report'); // 'report' | 'full_db'
+  const [activeTab, setActiveTab] = useState('report'); // 'report' | 'employee'
   const [submitting, setSubmitting] = useState(false);
 
   // Dependencies
@@ -436,7 +473,23 @@ export default function ExcelExport() {
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loadingDeps, setLoadingDeps] = useState(false);
+
+  // Employee Export configuration state
+  const [empTargetMode, setEmpTargetMode] = useState('all'); // 'all' | 'single'
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [empTimeMode, setEmpTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
+  const [empMonth, setEmpMonth] = useState(getCurrentMonthStr());
+  const [empDay, setEmpDay] = useState(getCurrentDateStr());
+  const [empFromDate, setEmpFromDate] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return getCurrentDateStr(d);
+  });
+  const [empToDate, setEmpToDate] = useState(getCurrentDateStr());
+  const [employeeStats, setEmployeeStats] = useState([]);
+  const [loadingEmpStats, setLoadingEmpStats] = useState(false);
 
   // Report configuration state
   const [reportType, setReportType] = useState('sales');
@@ -444,6 +497,7 @@ export default function ExcelExport() {
   const [granularity, setGranularity] = useState('day');
   const [groupBy, setGroupBy] = useState('product');
   const [partnerType, setPartnerType] = useState('customer');
+  const [debtMode, setDebtMode] = useState('from_beginning'); // 'from_beginning' | 'in_period'
 
   // Dynamic period values
   const [day, setDay] = useState(getCurrentDateStr());
@@ -463,6 +517,7 @@ export default function ExcelExport() {
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
   const [selectedSupplierIds, setSelectedSupplierIds] = useState([]);
   const [selectedWarehouses, setSelectedWarehouses] = useState([]);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
   const [enableWarehouseBreakdown, setEnableWarehouseBreakdown] = useState(false);
 
   // Metrics and output options
@@ -470,13 +525,6 @@ export default function ExcelExport() {
   const [includeRevenue, setIncludeRevenue] = useState(true);
   const [includePrice, setIncludePrice] = useState(false);
   const [includeDetailSheet, setIncludeDetailSheet] = useState(true);
-
-  // Full DB state
-  const [selectedTables, setSelectedTables] = useState(ALL_TABLES_ON);
-  const [dbTimeScope, setDbTimeScope] = useState('all');
-  const [dbMonth, setDbMonth] = useState(getCurrentMonthStr());
-  const [dbFromDate, setDbFromDate] = useState(getCurrentDateStr());
-  const [dbToDate, setDbToDate] = useState(getCurrentDateStr());
 
   // Presets state
   const [customPresets, setCustomPresets] = useState(() => {
@@ -495,12 +543,17 @@ export default function ExcelExport() {
 
   const loadDependencies = () => {
     setLoadingDeps(true);
-    Promise.all([exportService.getDependencies(), warehouseService.getWarehouses()])
-      .then(([{ customers: custs, products: prods, suppliers: supps }, whList]) => {
+    Promise.all([
+      exportService.getDependencies(),
+      warehouseService.getWarehouses(),
+      employeeService.getAll().catch(() => []),
+    ])
+      .then(([{ customers: custs, products: prods, suppliers: supps }, whList, empList]) => {
         setCustomers(custs || []);
         setSuppliers(supps || []);
         setProducts(prods || []);
         setWarehouses(whList || []);
+        setEmployees(Array.isArray(empList) ? empList : []);
       })
       .catch((err) => console.error('Failed to load export dependencies', err))
       .finally(() => setLoadingDeps(false));
@@ -509,6 +562,47 @@ export default function ExcelExport() {
   useEffect(() => {
     loadDependencies();
   }, []);
+
+  // Load employee sales statistics based on the selected time filter
+  const loadEmployeeStats = useCallback(async () => {
+    setLoadingEmpStats(true);
+    try {
+      const params = {};
+      if (empTimeMode === 'month' && empMonth) params.month = empMonth;
+      else if (empTimeMode === 'day' && empDay) params.date = empDay;
+      else if (empTimeMode === 'range') {
+        if (empFromDate) params.fromDate = empFromDate;
+        if (empToDate) params.toDate = empToDate;
+      }
+      const data = await employeeService.getAll(params);
+      const list = Array.isArray(data) ? data : [];
+      setEmployeeStats(list);
+    } catch (err) {
+      console.error('Failed to load employee stats', err);
+    } finally {
+      setLoadingEmpStats(false);
+    }
+  }, [empTimeMode, empMonth, empDay, empFromDate, empToDate]);
+
+  useEffect(() => {
+    if (activeTab === 'employee') {
+      loadEmployeeStats();
+    }
+  }, [activeTab, loadEmployeeStats]);
+
+  const shiftEmpMonth = (delta) => {
+    const [y, m] = (empMonth || getCurrentMonthStr()).split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    const nextY = d.getFullYear();
+    const nextM = String(d.getMonth() + 1).padStart(2, '0');
+    setEmpMonth(`${nextY}-${nextM}`);
+  };
+
+  const shiftEmpDay = (delta) => {
+    const d = new Date(empDay || getCurrentDateStr());
+    d.setDate(d.getDate() + delta);
+    setEmpDay(getCurrentDateStr(d));
+  };
 
   const persistPresets = (list) => {
     setCustomPresets(list);
@@ -610,36 +704,39 @@ export default function ExcelExport() {
     setActivePresetId(preset.id);
     if (preset.tab) setActiveTab(preset.tab === 'matrix' ? 'report' : preset.tab);
 
-    if (preset.tab !== 'full_db') {
-      if (preset.reportType) setReportType(preset.reportType);
-      if (preset.periodMode) setPeriodMode(preset.periodMode);
-      else if (preset.timeScope) {
-        setPeriodMode(preset.timeScope === 'custom' ? 'dayRange' : preset.timeScope);
-      }
-      if (preset.granularity) setGranularity(preset.granularity);
-      if (preset.groupBy) setGroupBy(preset.groupBy);
-      if (preset.partnerType) setPartnerType(preset.partnerType);
+    if (preset.tab === 'employee') {
+      if (preset.empTargetMode) setEmpTargetMode(preset.empTargetMode);
+      if (preset.empTimeMode) setEmpTimeMode(preset.empTimeMode);
+      if (preset.selectedEmployeeId) setSelectedEmployeeId(preset.selectedEmployeeId);
+      return;
+    }
 
-      if (preset.includeQuantity !== undefined) setIncludeQuantity(preset.includeQuantity);
-      if (preset.includeRevenue !== undefined) setIncludeRevenue(preset.includeRevenue);
-      if (preset.includePrice !== undefined) setIncludePrice(preset.includePrice);
-      if (preset.includeDetailSheet !== undefined) setIncludeDetailSheet(preset.includeDetailSheet);
+    if (preset.reportType) setReportType(preset.reportType);
+    if (preset.periodMode) setPeriodMode(preset.periodMode);
+    else if (preset.timeScope) {
+      setPeriodMode(preset.timeScope === 'custom' ? 'dayRange' : preset.timeScope);
+    }
+    if (preset.granularity) setGranularity(preset.granularity);
+    if (preset.groupBy) setGroupBy(preset.groupBy);
+    if (preset.partnerType) setPartnerType(preset.partnerType);
+    if (preset.debtMode) setDebtMode(preset.debtMode);
+    else if (preset.reportType === 'debt') setDebtMode('from_beginning');
 
-      if (preset.selectedProductIds) setSelectedProductIds(preset.selectedProductIds);
-      if (preset.selectedCustomerIds) setSelectedCustomerIds(preset.selectedCustomerIds);
-      if (preset.selectedSupplierIds) setSelectedSupplierIds(preset.selectedSupplierIds);
-      if (preset.selectedWarehouses) setSelectedWarehouses(preset.selectedWarehouses);
-      if (preset.enableWarehouseBreakdown !== undefined) {
-        setEnableWarehouseBreakdown(preset.enableWarehouseBreakdown);
-      } else {
-        setEnableWarehouseBreakdown(false);
-      }
+    if (preset.includeQuantity !== undefined) setIncludeQuantity(preset.includeQuantity);
+    if (preset.includeRevenue !== undefined) setIncludeRevenue(preset.includeRevenue);
+    if (preset.includePrice !== undefined) setIncludePrice(preset.includePrice);
+    if (preset.includeDetailSheet !== undefined) setIncludeDetailSheet(preset.includeDetailSheet);
+
+    if (preset.selectedProductIds) setSelectedProductIds(preset.selectedProductIds);
+    if (preset.selectedCustomerIds) setSelectedCustomerIds(preset.selectedCustomerIds);
+    if (preset.selectedSupplierIds) setSelectedSupplierIds(preset.selectedSupplierIds);
+    if (preset.selectedWarehouses) setSelectedWarehouses(preset.selectedWarehouses);
+    if (preset.selectedEmployeeIds) setSelectedEmployeeIds(preset.selectedEmployeeIds);
+    else if (preset.selectedEmployeeIds === undefined && preset.isBuiltIn) setSelectedEmployeeIds([]);
+    if (preset.enableWarehouseBreakdown !== undefined) {
+      setEnableWarehouseBreakdown(preset.enableWarehouseBreakdown);
     } else {
-      if (preset.selectedTables) setSelectedTables({ ...preset.selectedTables });
-      if (preset.dbTimeScope) setDbTimeScope(preset.dbTimeScope);
-      if (preset.dbMonth) setDbMonth(preset.dbMonth);
-      if (preset.dbFromDate) setDbFromDate(preset.dbFromDate);
-      if (preset.dbToDate) setDbToDate(preset.dbToDate);
+      setEnableWarehouseBreakdown(false);
     }
   };
 
@@ -658,6 +755,7 @@ export default function ExcelExport() {
       granularity,
       groupBy,
       partnerType,
+      debtMode: reportType === 'debt' ? debtMode : undefined,
       day,
       fromDate,
       toDate,
@@ -669,16 +767,12 @@ export default function ExcelExport() {
       selectedCustomerIds,
       selectedSupplierIds,
       selectedWarehouses,
+      selectedEmployeeIds,
       enableWarehouseBreakdown,
       includeQuantity,
       includeRevenue,
       includePrice,
       includeDetailSheet,
-      selectedTables,
-      dbTimeScope,
-      dbMonth,
-      dbFromDate,
-      dbToDate,
       createdAt: new Date().toISOString(),
     };
     persistPresets([...customPresets, newPreset]);
@@ -747,6 +841,18 @@ export default function ExcelExport() {
     [warehouses]
   );
 
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((e) => ({
+        id: e.id,
+        value: e.id,
+        label: e.name,
+        code: e.code || `NV${e.id}`,
+        phone: e.phone || '',
+      })),
+    [employees]
+  );
+
   const isSupplier = partnerType === 'supplier';
   const showPartnerFilter =
     reportType !== 'inventory' &&
@@ -786,6 +892,12 @@ export default function ExcelExport() {
         return `👤 ${partnerWord} ▸ Sản phẩm`;
       case 'warehouse_product':
         return '🏠 Kho hàng ▸ Sản phẩm';
+      case 'employee':
+        return '🧑‍💼 Theo nhân viên phụ trách';
+      case 'employee_product':
+        return '🧑‍💼 Nhân viên ▸ Sản phẩm';
+      case 'employee_partner':
+        return `🧑‍💼 Nhân viên ▸ ${partnerWord}`;
       default:
         return val;
     }
@@ -831,15 +943,18 @@ export default function ExcelExport() {
     }
     if (reportType === 'inout') return 'Nhập, Xuất, Chênh lệch';
     if (reportType === 'cashflow') return 'Tổng thu, Tổng chi, Chênh lệch';
-    if (reportType === 'debt') return 'Đầu kỳ, Tăng, Giảm, Cuối kỳ';
+    if (reportType === 'debt') {
+      return debtMode === 'from_beginning'
+        ? 'Công nợ từ đầu (ĐK lũy kế, CK)'
+        : 'Phát sinh trong kỳ (ĐK = 0, CK)';
+    }
     const list = [];
     if (includeQuantity) list.push('Số lượng');
     if (includeRevenue) list.push(reportType === 'purchases' ? 'Tiền nhập' : 'Doanh số');
     if (includePrice) list.push('Đơn giá');
     return list.join(', ') || 'Chưa chọn';
-  }, [reportType, includeQuantity, includeRevenue, includePrice]);
+  }, [reportType, debtMode, includeQuantity, includeRevenue, includePrice]);
 
-  const activeTableCount = Object.values(selectedTables).filter(Boolean).length;
   const canSubmit =
     activeTab === 'report'
       ? (reportType === 'inout' ||
@@ -850,25 +965,25 @@ export default function ExcelExport() {
           includeRevenue ||
           includePrice) &&
         estimatedBuckets <= 370
-      : activeTableCount > 0;
+      : empTargetMode === 'all' || Boolean(selectedEmployeeId);
 
-  // Mutual constraint: groupBy === 'partner' vs includePrice
-  const isPartnerOnlyGroup = groupBy === 'partner';
+  // Mutual constraint: groupBy without product vs includePrice
+  const isPriceBlockedGroup = groupBy === 'partner' || groupBy === 'employee' || groupBy === 'employee_partner';
   const isPriceAllowed =
     reportType === 'inventory' ||
-    (reportType !== 'sales' && reportType !== 'purchases') ||
-    !isPartnerOnlyGroup;
+    (reportType !== 'sales' && reportType !== 'purchases' && reportType !== 'employee_sales') ||
+    !isPriceBlockedGroup;
 
-  // Mutual filter: If currently in partner-only group, includePrice cannot be active
+  // Mutual filter: If currently in non-product group, includePrice cannot be active
   useEffect(() => {
-    if ((reportType === 'sales' || reportType === 'purchases') && isPartnerOnlyGroup && includePrice) {
+    if ((reportType === 'sales' || reportType === 'purchases' || reportType === 'employee_sales') && isPriceBlockedGroup && includePrice) {
       setIncludePrice(false);
     }
-  }, [reportType, isPartnerOnlyGroup, includePrice]);
+  }, [reportType, isPriceBlockedGroup, includePrice]);
 
   const handleSelectGroupBy = (val) => {
     touch(setGroupBy)(val);
-    if (val === 'partner' && includePrice) {
+    if ((val === 'partner' || val === 'employee' || val === 'employee_partner') && includePrice) {
       setIncludePrice(false);
     }
   };
@@ -876,9 +991,9 @@ export default function ExcelExport() {
   const handleTogglePrice = () => {
     const nextVal = !includePrice;
     touch(setIncludePrice)(nextVal);
-    // If turning on price while partner is selected, auto switch to product
-    if (nextVal && groupBy === 'partner' && (reportType === 'sales' || reportType === 'purchases')) {
-      setGroupBy('product');
+    // If turning on price while partner/employee without product is selected, auto switch to product group
+    if (nextVal && isPriceBlockedGroup && (reportType === 'sales' || reportType === 'purchases' || reportType === 'employee_sales')) {
+      setGroupBy(groupBy.startsWith('employee') ? 'employee_product' : 'product');
     }
   };
 
@@ -910,16 +1025,19 @@ export default function ExcelExport() {
           ? selectedSupplierIds.map(Number)
           : [],
       warehouses: selectedWarehouses.length > 0 ? selectedWarehouses : [],
+      employeeIds: selectedEmployeeIds.length > 0 ? selectedEmployeeIds.map(Number) : [],
       breakdownByWarehouse: isWhBreakdownActive,
       includeQuantity,
       includeAmount: includeRevenue,
       includeRevenue,
       includeAvgPrice: includePrice,
       includePrice,
+      debtMode: reportType === 'debt' ? debtMode : undefined,
       includeDetailSheet,
     };
   }, [
     reportType,
+    debtMode,
     periodMode,
     day,
     fromDate,
@@ -935,6 +1053,7 @@ export default function ExcelExport() {
     selectedCustomerIds,
     selectedSupplierIds,
     selectedWarehouses,
+    selectedEmployeeIds,
     isWhBreakdownActive,
     includeQuantity,
     includeRevenue,
@@ -952,27 +1071,71 @@ export default function ExcelExport() {
           periodText,
           granularityLabel,
         ];
+        if (reportType === 'debt') {
+          titleParts.push(debtMode === 'from_beginning' ? 'Công nợ từ đầu' : 'Chỉ phát sinh');
+        }
         if (selectedProductIds.length > 0) titleParts.push(`${selectedProductIds.length} SP`);
+        if (selectedEmployeeIds.length > 0) titleParts.push(`${selectedEmployeeIds.length} NV`);
 
         await startReportExport(previewRequestDto, titleParts.join(' · '));
-      } else {
-        const tables = Object.keys(selectedTables).filter((k) => selectedTables[k]);
-        await startFullDbExport(
-          {
-            tables,
-            timeScope: dbTimeScope,
-            month: dbTimeScope === 'month' ? dbMonth : null,
-            fromDate: dbTimeScope === 'custom' ? dbFromDate : null,
-            toDate: dbTimeScope === 'custom' ? dbToDate : null,
-          },
-          `Sao lưu ${tables.length} bảng · ${formatPeriodDescription(
-            dbTimeScope === 'custom' ? 'dayRange' : dbTimeScope,
-            { month: dbMonth, fromDate: dbFromDate, toDate: dbToDate }
-          )}`
-        );
+      } else if (activeTab === 'employee') {
+        const params = {};
+        if (empTargetMode === 'single' && selectedEmployeeId) {
+          params.employeeId = Number(selectedEmployeeId);
+        }
+        if (empTimeMode === 'month' && empMonth) params.month = empMonth;
+        else if (empTimeMode === 'day' && empDay) params.date = empDay;
+        else if (empTimeMode === 'range') {
+          if (empFromDate) params.fromDate = empFromDate;
+          if (empToDate) params.toDate = empToDate;
+        }
+
+        const targetEmp = employees.find((e) => e.id === Number(selectedEmployeeId));
+        const periodLabel =
+          empTimeMode === 'month'
+            ? empMonth
+            : empTimeMode === 'day'
+            ? empDay
+            : empTimeMode === 'range'
+            ? `${empFromDate}_den_${empToDate}`
+            : 'ToanBo';
+        const defaultFileName = targetEmp
+          ? `BaoCao_DoanhSo_SP_${targetEmp.name.replace(/\s+/g, '_')}_${periodLabel}.xlsx`
+          : `BaoCao_DoanhSo_NhanVien_${periodLabel}.xlsx`;
+
+        const filename = await employeeService.exportExcel(params, defaultFileName);
+        notify.success(`Đã xuất báo cáo Excel "${filename}" thành công!`);
       }
-    } catch {
-      // Errors handled via notification in ExportContext
+    } catch (err) {
+      notify.error(err.message || 'Xuất Excel thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleQuickExportEmployee = async (emp) => {
+    setSubmitting(true);
+    try {
+      const params = { employeeId: emp.id };
+      if (empTimeMode === 'month' && empMonth) params.month = empMonth;
+      else if (empTimeMode === 'day' && empDay) params.date = empDay;
+      else if (empTimeMode === 'range') {
+        if (empFromDate) params.fromDate = empFromDate;
+        if (empToDate) params.toDate = empToDate;
+      }
+      const periodLabel =
+        empTimeMode === 'month'
+          ? empMonth
+          : empTimeMode === 'day'
+          ? empDay
+          : empTimeMode === 'range'
+          ? `${empFromDate}_den_${empToDate}`
+          : 'ToanBo';
+      const defaultFileName = `BaoCao_DoanhSo_SP_${emp.name.replace(/\s+/g, '_')}_${periodLabel}.xlsx`;
+      const filename = await employeeService.exportExcel(params, defaultFileName);
+      notify.success(`Đã xuất báo cáo Excel cho nhân viên "${emp.name}"!`);
+    } catch (err) {
+      notify.error(err.message || 'Xuất Excel nhân viên thất bại');
     } finally {
       setSubmitting(false);
     }
@@ -1010,11 +1173,11 @@ export default function ExcelExport() {
         </button>
         <button
           type="button"
-          className={`xe-mode-card ${activeTab === 'full_db' ? 'active' : ''}`}
-          onClick={() => setActiveTab('full_db')}
+          className={`xe-mode-card ${activeTab === 'employee' ? 'active' : ''}`}
+          onClick={() => setActiveTab('employee')}
         >
-          <div className="xe-mode-icon"><Database size={20} /></div>
-          <div className="xe-mode-title">Sao lưu CSDL</div>
+          <div className="xe-mode-icon"><UserCheck size={20} /></div>
+          <div className="xe-mode-title">Doanh số & SP Nhân viên</div>
         </button>
       </div>
 
@@ -1371,10 +1534,11 @@ export default function ExcelExport() {
                     {GROUP_BY_OPTIONS.filter((g) => allowedGroupBys.includes(g.value)).map((g) => {
                       const isActive = groupBy === g.value;
                       const isPartnerOnly = g.value === 'partner';
+                      const isEmployeeOnly = g.value === 'employee' || g.value === 'employee_partner';
                       const isBlockedByPrice =
-                        isPartnerOnly &&
+                        (isPartnerOnly || isEmployeeOnly) &&
                         includePrice &&
-                        (reportType === 'sales' || reportType === 'purchases');
+                        (reportType === 'sales' || reportType === 'purchases' || reportType === 'employee_sales');
 
                       return (
                         <button
@@ -1390,7 +1554,7 @@ export default function ExcelExport() {
                           }}
                           title={
                             isBlockedByPrice
-                              ? 'Không thể gom nhóm chỉ theo Đối tác khi đang chọn chỉ số Đơn giá (cần có Sản phẩm)'
+                              ? 'Không thể gom nhóm không có Sản phẩm khi đang chọn chỉ số Đơn giá (cần có Sản phẩm)'
                               : undefined
                           }
                         >
@@ -1412,7 +1576,7 @@ export default function ExcelExport() {
                 </div>
 
                 {/* Metrics for Sales / Purchases / Inventory */}
-                {(reportType === 'sales' || reportType === 'purchases' || reportType === 'inventory') && (
+                {(reportType === 'sales' || reportType === 'purchases' || reportType === 'inventory' || reportType === 'employee_sales') && (
                   <div style={{ marginBottom: 14 }}>
                     <div className="xe-label">
                       <span>Chỉ số hiển thị</span>
@@ -1443,6 +1607,68 @@ export default function ExcelExport() {
                         icon={Tag}
                         title={reportType === 'inventory' ? 'Đơn giá vốn' : 'Đơn giá'}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* Debt calculation mode switcher */}
+                {reportType === 'debt' && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div className="xe-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>Phương thức tính công nợ</span>
+                    </div>
+                    <div className="xe-mode-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+                      <button
+                        type="button"
+                        className={`xe-mode-card ${debtMode === 'from_beginning' ? 'active' : ''}`}
+                        onClick={() => touch(setDebtMode)('from_beginning')}
+                      >
+                        <span className="xe-mode-icon" style={{
+                          background: debtMode === 'from_beginning' ? 'var(--primary-light)' : 'var(--bg-tertiary)',
+                          color: debtMode === 'from_beginning' ? 'var(--primary)' : 'var(--text-muted)'
+                        }}>
+                          <Bookmark size={18} />
+                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Công nợ từ đầu</span>
+                            <span style={{
+                              background: 'var(--primary)',
+                              color: '#fff',
+                              fontSize: '0.6875rem',
+                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: 4
+                            }}>
+                              Mặc định
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                            Công nợ đầu kì sẽ là công nợ từ đầu tới khoảng thời gian lọc
+                          </span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`xe-mode-card ${debtMode === 'in_period' ? 'active' : ''}`}
+                        onClick={() => touch(setDebtMode)('in_period')}
+                      >
+                        <span className="xe-mode-icon" style={{
+                          background: debtMode === 'in_period' ? 'var(--info-light)' : 'var(--bg-tertiary)',
+                          color: debtMode === 'in_period' ? 'var(--info)' : 'var(--text-muted)'
+                        }}>
+                          <CalendarDays size={18} />
+                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>
+                            Công nợ phát sinh trong khoảng thời gian đấy
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                            Đầu kỳ = 0, chỉ tính phát sinh tăng/giảm trong khoảng thời gian lọc
+                          </span>
+                        </div>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1532,6 +1758,24 @@ export default function ExcelExport() {
                         onChange={touch(setSelectedProductIds)}
                         placeholder="Tất cả sản phẩm"
                         searchPlaceholder="Tìm theo tên sản phẩm, mã SKU..."
+                        disabled={loadingDeps}
+                      />
+                    </div>
+                  )}
+
+                  {/* Employee MultiSelect */}
+                  {(reportType === 'sales' || reportType === 'employee_sales') && (
+                    <div>
+                      <div className="xe-label">
+                        <UserCheck size={14} color="#16a34a" />
+                        <span>Nhân viên phụ trách</span>
+                      </div>
+                      <MultiSearchableSelect
+                        options={employeeOptions}
+                        value={selectedEmployeeIds}
+                        onChange={touch(setSelectedEmployeeIds)}
+                        placeholder="Tất cả nhân viên"
+                        searchPlaceholder="Tìm theo tên, SĐT nhân viên..."
                         disabled={loadingDeps}
                       />
                     </div>
@@ -1630,106 +1874,314 @@ export default function ExcelExport() {
             </>
           ) : (
             <>
-              {/* Full DB tab */}
+              {/* Step 1: Chọn Phạm Vi Nhân Viên */}
               <div className="xe-section">
                 <div className="xe-section-head">
                   <span className="xe-step">1</span>
-                  <span className="xe-section-title">Chọn bảng dữ liệu</span>
-                  <span className="xe-section-hint">
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => setSelectedTables(ALL_TABLES_ON)}
-                    >
-                      Chọn hết
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() =>
-                        setSelectedTables(
-                          Object.fromEntries(TABLE_OPTIONS.map((t) => [t.key, false]))
-                        )
-                      }
-                    >
-                      Bỏ chọn
-                    </button>
-                  </span>
+                  <span className="xe-section-title">Phạm vi nhân viên</span>
                 </div>
-                <div className="xe-table-grid">
-                  {TABLE_OPTIONS.map((t) => {
-                    const on = !!selectedTables[t.key];
-                    return (
-                      <div
-                        key={t.key}
-                        className={`xe-table-item ${on ? 'on' : ''}`}
-                        role="checkbox"
-                        aria-checked={on}
-                        tabIndex={0}
-                        onClick={() => {
-                          setSelectedTables((p) => ({ ...p, [t.key]: !p[t.key] }));
-                          setActivePresetId(null);
-                        }}
-                        onKeyDown={(e) =>
-                          e.key === ' ' && setSelectedTables((p) => ({ ...p, [t.key]: !p[t.key] }))
-                        }
-                      >
-                        <span className="xe-box">{on && <Check size={12} strokeWidth={3} />}</span>
-                        {t.label}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                  <button
+                    type="button"
+                    className={`xe-report-card ${empTargetMode === 'all' ? 'active' : ''}`}
+                    onClick={() => { setEmpTargetMode('all'); setSelectedEmployeeId(''); }}
+                    style={empTargetMode === 'all' ? { borderColor: 'var(--primary)', background: 'var(--primary-light)' } : {}}
+                  >
+                    <div className="xe-report-card-top">
+                      <div className="xe-report-card-icon" style={empTargetMode === 'all' ? { background: 'var(--primary)', color: '#fff' } : {}}>
+                        <Users size={18} />
                       </div>
-                    );
-                  })}
+                      <span className="xe-check" style={empTargetMode === 'all' ? { background: 'var(--primary)', borderColor: 'var(--primary)', color: '#fff' } : {}}>
+                        {empTargetMode === 'all' && <Check size={11} strokeWidth={3} />}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="xe-report-card-title">Tất cả nhân viên</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Tổng hợp toàn bộ công ty + danh sách phiếu + sản phẩm bán ra
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`xe-report-card ${empTargetMode === 'single' ? 'active' : ''}`}
+                    onClick={() => {
+                      setEmpTargetMode('single');
+                      if (!selectedEmployeeId && employees.length > 0) setSelectedEmployeeId(String(employees[0].id));
+                    }}
+                    style={empTargetMode === 'single' ? { borderColor: 'var(--primary)', background: 'var(--primary-light)' } : {}}
+                  >
+                    <div className="xe-report-card-top">
+                      <div className="xe-report-card-icon" style={empTargetMode === 'single' ? { background: 'var(--primary)', color: '#fff' } : {}}>
+                        <UserCheck size={18} />
+                      </div>
+                      <span className="xe-check" style={empTargetMode === 'single' ? { background: 'var(--primary)', borderColor: 'var(--primary)', color: '#fff' } : {}}>
+                        {empTargetMode === 'single' && <Check size={11} strokeWidth={3} />}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="xe-report-card-title">Một nhân viên cụ thể</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Báo cáo chuyên sâu: chi tiết phiếu xuất, sản phẩm và mặt hàng bán
+                      </div>
+                    </div>
+                  </button>
                 </div>
+
+                {empTargetMode === 'single' && (
+                  <div style={{ marginTop: '12px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                    <label className="xe-label">Chọn nhân viên xuất báo cáo:</label>
+                    <select
+                      className="form-input"
+                      value={selectedEmployeeId}
+                      onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">-- Chọn nhân viên --</option>
+                      {employees.map((emp) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.code ? `[${emp.code}] ` : ''}{emp.name} {emp.phone ? `(${emp.phone})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
+              {/* Step 2: Thời gian báo cáo */}
               <div className="xe-section">
                 <div className="xe-section-head">
                   <span className="xe-step">2</span>
-                  <span className="xe-section-title">Thời gian chứng từ</span>
+                  <span className="xe-section-title">Thời gian & Kỳ thống kê</span>
                 </div>
-                <div className="xe-partner-tabs">
-                  {[
-                    { value: 'month', label: 'Theo tháng' },
-                    { value: 'custom', label: 'Khoảng ngày' },
-                    { value: 'all', label: 'Toàn bộ' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      className={`xe-partner-tab ${dbTimeScope === opt.value ? 'active' : ''}`}
-                      onClick={() => touch(setDbTimeScope)(opt.value)}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                {dbTimeScope === 'month' && (
-                  <div className="xe-time-picker-box" style={{ maxWidth: 260 }}>
-                    <input
-                      type="month"
-                      className="form-input mono"
-                      value={dbMonth}
-                      onChange={(e) => touch(setDbMonth)(e.target.value)}
-                    />
+                <div className="xe-time-grid">
+                  <div>
+                    <div className="xe-label">Khoảng thời gian</div>
+                    <div className="xe-period-pills" role="tablist">
+                      <button
+                        type="button"
+                        className={`xe-period-pill ${empTimeMode === 'month' ? 'active' : ''}`}
+                        onClick={() => setEmpTimeMode('month')}
+                      >
+                        Theo tháng
+                      </button>
+                      <button
+                        type="button"
+                        className={`xe-period-pill ${empTimeMode === 'day' ? 'active' : ''}`}
+                        onClick={() => setEmpTimeMode('day')}
+                      >
+                        Theo ngày
+                      </button>
+                      <button
+                        type="button"
+                        className={`xe-period-pill ${empTimeMode === 'range' ? 'active' : ''}`}
+                        onClick={() => setEmpTimeMode('range')}
+                      >
+                        Khoảng ngày
+                      </button>
+                      <button
+                        type="button"
+                        className={`xe-period-pill ${empTimeMode === 'all' ? 'active' : ''}`}
+                        onClick={() => setEmpTimeMode('all')}
+                      >
+                        Toàn bộ
+                      </button>
+                    </div>
+
+                    <div className="xe-time-picker-box" style={{ marginTop: '10px' }}>
+                      {empTimeMode === 'month' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="xe-nav-btn"
+                            onClick={() => shiftEmpMonth(-1)}
+                            title="Tháng trước"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <input
+                            type="month"
+                            className="form-input mono"
+                            value={empMonth}
+                            onChange={(e) => setEmpMonth(e.target.value)}
+                            style={{ flex: 1 }}
+                          />
+                          <button
+                            type="button"
+                            className="xe-nav-btn"
+                            onClick={() => shiftEmpMonth(1)}
+                            title="Tháng sau"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      )}
+                      {empTimeMode === 'day' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="xe-nav-btn"
+                            onClick={() => shiftEmpDay(-1)}
+                            title="Ngày trước"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <input
+                            type="date"
+                            className="form-input mono"
+                            value={empDay}
+                            onChange={(e) => setEmpDay(e.target.value)}
+                            style={{ flex: 1 }}
+                          />
+                          <button
+                            type="button"
+                            className="xe-nav-btn"
+                            onClick={() => shiftEmpDay(1)}
+                            title="Ngày sau"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      )}
+                      {empTimeMode === 'range' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <input
+                            type="date"
+                            className="form-input mono"
+                            value={empFromDate}
+                            onChange={(e) => setEmpFromDate(e.target.value)}
+                            style={{ width: '150px' }}
+                          />
+                          <ArrowStep size={14} color="var(--text-muted)" />
+                          <input
+                            type="date"
+                            className="form-input mono"
+                            value={empToDate}
+                            onChange={(e) => setEmpToDate(e.target.value)}
+                            style={{ width: '150px' }}
+                          />
+                        </div>
+                      )}
+                      {empTimeMode === 'all' && (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '6px 0' }}>
+                          Thống kê toàn bộ dữ liệu lịch sử bán hàng của nhân viên từ trước đến nay.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-                {dbTimeScope === 'custom' && (
-                  <div className="xe-time-picker-box">
-                    <input
-                      type="date"
-                      className="form-input mono"
-                      style={{ width: 155 }}
-                      value={dbFromDate}
-                      onChange={(e) => touch(setDbFromDate)(e.target.value)}
-                    />
-                    <ArrowStep size={14} color="var(--text-muted)" />
-                    <input
-                      type="date"
-                      className="form-input mono"
-                      style={{ width: 155 }}
-                      value={dbToDate}
-                      onChange={(e) => touch(setDbToDate)(e.target.value)}
-                    />
+
+                  {/* Cấu trúc file Excel */}
+                  <div>
+                    <div className="xe-label">Cấu trúc các Sheet xuất ra</div>
+                    <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8125rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                          <span style={{ display: 'inline-block', width: '20px', height: '20px', borderRadius: '4px', background: 'var(--primary-light)', color: 'var(--primary)', textAlign: 'center', lineHeight: '20px', fontWeight: 700, fontSize: '0.75rem' }}>1</span>
+                          <span>{empTargetMode === 'single' ? 'Doanh số phiếu xuất (Chi tiết từng phiếu)' : 'Tổng hợp doanh số từng nhân viên'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                          <span style={{ display: 'inline-block', width: '20px', height: '20px', borderRadius: '4px', background: 'var(--primary-light)', color: 'var(--primary)', textAlign: 'center', lineHeight: '20px', fontWeight: 700, fontSize: '0.75rem' }}>2</span>
+                          <span>{empTargetMode === 'single' ? 'Sản phẩm bán ra (Số lượng, Doanh số, Đơn giá TB)' : 'Danh sách phiếu xuất toàn bộ nhân viên'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                          <span style={{ display: 'inline-block', width: '20px', height: '20px', borderRadius: '4px', background: 'var(--primary-light)', color: 'var(--primary)', textAlign: 'center', lineHeight: '20px', fontWeight: 700, fontSize: '0.75rem' }}>3</span>
+                          <span>{empTargetMode === 'single' ? 'Chi tiết từng dòng mặt hàng trong phiếu' : 'Tổng hợp sản phẩm bán ra toàn công ty'}</span>
+                        </div>
+                        {empTargetMode === 'all' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                            <span style={{ display: 'inline-block', width: '20px', height: '20px', borderRadius: '4px', background: 'var(--primary-light)', color: 'var(--primary)', textAlign: 'center', lineHeight: '20px', fontWeight: 700, fontSize: '0.75rem' }}>4</span>
+                            <span>Chi tiết từng mặt hàng từng phiếu xuất</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Xem trước số liệu nhân viên trong kỳ */}
+              <div className="xe-section">
+                <div className="xe-section-head">
+                  <span className="xe-step">3</span>
+                  <span className="xe-section-title">Xem trước số liệu nhân viên trong kỳ</span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={loadEmployeeStats}
+                    disabled={loadingEmpStats}
+                    style={{ marginLeft: 'auto' }}
+                    title="Tải lại số liệu"
+                  >
+                    <RefreshCw size={13} className={loadingEmpStats ? 'animate-spin' : ''} />
+                    <span>Làm mới</span>
+                  </button>
+                </div>
+
+                {loadingEmpStats ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+                    <div>Đang tổng hợp số liệu nhân viên...</div>
+                  </div>
+                ) : employeeStats.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                    Không có dữ liệu nhân viên hoặc chưa có phiếu xuất trong kỳ này.
+                  </div>
+                ) : (
+                  <div className="table-responsive" style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '80px' }}>Mã NV</th>
+                          <th>Nhân Viên</th>
+                          <th style={{ textAlign: 'right', width: '90px' }}>Số Phiếu</th>
+                          <th style={{ textAlign: 'right' }}>Doanh Số</th>
+                          <th style={{ textAlign: 'right' }}>Đã Thu</th>
+                          <th style={{ textAlign: 'right' }}>Còn Nợ</th>
+                          <th style={{ textAlign: 'center', width: '80px' }}>Tải Riêng</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employeeStats
+                          .filter((emp) => empTargetMode === 'all' || String(emp.id) === String(selectedEmployeeId))
+                          .map((emp) => {
+                            const hasSales = Number(emp.exportCount || 0) > 0 || Number(emp.totalExportValue || 0) > 0;
+                            return (
+                              <tr key={emp.id} style={{ background: String(emp.id) === String(selectedEmployeeId) ? 'var(--primary-light)' : undefined }}>
+                                <td className="mono" style={{ fontWeight: 600 }}>{emp.code || `NV${emp.id}`}</td>
+                                <td>
+                                  <div style={{ fontWeight: 600 }}>{emp.name}</div>
+                                  {emp.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.phone}</div>}
+                                </td>
+                                <td style={{ textAlign: 'right' }} className="mono">
+                                  {formatNumber(emp.exportCount || 0)}
+                                </td>
+                                <td style={{ textAlign: 'right', fontWeight: 700, color: hasSales ? 'var(--primary)' : 'var(--text-muted)' }} className="mono">
+                                  {formatVND(emp.totalExportValue || 0)}
+                                </td>
+                                <td style={{ textAlign: 'right', color: '#16a34a' }} className="mono">
+                                  {formatVND(emp.paidExportValue || 0)}
+                                </td>
+                                <td style={{ textAlign: 'right', color: Number(emp.unpaidExportValue || 0) > 0 ? '#dc2626' : 'var(--text-muted)' }} className="mono">
+                                  {formatVND(emp.unpaidExportValue || 0)}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    style={{ padding: '4px 8px' }}
+                                    onClick={() => handleQuickExportEmployee(emp)}
+                                    disabled={submitting}
+                                    title={`Tải riêng Excel cho ${emp.name}`}
+                                  >
+                                    <Download size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -1798,10 +2250,24 @@ export default function ExcelExport() {
                       )}
                     </>
                   )}
+                  {(reportType === 'sales' || reportType === 'employee_sales') && selectedEmployeeIds.length > 0 && (
+                    <div className="xe-summary-row">
+                      <span>Nhân viên</span>
+                      <span>{selectedEmployeeIds.length} nhân viên</span>
+                    </div>
+                  )}
                   <div className="xe-summary-row">
                     <span>Chỉ số</span>
                     <span>{metricsSummary}</span>
                   </div>
+                  {reportType === 'debt' && (
+                    <div className="xe-summary-row">
+                      <span>Cách tính nợ</span>
+                      <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                        {debtMode === 'from_beginning' ? 'Công nợ từ đầu (Mặc định)' : 'Chỉ phát sinh trong kỳ'}
+                      </span>
+                    </div>
+                  )}
                   <div className="xe-summary-row">
                     <span>Sheet chi tiết</span>
                     <span>{includeDetailSheet ? 'Có' : 'Không'}</span>
@@ -1810,19 +2276,44 @@ export default function ExcelExport() {
               ) : (
                 <>
                   <div className="xe-summary-row">
-                    <span>Số bảng sao lưu</span>
-                    <span>
-                      {activeTableCount} / {TABLE_OPTIONS.length}
+                    <span>Loại báo cáo</span>
+                    <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Doanh số & SP Nhân viên</span>
+                  </div>
+                  <div className="xe-summary-row">
+                    <span>Phạm vi</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {empTargetMode === 'all'
+                        ? `Tất cả nhân viên (${employees.length} NV)`
+                        : (employees.find((e) => e.id === Number(selectedEmployeeId))?.name || 'Chưa chọn')}
                     </span>
                   </div>
                   <div className="xe-summary-row">
-                    <span>Thời gian chứng từ</span>
+                    <span>Kỳ thời gian</span>
                     <span>
-                      {formatPeriodDescription(
-                        dbTimeScope === 'custom' ? 'dayRange' : dbTimeScope,
-                        { month: dbMonth, fromDate: dbFromDate, toDate: dbToDate }
-                      )}
+                      {empTimeMode === 'month'
+                        ? `Tháng ${empMonth}`
+                        : empTimeMode === 'day'
+                        ? `Ngày ${empDay}`
+                        : empTimeMode === 'range'
+                        ? `${empFromDate} đến ${empToDate}`
+                        : 'Toàn bộ'}
                     </span>
+                  </div>
+                  <div className="xe-summary-row">
+                    <span>NV có doanh số</span>
+                    <span style={{ color: '#16a34a', fontWeight: 700 }}>
+                      {employeeStats.filter((e) => Number(e.totalExportValue || 0) > 0).length} / {employeeStats.length} NV
+                    </span>
+                  </div>
+                  <div className="xe-summary-row">
+                    <span>Tổng doanh số</span>
+                    <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                      {formatVND(employeeStats.reduce((sum, e) => sum + Number(e.totalExportValue || 0), 0))}
+                    </span>
+                  </div>
+                  <div className="xe-summary-row">
+                    <span>Cấu trúc xuất</span>
+                    <span>{empTargetMode === 'single' ? '3 Sheet chi tiết' : '4 Sheet chi tiết'}</span>
                   </div>
                 </>
               )}
@@ -1839,7 +2330,9 @@ export default function ExcelExport() {
                 <span>
                   {activeTab === 'report'
                     ? `Xuất báo cáo ${reportTypeMeta?.label || ''}`
-                    : 'Sao lưu dữ liệu'}
+                    : empTargetMode === 'single'
+                    ? `Xuất Excel (${employees.find((e) => e.id === Number(selectedEmployeeId))?.name || 'Nhân viên'})`
+                    : 'Xuất Excel Doanh số toàn bộ NV'}
                 </span>
               </button>
 

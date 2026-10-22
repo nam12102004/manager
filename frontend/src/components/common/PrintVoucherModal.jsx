@@ -21,7 +21,7 @@ export default function PrintVoucherModal({
   const formCode = isReceipt ? 'Mẫu số 01 - TT' : 'Mẫu số 02 - TT';
   const voucherNum = isReceipt ? (voucher.receiptNumber || voucher.id) : (voucher.paymentNumber || voucher.id);
 
-  const vDate = voucher.createdAt ? new Date(voucher.createdAt) : (voucher.date ? new Date(voucher.date) : new Date());
+  const vDate = voucher.date ? new Date(voucher.date) : (voucher.createdAt ? new Date(voucher.createdAt) : new Date());
   const hours = String(vDate.getHours()).padStart(2, '0');
   const minutes = String(vDate.getMinutes()).padStart(2, '0');
   const day = String(vDate.getDate()).padStart(2, '0');

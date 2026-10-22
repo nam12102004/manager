@@ -519,6 +519,20 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--bg-secondary);
 }
 
+.table-responsive.drag-scroll-enabled {
+  cursor: grab;
+}
+
+.table-responsive.drag-scroll-enabled .data-table th {
+  cursor: grab;
+}
+
+.table-responsive.is-dragging,
+.table-responsive.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
 .data-table {
   width: 100%;
   border-collapse: separate;
@@ -721,6 +735,11 @@ h1, h2, h3, h4, h5, h6 {
 
 @keyframes slideLeft {
   from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideRight {
+  from { transform: translateX(-100%); }
   to { transform: translateX(0); }
 }
 

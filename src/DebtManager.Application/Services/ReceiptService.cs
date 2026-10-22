@@ -185,7 +185,7 @@ public class ReceiptService : IReceiptService
                     BeforeDebt = beforeDebt,
                     Delta = delta,
                     AfterDebt = afterDebt,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = receipt.Date
                 }, ct);
             }
             else if (dto.SupplierId.HasValue)
@@ -210,7 +210,7 @@ public class ReceiptService : IReceiptService
                     BeforeDebt = beforeDebt,
                     Delta = delta,
                     AfterDebt = afterDebt,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = receipt.Date
                 }, ct);
             }
 
@@ -257,7 +257,7 @@ public class ReceiptService : IReceiptService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = receipt.Date
                     }, ct);
                 }
             }
@@ -283,7 +283,7 @@ public class ReceiptService : IReceiptService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = receipt.Date
                     }, ct);
                 }
             }

@@ -17,6 +17,7 @@ public class UnitOfWork : IUnitOfWork
         Users = new Repository<User>(_context);
         Customers = new Repository<Customer>(_context);
         Suppliers = new Repository<Supplier>(_context);
+        Employees = new Repository<Employee>(_context);
         Products = new Repository<Product>(_context);
         StockHistories = new Repository<StockHistory>(_context);
         CustomerDebtHistories = new Repository<CustomerDebtHistory>(_context);
@@ -35,6 +36,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<User> Users { get; }
     public IRepository<Customer> Customers { get; }
     public IRepository<Supplier> Suppliers { get; }
+    public IRepository<Employee> Employees { get; }
     public IRepository<Product> Products { get; }
     public IRepository<StockHistory> StockHistories { get; }
     public IRepository<CustomerDebtHistory> CustomerDebtHistories { get; }

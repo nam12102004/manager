@@ -20,6 +20,7 @@ import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDate
 import { customerService, supplierService, productService, warehouseService } from '../../services';
 import StatCard from './StatCard';
 import EmptyState from './EmptyState';
+import VoucherDetailModal from './VoucherDetailModal';
 
 export default function EntityTransactionLedger({
   entityType = 'customer', // 'customer' | 'supplier' | 'product'
@@ -40,6 +41,9 @@ export default function EntityTransactionLedger({
   const [timeMode, setTimeMode] = useState('all'); // 'all' | 'month' | 'day'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
   const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
+  const [fromDate, setFromDate] = useState(getCurrentDateStr());
+  const [toDate, setToDate] = useState(getCurrentDateStr());
+  const [selectedVoucherDetail, setSelectedVoucherDetail] = useState(null);
 
   // Keep isModal in sync with asModal if prop changes
   useEffect(() => {
@@ -106,7 +110,7 @@ export default function EntityTransactionLedger({
     } finally {
       setLoading(false);
     }
-  }, [entityId, entityType, selectedWarehouse, timeMode, selectedMonth, selectedDate]);
+  }, [entityId, entityType, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
     fetchLedger();
@@ -247,6 +251,7 @@ export default function EntityTransactionLedger({
             <option value="all">Toàn bộ thời gian</option>
             <option value="month">Theo tháng</option>
             <option value="day">Theo ngày</option>
+            <option value="range">Khoảng ngày</option>
           </select>
 
           {timeMode === 'month' && (
@@ -267,6 +272,27 @@ export default function EntityTransactionLedger({
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
+          )}
+
+          {timeMode === 'range' && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Từ:</span>
+              <input
+                type="date"
+                className="form-control"
+                style={{ fontSize: '0.8125rem', padding: '5px 8px', height: 'auto', width: '135px' }}
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Đến:</span>
+              <input
+                type="date"
+                className="form-control"
+                style={{ fontSize: '0.8125rem', padding: '5px 8px', height: 'auto', width: '135px' }}
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
           )}
 
           <button
@@ -514,7 +540,30 @@ export default function EntityTransactionLedger({
               </tr>
             ) : (
               items.map((row, idx) => (
-                <tr key={`${row.voucherNumber || row.id || idx}-${idx}`} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
+                <tr
+                  key={`${row.voucherNumber || row.id || idx}-${idx}`}
+                  onClick={() => {
+                    if (row.voucherNumber || row.id) {
+                      setSelectedVoucherDetail({
+                        record: row,
+                        sourceType: row.voucherType,
+                        voucherType: row.voucherType,
+                        voucherNumber: row.voucherNumber,
+                        referenceId: row.voucherNumber,
+                        id: row.id,
+                        customer: entityType === 'customer' ? { id: entityId, name: entityName, code: entityCode } : null,
+                        supplier: entityType === 'supplier' ? { id: entityId, name: entityName, code: entityCode } : null,
+                      });
+                    }
+                  }}
+                  style={{
+                    borderBottom: '1px solid var(--border-color, #f1f5f9)',
+                    cursor: 'pointer',
+                    backgroundColor: selectedVoucherDetail?.voucherNumber === row.voucherNumber ? 'rgba(37, 99, 235, 0.12)' : undefined,
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  title="Bấm để xem chi tiết phiếu ở bảng bên trái"
+                >
                   <td className="mono" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                     {formatDate(row.date)}
                   </td>
@@ -661,6 +710,14 @@ export default function EntityTransactionLedger({
           )}
         </table>
       </div>
+
+      {/* Modal Chi Tiết Phiếu bên trái */}
+      <VoucherDetailModal
+        isOpen={!!selectedVoucherDetail}
+        onClose={() => setSelectedVoucherDetail(null)}
+        voucherInfo={selectedVoucherDetail}
+        placement="left"
+      />
     </div>
   );
 

@@ -18,10 +18,11 @@ public class ExportService : IExportService
         _uow = uow;
     }
 
-    public async Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
+    public async Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, int? employeeId = null, string? search = null, CancellationToken ct = default)
     {
         var query = _uow.ExportVouchers.Query()
             .Include(v => v.Customer)
+            .Include(v => v.Employee)
             .Include(v => v.Items)
                 .ThenInclude(i => i.Product)
             .AsQueryable();
@@ -31,9 +32,31 @@ public class ExportService : IExportService
             query = query.Where(v => v.CustomerId == customerId.Value);
         }
 
+        if (employeeId.HasValue)
+        {
+            query = query.Where(v => v.EmployeeId == employeeId.Value);
+        }
+
         if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
         {
             query = query.Where(v => v.Warehouse == warehouse.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(v => v.VoucherNumber.ToLower().Contains(s) ||
+                                     (v.Customer != null && v.Customer.Name.ToLower().Contains(s)) ||
+                                     (v.EmployeeName != null && v.EmployeeName.ToLower().Contains(s)) ||
+                                     (v.Employee != null && v.Employee.Name.ToLower().Contains(s)) ||
+                                     (v.Notes != null && v.Notes.ToLower().Contains(s)) ||
+                                     v.Items.Any(i =>
+                                         i.Product != null && (
+                                             (i.Product.Sku != null && i.Product.Sku.ToLower().Contains(s)) ||
+                                             (i.Product.Name != null && i.Product.Name.ToLower().Contains(s)) ||
+                                             (i.Product.Barcode != null && i.Product.Barcode.ToLower().Contains(s))
+                                         )
+                                     ));
         }
 
         if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
@@ -81,6 +104,7 @@ public class ExportService : IExportService
         string? warehouse = null,
         int page = 1,
         int pageSize = 15,
+        int? employeeId = null,
         CancellationToken ct = default)
     {
         page = Math.Max(1, page);
@@ -88,6 +112,7 @@ public class ExportService : IExportService
 
         var query = _uow.ExportVouchers.Query()
             .Include(v => v.Customer)
+            .Include(v => v.Employee)
             .Include(v => v.Items)
                 .ThenInclude(i => i.Product)
             .AsQueryable();
@@ -95,6 +120,11 @@ public class ExportService : IExportService
         if (customerId.HasValue)
         {
             query = query.Where(v => v.CustomerId == customerId.Value);
+        }
+
+        if (employeeId.HasValue)
+        {
+            query = query.Where(v => v.EmployeeId == employeeId.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
@@ -107,7 +137,16 @@ public class ExportService : IExportService
             var s = search.Trim().ToLower();
             query = query.Where(v => v.VoucherNumber.ToLower().Contains(s) ||
                                      (v.Customer != null && v.Customer.Name.ToLower().Contains(s)) ||
-                                     (v.Notes != null && v.Notes.ToLower().Contains(s)));
+                                     (v.EmployeeName != null && v.EmployeeName.ToLower().Contains(s)) ||
+                                     (v.Employee != null && v.Employee.Name.ToLower().Contains(s)) ||
+                                     (v.Notes != null && v.Notes.ToLower().Contains(s)) ||
+                                     v.Items.Any(i =>
+                                         i.Product != null && (
+                                             (i.Product.Sku != null && i.Product.Sku.ToLower().Contains(s)) ||
+                                             (i.Product.Name != null && i.Product.Name.ToLower().Contains(s)) ||
+                                             (i.Product.Barcode != null && i.Product.Barcode.ToLower().Contains(s))
+                                         )
+                                     ));
         }
 
         var effectiveDate = !string.IsNullOrWhiteSpace(date) ? date : month;
@@ -141,10 +180,11 @@ public class ExportService : IExportService
         }
 
         var totalCount = await query.CountAsync(ct);
-        var totalAmount = await query.SumAsync(v => (decimal?)v.TotalSale, ct) ?? 0;
-        var totalPaid = await query.SumAsync(v => (decimal?)v.PaidAmount, ct) ?? 0;
-        var totalDebt = await query.SumAsync(v => (decimal?)v.UnpaidAmount, ct) ?? 0;
-        var totalProfit = await query.SumAsync(v => (decimal?)(v.TotalSale - v.TotalCost), ct) ?? 0;
+        var activeQuery = query.Where(v => v.Status != DomainConstants.VoucherStatuses.Cancelled);
+        var totalAmount = await activeQuery.SumAsync(v => (decimal?)v.TotalSale, ct) ?? 0;
+        var totalPaid = await activeQuery.SumAsync(v => (decimal?)v.PaidAmount, ct) ?? 0;
+        var totalDebt = await activeQuery.SumAsync(v => (decimal?)v.UnpaidAmount, ct) ?? 0;
+        var totalProfit = await activeQuery.SumAsync(v => (decimal?)(v.TotalSale - v.TotalCost), ct) ?? 0;
 
         var items = await query.OrderByDescending(v => v.Date)
                                .ThenByDescending(v => v.Id)
@@ -169,6 +209,7 @@ public class ExportService : IExportService
     {
         var voucher = await _uow.ExportVouchers.Query()
             .Include(v => v.Customer)
+            .Include(v => v.Employee)
             .Include(v => v.Items)
                 .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(v => v.Id == id, ct)
@@ -185,16 +226,28 @@ public class ExportService : IExportService
         }
 
         await _uow.BeginTransactionAsync(ct);
+        var voucherDate = DateTime.UtcNow;
         try
         {
             var customer = await _uow.Customers.GetByIdAsync(dto.CustomerId, ct)
                 ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {dto.CustomerId}");
 
+            Employee? employee = null;
+            string? employeeName = string.IsNullOrWhiteSpace(dto.EmployeeName) ? null : dto.EmployeeName.Trim();
+            if (dto.EmployeeId.HasValue && dto.EmployeeId.Value > 0)
+            {
+                employee = await _uow.Employees.GetByIdAsync(dto.EmployeeId.Value, ct);
+                if (employee != null)
+                {
+                    employeeName = employee.Name;
+                }
+            }
+
             var warehouse = string.IsNullOrWhiteSpace(dto.Warehouse) ? DomainConstants.Warehouses.Warehouse1 : dto.Warehouse;
-            var voucherDate = dto.Date.HasValue
+            voucherDate = dto.Date.HasValue
                 ? (dto.Date.Value.TimeOfDay == TimeSpan.Zero ? dto.Date.Value.Date.Add(DateTime.UtcNow.TimeOfDay) : dto.Date.Value)
                 : DateTime.UtcNow;
-            var voucherNumber = $"PX{DateTime.UtcNow:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000):D3}";
+            var voucherNumber = $"PX{voucherDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000):D3}";
 
             var voucher = new ExportVoucher
             {
@@ -203,6 +256,9 @@ public class ExportService : IExportService
                 Warehouse = warehouse,
                 CustomerId = customer.Id,
                 Customer = customer,
+                EmployeeId = employee?.Id,
+                Employee = employee,
+                EmployeeName = employeeName,
                 Status = DomainConstants.VoucherStatuses.Active,
                 Notes = dto.Notes?.Trim(),
                 CreatedAt = DateTime.UtcNow
@@ -260,7 +316,7 @@ public class ExportService : IExportService
                     BeforeTotalStock = beforeTotal,
                     AfterTotalStock = afterTotal,
                     ChangeDate = voucherDate,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = voucherDate
                 };
                 await _uow.StockHistories.AddAsync(stockHistory, ct);
             }
@@ -300,7 +356,7 @@ public class ExportService : IExportService
                 var debtHistory = new CustomerDebtHistory
                 {
                     CustomerId = customer.Id,
-                Customer = customer,
+                    Customer = customer,
                     SourceType = DomainConstants.SourceTypes.Export,
                     ReferenceType = DomainConstants.ReferenceTypes.ExportVoucher,
                     ReferenceId = voucherNumber,
@@ -308,7 +364,7 @@ public class ExportService : IExportService
                     BeforeDebt = beforeDebt,
                     Delta = unpaidAmount,
                     AfterDebt = afterDebt,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = voucherDate
                 };
                 await _uow.CustomerDebtHistories.AddAsync(debtHistory, ct);
             }
@@ -340,6 +396,7 @@ public class ExportService : IExportService
         }
 
         await _uow.BeginTransactionAsync(ct);
+        var voucherDate = DateTime.UtcNow;
         try
         {
             if (action.Equals("cancel", StringComparison.OrdinalIgnoreCase))
@@ -376,7 +433,7 @@ public class ExportService : IExportService
                         BeforeTotalStock = beforeTotal,
                         AfterTotalStock = afterTotal,
                         ChangeDate = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -400,7 +457,7 @@ public class ExportService : IExportService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -441,7 +498,7 @@ public class ExportService : IExportService
                         BeforeTotalStock = beforeTotal,
                         AfterTotalStock = afterTotal,
                         ChangeDate = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -465,7 +522,7 @@ public class ExportService : IExportService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = voucherDate
                     }, ct);
                 }
 
@@ -494,6 +551,7 @@ public class ExportService : IExportService
             ?? throw new NotFoundException($"Không tìm thấy phiếu xuất có ID {id}");
 
         await _uow.BeginTransactionAsync(ct);
+        var voucherDate = DateTime.UtcNow;
         try
         {
             // If still active, cancel/restore stock and debt first
@@ -524,6 +582,8 @@ public class ExportService : IExportService
         CustomerId = v.CustomerId,
         CustomerName = v.Customer?.Name ?? string.Empty,
         CustomerDebt = v.Customer?.Debt ?? 0,
+        EmployeeId = v.EmployeeId,
+        EmployeeName = v.Employee?.Name ?? v.EmployeeName,
         SubtotalSale = v.SubtotalSale,
         DiscountAmount = v.DiscountAmount,
         TotalSale = v.TotalSale,

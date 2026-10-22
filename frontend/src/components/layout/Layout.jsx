@@ -7,7 +7,6 @@ export default function Layout({
   onTabChange,
   pageTitle,
   pageSubtitle,
-  onQuickAction,
   children,
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -24,7 +23,6 @@ export default function Layout({
         <Header
           pageTitle={pageTitle}
           pageSubtitle={pageSubtitle}
-          onQuickAction={onQuickAction}
         />
         <main className="page-wrapper">{children}</main>
       </div>

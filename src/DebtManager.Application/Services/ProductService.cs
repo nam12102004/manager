@@ -467,7 +467,7 @@ public class ProductService : IProductService
         return true;
     }
 
-    public async Task<List<StockHistoryDto>> GetStockHistoryAsync(int productId, string? month = null, CancellationToken ct = default)
+    public async Task<List<StockHistoryDto>> GetStockHistoryAsync(int productId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var productExists = await _uow.Products.Query().AnyAsync(p => p.Id == productId, ct);
         if (!productExists)
@@ -477,27 +477,42 @@ public class ProductService : IProductService
 
         var query = _uow.StockHistories.Query().Where(h => h.ProductId == productId);
 
-        if (!string.IsNullOrWhiteSpace(month))
+        DateTime? startDate = null;
+        DateTime? endDate = null;
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
-                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
-                var end = start.AddDays(1);
-                var windowStart = start.AddDays(-1);
-                var windowEnd = end.AddDays(1);
-                query = query.Where(h => (h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd) || (h.ChangeDate >= windowStart && h.ChangeDate <= windowEnd));
+                startDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddDays(1);
             }
             else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
             {
-                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                var end = start.AddMonths(1);
-                var windowStart = start.AddDays(-1);
-                var windowEnd = end.AddDays(1);
-                query = query.Where(h => (h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd) || (h.ChangeDate >= windowStart && h.ChangeDate <= windowEnd));
+                startDate = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddMonths(1);
             }
         }
 
-        var list = await query.OrderByDescending(h => h.CreatedAt)
+        if (startDate.HasValue)
+        {
+            query = query.Where(h => h.ChangeDate >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            query = query.Where(h => h.ChangeDate < endDate.Value);
+        }
+
+        var list = await query.OrderByDescending(h => h.ChangeDate)
                               .ThenByDescending(h => h.Id)
                               .ToListAsync(ct);
 
@@ -575,7 +590,7 @@ public class ProductService : IProductService
         return categories ?? new List<string>();
     }
 
-    public async Task<EntityLedgerResponseDto> GetLedgerAsync(int productId, string? warehouse = null, string? month = null, CancellationToken ct = default)
+    public async Task<EntityLedgerResponseDto> GetLedgerAsync(int productId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var product = await _uow.Products.Query()
             .Include(p => p.Supplier)
@@ -587,7 +602,17 @@ public class ProductService : IProductService
 
         DateTime? startDate = null;
         DateTime? endDate = null;
-        if (!string.IsNullOrWhiteSpace(month))
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
@@ -614,7 +639,11 @@ public class ProductService : IProductService
         }
         if (startDate.HasValue)
         {
-            importQuery = importQuery.Where(i => i.ImportVoucher.Date >= startDate.Value.AddDays(-1) && i.ImportVoucher.Date <= endDate!.Value.AddDays(1));
+            importQuery = importQuery.Where(i => i.ImportVoucher.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            importQuery = importQuery.Where(i => i.ImportVoucher.Date < endDate.Value);
         }
         var imports = await importQuery.ToListAsync(ct);
         foreach (var im in imports)
@@ -648,7 +677,11 @@ public class ProductService : IProductService
         }
         if (startDate.HasValue)
         {
-            exportQuery = exportQuery.Where(i => i.ExportVoucher.Date >= startDate.Value.AddDays(-1) && i.ExportVoucher.Date <= endDate!.Value.AddDays(1));
+            exportQuery = exportQuery.Where(i => i.ExportVoucher.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            exportQuery = exportQuery.Where(i => i.ExportVoucher.Date < endDate.Value);
         }
         var exports = await exportQuery.ToListAsync(ct);
         foreach (var ex in exports)
@@ -680,7 +713,11 @@ public class ProductService : IProductService
         }
         if (startDate.HasValue)
         {
-            historyQuery = historyQuery.Where(h => h.ChangeDate >= startDate.Value.AddDays(-1) && h.ChangeDate <= endDate!.Value.AddDays(1));
+            historyQuery = historyQuery.Where(h => h.ChangeDate >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            historyQuery = historyQuery.Where(h => h.ChangeDate < endDate.Value);
         }
         var histories = await historyQuery.ToListAsync(ct);
         foreach (var h in histories)

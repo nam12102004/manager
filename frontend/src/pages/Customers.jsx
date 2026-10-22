@@ -5,7 +5,6 @@ import {
   Edit2,
   Sliders,
   History,
-  Receipt,
   Search,
   RefreshCw,
   Phone,
@@ -20,10 +19,9 @@ import {
   MapPinned,
   ReceiptText,
   FileSpreadsheet,
-  CreditCard,
 } from 'lucide-react';
 import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
-import { DEBT_ADJUST_REASONS, PAYMENT_METHODS } from '../utils/constants';
+import { DEBT_ADJUST_REASONS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import { useExport } from '../context/ExportContext';
 import SearchBar from '../components/common/SearchBar';
@@ -36,8 +34,10 @@ import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import Pagination from '../components/common/Pagination';
 import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
-import { customerService, cashBookService, settingService, warehouseService } from '../services';
+import VoucherDetailModal from '../components/common/VoucherDetailModal';
+import { customerService, settingService, warehouseService } from '../services';
 import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
+import useDragScroll from '../hooks/useDragScroll';
 
 const CUSTOMER_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -45,7 +45,9 @@ const CUSTOMER_SORT_OPTIONS = [
   { value: 'debt_asc', label: 'Công nợ: Nợ ít nhất → Nhiều nhất' },
 ];
 
-export default function Customers({ onQuickAction }) {
+export default function Customers() {
+  const tableContainerRef = useDragScroll();
+  const historyTableRef = useDragScroll();
   const notify = useNotification();
   const { openExportModal } = useExport();
 
@@ -84,17 +86,18 @@ export default function Customers({ onQuickAction }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printVoucher, setPrintVoucher] = useState(null);
   const [ownerInfo, setOwnerInfo] = useState(null);
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [debtHistoryRecords, setDebtHistoryRecords] = useState([]);
-  const [historyTimeMode, setHistoryTimeMode] = useState('month'); // 'month' | 'day'
+  const [historyTimeMode, setHistoryTimeMode] = useState('all'); // 'all' | 'month' | 'day'
+  const [selectedVoucherDetail, setSelectedVoucherDetail] = useState(null);
   const [historyMonth, setHistoryMonth] = useState(getCurrentMonthStr());
   const [historyDate, setHistoryDate] = useState(getCurrentDateStr());
+  const [historyFromDate, setHistoryFromDate] = useState(getCurrentDateStr());
+  const [historyToDate, setHistoryToDate] = useState(getCurrentDateStr());
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Form states
@@ -126,17 +129,6 @@ export default function Customers({ onQuickAction }) {
     note: '',
   });
 
-  const [receiptData, setReceiptData] = useState({
-    amount: 0,
-    method: 'cash',
-    notes: '',
-  });
-
-  const [paymentData, setPaymentData] = useState({
-    amount: 0,
-    method: 'cash',
-    notes: '',
-  });
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -183,7 +175,7 @@ export default function Customers({ onQuickAction }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedRegion, sortBy, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, notify]);
+  }, [currentPage, searchQuery, selectedRegion, sortBy, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate, notify]);
 
   // Initial load
   useEffect(() => {
@@ -204,7 +196,7 @@ export default function Customers({ onQuickAction }) {
       return;
     }
     loadCustomers(currentPage);
-  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth]);
+  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate]);
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
@@ -267,42 +259,21 @@ export default function Customers({ onQuickAction }) {
   const handleOpenHistory = async (customer) => {
     setSelectedCustomer(customer);
     setIsHistoryOpen(true);
-    const targetPeriod = historyTimeMode === 'day' ? historyDate : historyMonth;
+    setSelectedVoucherDetail(null);
+    const targetPeriod = historyTimeMode === 'all' ? undefined : (historyTimeMode === 'day' ? historyDate : (historyTimeMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
     loadDebtHistory(customer.id, targetPeriod);
   };
 
   const loadDebtHistory = async (customerId, period) => {
     setHistoryLoading(true);
     try {
-      const records = await customerService.getDebtHistory(customerId, period);
+      const records = await customerService.getDebtHistory(customerId, period || undefined);
       setDebtHistoryRecords(records || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải lịch sử sổ nợ');
     } finally {
       setHistoryLoading(false);
     }
-  };
-
-  // Open Quick Receipt
-  const handleOpenReceipt = (customer) => {
-    setSelectedCustomer(customer);
-    setReceiptData({
-      amount: customer.debt > 0 ? customer.debt : 0,
-      method: 'cash',
-      notes: `Thu tiền công nợ khách hàng: ${customer.name}`,
-    });
-    setIsReceiptOpen(true);
-  };
-
-  // Open Quick Payment (Chi hoàn trả / trả tiền cọc cho khách hàng)
-  const handleOpenPayment = (customer) => {
-    setSelectedCustomer(customer);
-    setPaymentData({
-      amount: customer.debt < 0 ? Math.abs(customer.debt) : 0,
-      method: 'cash',
-      notes: `Chi tiền hoàn trả cho khách hàng: ${customer.name}`,
-    });
-    setIsPaymentOpen(true);
   };
 
   // Submit Create via customerService
@@ -369,82 +340,6 @@ export default function Customers({ onQuickAction }) {
       setSubmitting(false);
     }
   };
-
-  // Submit Quick Receipt via cashBookService
-  const handleReceiptSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const created = await cashBookService.createReceipt({
-        customerId: selectedCustomer.id,
-        amount: Number(receiptData.amount),
-        method: receiptData.method,
-        notes: receiptData.notes,
-        date: new Date().toISOString(),
-      });
-      notify.success('Lập phiếu thu tiền thành công!');
-      setIsReceiptOpen(false);
-      loadCustomers();
-
-      if (created) {
-        setPrintVoucher({
-          voucher: {
-            ...created,
-            customerName: selectedCustomer.name,
-            customerAddress: parseJsonList(selectedCustomer.addressesJson),
-          },
-          type: 'receipt',
-        });
-        setIsPrintModalOpen(true);
-      }
-    } catch (err) {
-      notify.error(err.message || 'Lập phiếu thu thất bại');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Submit Quick Payment via cashBookService (Chi hoàn tiền cho KH)
-  const handlePaymentSubmit = async (e) => {
-    e.preventDefault();
-    if (Number(paymentData.amount || 0) <= 0) {
-      notify.error('Số tiền chi phải lớn hơn 0');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const created = await cashBookService.createPayment({
-        partnerType: 'customer',
-        partnerId: selectedCustomer.id,
-        customerId: selectedCustomer.id,
-        amount: Number(paymentData.amount),
-        method: paymentData.method,
-        notes: paymentData.notes,
-        date: new Date().toISOString(),
-      });
-      notify.success('Lập phiếu chi tiền cho KH thành công!');
-      setIsPaymentOpen(false);
-      loadCustomers();
-
-      if (created) {
-        setPrintVoucher({
-          voucher: {
-            ...created,
-            customerName: selectedCustomer.name,
-            customerAddress: parseJsonList(selectedCustomer.addressesJson),
-          },
-          type: 'payment',
-        });
-        setIsPrintModalOpen(true);
-      }
-    } catch (err) {
-      notify.error(err.message || 'Lập phiếu chi thất bại');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
 
   const scrollTabs = (direction) => {
     if (regionTabsRef.current) {
@@ -763,7 +658,7 @@ export default function Customers({ onQuickAction }) {
           }
         />
       ) : (
-        <div className="table-responsive" style={{ borderTop: 'none', borderRadius: '0 0 var(--radius, 8px) var(--radius, 8px)' }}>
+        <div ref={tableContainerRef} className="table-responsive" style={{ borderTop: 'none', borderRadius: '0 0 var(--radius, 8px) var(--radius, 8px)' }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -1386,151 +1281,6 @@ export default function Customers({ onQuickAction }) {
         </form>
       </Modal>
 
-      {/* Modal Lập Phiếu Thu Nhanh */}
-      <Modal
-        isOpen={isReceiptOpen}
-        onClose={() => setIsReceiptOpen(false)}
-        title={`Lập Phiếu Thu Tiền: ${selectedCustomer?.name || ''}`}
-        size="md"
-        footer={
-          <>
-            <button className="btn btn-outline" onClick={() => setIsReceiptOpen(false)} disabled={submitting}>
-              Hủy
-            </button>
-            <button className="btn btn-success" onClick={handleReceiptSubmit} disabled={submitting}>
-              {submitting ? 'Đang lưu...' : 'Xác nhận thu tiền'}
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handleReceiptSubmit}>
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--primary-light)',
-              color: 'var(--primary)',
-              marginBottom: '1rem',
-              fontSize: '0.875rem',
-            }}
-          >
-            Số nợ hiện tại cần thu: <strong>{formatVND(Math.abs(selectedCustomer?.debt || 0))}</strong>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Số Tiền Thu <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              className="form-input mono"
-              min="1"
-              value={receiptData.amount}
-              onChange={(e) => setReceiptData({ ...receiptData, amount: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Hình Thức Thanh Toán</label>
-            <select
-              className="form-select"
-              value={receiptData.method}
-              onChange={(e) => setReceiptData({ ...receiptData, method: e.target.value })}
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Ghi Chú Phiếu Thu</label>
-            <textarea
-              className="form-textarea"
-              rows={2}
-              value={receiptData.notes}
-              onChange={(e) => setReceiptData({ ...receiptData, notes: e.target.value })}
-            />
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal Lập Phiếu Chi Hoàn Tiền Cho KH */}
-      <Modal
-        isOpen={isPaymentOpen}
-        onClose={() => setIsPaymentOpen(false)}
-        title={`Lập Phiếu Chi Hoàn Tiền: ${selectedCustomer?.name || ''}`}
-        size="md"
-        footer={
-          <>
-            <button className="btn btn-outline" onClick={() => setIsPaymentOpen(false)} disabled={submitting}>
-              Hủy
-            </button>
-            <button className="btn btn-warning" onClick={handlePaymentSubmit} disabled={submitting}>
-              {submitting ? 'Đang lưu...' : 'Xác nhận chi tiền'}
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handlePaymentSubmit}>
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              background: '#fef2f2',
-              color: '#991b1b',
-              border: '1px solid #fecaca',
-              marginBottom: '1rem',
-              fontSize: '0.875rem',
-            }}
-          >
-            Dư nợ hiện tại: <strong>{selectedCustomer?.debt < 0 ? `KH đang gửi trước ${formatVND(Math.abs(selectedCustomer.debt))}` : `KH đang nợ ${formatVND(selectedCustomer?.debt || 0)}`}</strong>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Số Tiền Chi <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              className="form-input mono"
-              min="1"
-              value={paymentData.amount}
-              onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Hình Thức Thanh Toán</label>
-            <select
-              className="form-select"
-              value={paymentData.method}
-              onChange={(e) => setPaymentData({ ...paymentData, method: e.target.value })}
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Ghi Chú Phiếu Chi</label>
-            <textarea
-              className="form-textarea"
-              rows={2}
-              value={paymentData.notes}
-              onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
-            />
-          </div>
-        </form>
-      </Modal>
-
       {/* Drawer Xem Lịch Sử Sổ Nợ Khách Hàng */}
       <Drawer
         isOpen={isHistoryOpen}
@@ -1545,7 +1295,9 @@ export default function Customers({ onQuickAction }) {
             onModeChange={(newMode) => {
               setHistoryTimeMode(newMode);
               if (selectedCustomer) {
-                const p = newMode === 'day' ? historyDate : historyMonth;
+                const p = newMode === 'all'
+                  ? undefined
+                  : (newMode === 'day' ? historyDate : (newMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
                 loadDebtHistory(selectedCustomer.id, p);
               }
             }}
@@ -1559,8 +1311,19 @@ export default function Customers({ onQuickAction }) {
               setHistoryDate(d);
               if (selectedCustomer) loadDebtHistory(selectedCustomer.id, d);
             }}
-            showAll={false}
-            showRange={false}
+            fromDate={historyFromDate}
+            onFromDateChange={(fd) => {
+              setHistoryFromDate(fd);
+              if (selectedCustomer) loadDebtHistory(selectedCustomer.id, { fromDate: fd, toDate: historyToDate });
+            }}
+            toDate={historyToDate}
+            onToDateChange={(td) => {
+              setHistoryToDate(td);
+              if (selectedCustomer) loadDebtHistory(selectedCustomer.id, { fromDate: historyFromDate, toDate: td });
+            }}
+            showAll={true}
+            allLabel="Toàn bộ"
+            showRange={true}
           />
         </div>
 
@@ -1573,8 +1336,12 @@ export default function Customers({ onQuickAction }) {
             icon={History}
             title="Chưa có lịch sử công nợ"
             description={
-              historyTimeMode === 'day'
+              historyTimeMode === 'all'
+                ? 'Chưa ghi nhận giao dịch công nợ nào trong toàn bộ thời gian.'
+                : historyTimeMode === 'day'
                 ? `Không có giao dịch công nợ nào trong ngày ${historyDate}.`
+                : historyTimeMode === 'range'
+                ? `Không có giao dịch công nợ nào từ ngày ${historyFromDate} đến ${historyToDate}.`
                 : `Không có giao dịch công nợ nào trong tháng ${historyMonth}.`
             }
           />
@@ -1583,20 +1350,59 @@ export default function Customers({ onQuickAction }) {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Thời Gian</th>
-                  <th>Nghiệp Vụ</th>
-                  <th style={{ textAlign: 'right' }}>Nợ Trước</th>
-                  <th style={{ textAlign: 'right' }}>Phát Sinh</th>
-                  <th style={{ textAlign: 'right' }}>Nợ Sau</th>
+                  <th style={{ width: '135px' }}>Thời Gian</th>
+                  <th style={{ width: '120px' }}>Mã Phiếu</th>
+                  <th style={{ width: '95px' }}>Nghiệp Vụ</th>
+                  <th style={{ textAlign: 'right', width: '110px' }}>Nợ Trước</th>
+                  <th style={{ textAlign: 'right', width: '115px' }}>Phát Sinh</th>
+                  <th style={{ textAlign: 'right', width: '110px' }}>Nợ Sau</th>
                   <th>Lý Do / Ghi Chú</th>
                 </tr>
               </thead>
               <tbody>
                 {debtHistoryRecords.map((r) => {
                   const isIncrease = Number(r.delta || 0) > 0;
+                  const isRowSelected = selectedVoucherDetail?.record?.id === r.id;
                   return (
-                    <tr key={r.id}>
-                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt, true)}</td>
+                    <tr
+                      key={r.id}
+                      onClick={() => {
+                        setSelectedVoucherDetail({
+                          record: r,
+                          sourceType: r.sourceType,
+                          referenceType: r.referenceType,
+                          referenceId: r.referenceId,
+                          customer: selectedCustomer,
+                        });
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        backgroundColor: isRowSelected ? 'rgba(37, 99, 235, 0.12)' : undefined,
+                        transition: 'background-color 0.15s ease',
+                      }}
+                      title="Bấm để xem chi tiết phiếu xuất / thu / chi ở bảng bên trái"
+                    >
+                      <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>{formatDate(r.createdAt, true)}</td>
+                      <td>
+                        {r.referenceId ? (
+                          <span
+                            className="mono"
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              color: 'var(--primary, #2563eb)',
+                              backgroundColor: 'var(--primary-light, #eff6ff)',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(37, 99, 235, 0.2)',
+                            }}
+                          >
+                            {r.referenceId}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
                       <td>
                         <span className={
                           r.sourceType === 'export'
@@ -1641,6 +1447,14 @@ export default function Customers({ onQuickAction }) {
           </div>
         )}
       </Drawer>
+
+      {/* Modal Chi Tiết Chứng Từ (Phiếu xuất / nhập / thu / chi) bên trái */}
+      <VoucherDetailModal
+        isOpen={!!selectedVoucherDetail}
+        onClose={() => setSelectedVoucherDetail(null)}
+        voucherInfo={selectedVoucherDetail}
+        placement="left"
+      />
 
       {/* Print Voucher Modal */}
       <PrintVoucherModal

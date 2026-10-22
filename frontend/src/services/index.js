@@ -3,6 +3,7 @@
  */
 export { customerService } from './customerService';
 export { supplierService } from './supplierService';
+export { employeeService } from './employeeService';
 export { cashBookService } from './cashBookService';
 export { exportService } from './exportService';
 export { importService } from './importService';
@@ -15,4 +16,3 @@ export { auditService } from './auditService';
 export { userService } from './userService';
 export { warehouseService, getProductStockForWarehouse } from './warehouseService';
 export { excelExportService } from './excelExportService';
-

@@ -36,7 +36,7 @@ public class ImportsController : BaseApiController
             return Success(paged);
         }
 
-        var list = await _importService.GetImportsAsync(supplierId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, ct);
+        var list = await _importService.GetImportsAsync(supplierId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, q, ct);
         return Success(list);
     }
 

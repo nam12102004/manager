@@ -15,6 +15,7 @@ import {
   Package,
   Filter,
   FileSpreadsheet,
+  UserCheck,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { useNotification } from '../context/NotificationContext';
@@ -22,6 +23,7 @@ import { useExport } from '../context/ExportContext';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import EmptyState from '../components/common/EmptyState';
+import SearchBar from '../components/common/SearchBar';
 import SearchableSelect from '../components/common/SearchableSelect';
 import TimeFilter from '../components/common/TimeFilter';
 import Pagination from '../components/common/Pagination';
@@ -36,6 +38,7 @@ export default function Exports({ initialOpenCreate = false }) {
   const [ledgerCustomer, setLedgerCustomer] = useState(null);
   const [exportsList, setExportsList] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
   const [ownerInfo, setOwnerInfo] = useState(null);
@@ -47,8 +50,10 @@ export default function Exports({ initialOpenCreate = false }) {
   const [totalCount, setTotalCount] = useState(0);
   const isFirstFilterChange = React.useRef(true);
 
-  // Time & Customer & Warehouse Filters
+  // Time & Customer & Employee & Warehouse Filters
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [selectedWarehouse, setSelectedWarehouse] = useState('');
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
@@ -67,6 +72,7 @@ export default function Exports({ initialOpenCreate = false }) {
   // Create Form State
   const [createForm, setCreateForm] = useState({
     customerId: '',
+    employeeId: '',
     warehouse: 'warehouse1',
     date: new Date().toISOString().slice(0, 10),
     discountType: 'amount', // 'percent' | 'amount'
@@ -84,7 +90,9 @@ export default function Exports({ initialOpenCreate = false }) {
         page,
         pageSize: 15,
         customerId: selectedCustomerId ? Number(selectedCustomerId) : null,
+        employeeId: selectedEmployeeId ? Number(selectedEmployeeId) : null,
         warehouse: selectedWarehouse || undefined,
+        q: searchQuery.trim() || undefined,
       };
 
       if (timeMode === 'month') {
@@ -112,17 +120,18 @@ export default function Exports({ initialOpenCreate = false }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, selectedCustomerId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
+  }, [currentPage, searchQuery, selectedCustomerId, selectedEmployeeId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate, notify]);
 
-  // Load Customers & Products & Owner via exportService
+  // Load Customers & Products & Employees & Owner via exportService
   const loadDependencies = async () => {
     try {
-      const [{ customers: custs, products: prods, ownerInfo: owner }, whList] = await Promise.all([
+      const [{ customers: custs, products: prods, employees: emps, ownerInfo: owner }, whList] = await Promise.all([
         exportService.getDependencies(),
         warehouseService.getWarehouses(),
       ]);
       setCustomers(custs || []);
       setProducts(prods || []);
+      setEmployees(emps || []);
       setOwnerInfo(owner || null);
       if (whList && Array.isArray(whList)) setWarehouses(whList);
     } catch (err) {
@@ -146,7 +155,7 @@ export default function Exports({ initialOpenCreate = false }) {
     } else {
       setCurrentPage(1);
     }
-  }, [selectedCustomerId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
+  }, [searchQuery, selectedCustomerId, selectedEmployeeId, selectedWarehouse, timeMode, selectedMonth, selectedDate, fromDate, toDate]);
 
   useEffect(() => {
     loadDependencies();
@@ -163,6 +172,7 @@ export default function Exports({ initialOpenCreate = false }) {
     const currentWhs = warehouseService.getWarehousesSync();
     setCreateForm({
       customerId: customers.length > 0 ? String(customers[0].id) : '',
+      employeeId: '',
       warehouse: currentWhs[0]?.id || 'warehouse1',
       date: new Date().toISOString().slice(0, 10),
       discountType: 'amount',
@@ -352,7 +362,14 @@ export default function Exports({ initialOpenCreate = false }) {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div style={{ minWidth: '240px' }}>
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Tìm theo số phiếu, KH, NV, tên SP, mã SP (SKU)..."
+          style={{ flex: 1, minWidth: '260px' }}
+        />
+
+        <div style={{ minWidth: '200px' }}>
           <SearchableSelect
             options={customers.map((c) => ({
               id: c.id,
@@ -371,6 +388,23 @@ export default function Exports({ initialOpenCreate = false }) {
         </div>
 
         <div style={{ minWidth: '180px' }}>
+          <SearchableSelect
+            options={employees.map((emp) => ({
+              id: emp.id,
+              value: emp.id,
+              label: emp.name,
+              phone: emp.phone || '',
+              subLabel: emp.phone ? `SĐT: ${emp.phone}` : '',
+            }))}
+            value={selectedEmployeeId}
+            onChange={(val) => setSelectedEmployeeId(val)}
+            placeholder="-- Tất cả nhân viên --"
+            searchPlaceholder="Tìm nhân viên..."
+            searchFields={['label', 'phone']}
+          />
+        </div>
+
+        <div style={{ minWidth: '160px' }}>
           <select
             className="form-control"
             value={selectedWarehouse}
@@ -406,7 +440,9 @@ export default function Exports({ initialOpenCreate = false }) {
           icon={ArrowUpRight}
           title="Không tìm thấy phiếu xuất nào"
           description={
-            timeMode === 'day'
+            searchQuery
+              ? `Không tìm thấy phiếu xuất bán nào phù hợp với từ khóa "${searchQuery}".`
+              : timeMode === 'day'
               ? `Chưa có phiếu xuất bán nào trong ngày ${selectedDate || ''} hoặc theo khách hàng đã chọn.`
               : timeMode === 'month'
               ? `Chưa có phiếu xuất bán nào trong tháng ${selectedMonth || ''} hoặc theo khách hàng đã chọn.`
@@ -427,6 +463,7 @@ export default function Exports({ initialOpenCreate = false }) {
                 <th>Số Phiếu</th>
                 <th>Thời Gian Lập</th>
                 <th>Khách Hàng</th>
+                <th>Nhân Viên</th>
                 <th>Kho Xuất</th>
                 <th style={{ textAlign: 'right' }}>Tiền Hàng</th>
                 <th style={{ textAlign: 'right' }}>Chiết Khấu</th>
@@ -441,9 +478,26 @@ export default function Exports({ initialOpenCreate = false }) {
               {exportsList.map((exp) => (
                 <tr key={exp.id}>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                    {exp.voucherNumber}
+                    <div>{exp.voucherNumber}</div>
+                    {exp.items && exp.items.length > 0 && (
+                      <div
+                        style={{
+                          fontSize: '0.725rem',
+                          color: 'var(--text-secondary)',
+                          fontWeight: 400,
+                          maxWidth: '180px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          marginTop: '2px',
+                        }}
+                        title={exp.items.map((i) => `${i.productName} (${i.sku || ''})`).join(', ')}
+                      >
+                        {exp.items.map((i) => i.productName).join(', ')}
+                      </div>
+                    )}
                   </td>
-                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(exp.createdAt || exp.date, true)}</td>
+                  <td style={{ fontSize: '0.8125rem' }}>{formatDate(exp.date || exp.createdAt, true)}</td>
                   <td
                     style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
                     title="Bấm để xem sổ chi tiết Nhập / Xuất / Thu / Chi của khách hàng này"
@@ -457,6 +511,23 @@ export default function Exports({ initialOpenCreate = false }) {
                     }}
                   >
                     {exp.customerName}
+                  </td>
+                  <td>
+                    {exp.employeeName ? (
+                      <span
+                        className="badge"
+                        style={{
+                          background: 'rgba(37, 99, 235, 0.1)',
+                          color: 'var(--primary)',
+                          border: '1px solid rgba(37, 99, 235, 0.25)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {exp.employeeName}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>—</span>
+                    )}
                   </td>
                   <td>
                     <span className="badge badge-neutral">{warehouseService.getWarehouseName(exp.warehouse, warehouses)}</span>
@@ -547,8 +618,8 @@ export default function Exports({ initialOpenCreate = false }) {
         }
       >
         <form onSubmit={handleCreateSubmit}>
-          {/* Top Row: Khách hàng, Kho, Ngày */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+          {/* Top Row: Khách hàng, Nhân viên (không bắt buộc), Kho, Ngày */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label">
                 Khách Hàng <span className="req">*</span>
@@ -575,6 +646,33 @@ export default function Exports({ initialOpenCreate = false }) {
                   Nợ hiện tại: <strong>{formatVND(selectedCustomerObj.debt)}</strong>
                 </div>
               )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Nhân Viên Phụ Trách <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Không bắt buộc)</span>
+              </label>
+              <SearchableSelect
+                options={employees.map((emp) => ({
+                  id: emp.id,
+                  value: emp.id,
+                  label: emp.name,
+                  phone: emp.phone || '',
+                  subLabel: emp.phone ? `SĐT: ${emp.phone}` : (emp.notes || ''),
+                }))}
+                value={createForm.employeeId}
+                onChange={(val, opt) =>
+                  setCreateForm({
+                    ...createForm,
+                    employeeId: val || '',
+                    employeeName: opt?.label || '',
+                  })
+                }
+                placeholder="-- Chọn nhân viên (Tùy chọn) --"
+                searchPlaceholder="Tìm theo tên, SĐT nhân viên..."
+                searchFields={['label', 'phone']}
+                allowClear={true}
+              />
             </div>
 
             <div className="form-group">
@@ -851,8 +949,11 @@ export default function Exports({ initialOpenCreate = false }) {
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Mã phiếu: <strong>{selectedExport.voucherNumber}</strong></p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '0.8125rem' }}>Thời gian lập: <strong>{formatDate(selectedExport.createdAt || selectedExport.date, true)}</strong></p>
+                <p style={{ fontSize: '0.8125rem' }}>Thời gian lập: <strong>{formatDate(selectedExport.date || selectedExport.createdAt, true)}</strong></p>
                 <p style={{ fontSize: '0.8125rem' }}>Kho xuất: <strong>{warehouseService.getWarehouseName(selectedExport.warehouse, warehouses)}</strong></p>
+                {selectedExport.employeeName && (
+                  <p style={{ fontSize: '0.8125rem' }}>Nhân viên: <strong>{selectedExport.employeeName}</strong></p>
+                )}
                 <span className={`badge badge-${selectedExport.status === 'cancelled' ? 'danger' : 'success'}`}>
                   {selectedExport.status === 'cancelled' ? 'Đã hủy' : 'Hoạt động'}
                 </span>
@@ -864,6 +965,11 @@ export default function Exports({ initialOpenCreate = false }) {
               <p style={{ fontSize: '0.875rem' }}>
                 Khách hàng: <strong>{selectedExport.customerName}</strong>
               </p>
+              {selectedExport.employeeName && (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Nhân viên phụ trách: <strong>{selectedExport.employeeName}</strong>
+                </p>
+              )}
               {selectedExport.notes && (
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   Ghi chú: {selectedExport.notes}

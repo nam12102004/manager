@@ -5,7 +5,6 @@ import {
   Edit2,
   Sliders,
   History,
-  CreditCard,
   Search,
   RefreshCw,
   Phone,
@@ -20,10 +19,9 @@ import {
   MapPinned,
   ReceiptText,
   FileSpreadsheet,
-  ArrowDownLeft,
 } from 'lucide-react';
 import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
-import { DEBT_ADJUST_REASONS, PAYMENT_METHODS } from '../utils/constants';
+import { DEBT_ADJUST_REASONS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import { useExport } from '../context/ExportContext';
 import SearchBar from '../components/common/SearchBar';
@@ -36,8 +34,10 @@ import EmptyState from '../components/common/EmptyState';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import Pagination from '../components/common/Pagination';
 import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
-import { supplierService, cashBookService, settingService, warehouseService } from '../services';
+import VoucherDetailModal from '../components/common/VoucherDetailModal';
+import { supplierService, settingService, warehouseService } from '../services';
 import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
+import useDragScroll from '../hooks/useDragScroll';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -48,6 +48,8 @@ const SUPPLIER_SORT_OPTIONS = [
 ];
 
 export default function Suppliers() {
+  const tableContainerRef = useDragScroll();
+  const historyTableRef = useDragScroll();
   const notify = useNotification();
   const { openExportModal } = useExport();
 
@@ -86,17 +88,18 @@ export default function Suppliers() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printVoucher, setPrintVoucher] = useState(null);
   const [ownerInfo, setOwnerInfo] = useState(null);
 
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [debtHistoryRecords, setDebtHistoryRecords] = useState([]);
-  const [historyTimeMode, setHistoryTimeMode] = useState('month'); // 'month' | 'day'
+  const [historyTimeMode, setHistoryTimeMode] = useState('all'); // 'all' | 'month' | 'day'
+  const [selectedVoucherDetail, setSelectedVoucherDetail] = useState(null);
   const [historyMonth, setHistoryMonth] = useState(getCurrentMonthStr());
   const [historyDate, setHistoryDate] = useState(getCurrentDateStr());
+  const [historyFromDate, setHistoryFromDate] = useState(getCurrentDateStr());
+  const [historyToDate, setHistoryToDate] = useState(getCurrentDateStr());
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Form states
@@ -187,7 +190,7 @@ export default function Suppliers() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedRegion, sortBy, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, notify]);
+  }, [currentPage, searchQuery, selectedRegion, sortBy, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate, notify]);
 
   // Initial load
   useEffect(() => {
@@ -208,7 +211,7 @@ export default function Suppliers() {
       return;
     }
     loadSuppliers(currentPage);
-  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth]);
+  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate]);
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
@@ -275,42 +278,20 @@ export default function Suppliers() {
   const handleOpenHistory = async (supplier) => {
     setSelectedSupplier(supplier);
     setIsHistoryOpen(true);
-    const targetPeriod = historyTimeMode === 'day' ? historyDate : historyMonth;
+    const targetPeriod = historyTimeMode === 'all' ? undefined : (historyTimeMode === 'day' ? historyDate : (historyTimeMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
     loadDebtHistory(supplier.id, targetPeriod);
   };
 
   const loadDebtHistory = async (supplierId, period) => {
     setHistoryLoading(true);
     try {
-      const records = await supplierService.getDebtHistory(supplierId, period);
+      const records = await supplierService.getDebtHistory(supplierId, period || undefined);
       setDebtHistoryRecords(records || []);
     } catch (err) {
       notify.error(err.message || 'Không thể tải lịch sử sổ nợ NCC');
     } finally {
       setHistoryLoading(false);
     }
-  };
-
-  // Open Quick Payment
-  const handleOpenPayment = (supplier) => {
-    setSelectedSupplier(supplier);
-    setPaymentData({
-      amount: supplier.debt < 0 ? Math.abs(supplier.debt) : 0,
-      method: 'bank_transfer',
-      notes: `Chi tiền thanh toán công nợ NCC: ${supplier.name}`,
-    });
-    setIsPaymentOpen(true);
-  };
-
-  // Open Quick Receipt (Thu tiền hoàn lại / chiết khấu từ NCC)
-  const handleOpenReceipt = (supplier) => {
-    setSelectedSupplier(supplier);
-    setReceiptData({
-      amount: supplier.debt > 0 ? supplier.debt : 0,
-      method: 'bank_transfer',
-      notes: `Thu tiền hoàn trả / chiết khấu từ NCC: ${supplier.name}`,
-    });
-    setIsReceiptOpen(true);
   };
 
   // Submit Create via supplierService
@@ -778,7 +759,7 @@ export default function Suppliers() {
           }
         />
       ) : (
-        <div className="table-responsive">
+        <div ref={tableContainerRef} className="table-responsive">
           <table className="data-table">
             <thead>
               <tr>
@@ -1577,7 +1558,9 @@ export default function Suppliers() {
             onModeChange={(newMode) => {
               setHistoryTimeMode(newMode);
               if (selectedSupplier) {
-                const p = newMode === 'day' ? historyDate : historyMonth;
+                const p = newMode === 'all'
+                  ? undefined
+                  : (newMode === 'day' ? historyDate : (newMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
                 loadDebtHistory(selectedSupplier.id, p);
               }
             }}
@@ -1591,8 +1574,19 @@ export default function Suppliers() {
               setHistoryDate(d);
               if (selectedSupplier) loadDebtHistory(selectedSupplier.id, d);
             }}
-            showAll={false}
-            showRange={false}
+            fromDate={historyFromDate}
+            onFromDateChange={(fd) => {
+              setHistoryFromDate(fd);
+              if (selectedSupplier) loadDebtHistory(selectedSupplier.id, { fromDate: fd, toDate: historyToDate });
+            }}
+            toDate={historyToDate}
+            onToDateChange={(td) => {
+              setHistoryToDate(td);
+              if (selectedSupplier) loadDebtHistory(selectedSupplier.id, { fromDate: historyFromDate, toDate: td });
+            }}
+            showAll={true}
+            allLabel="Toàn bộ"
+            showRange={true}
           />
         </div>
 
@@ -1605,8 +1599,12 @@ export default function Suppliers() {
             icon={History}
             title="Chưa có lịch sử công nợ"
             description={
-              historyTimeMode === 'day'
+              historyTimeMode === 'all'
+                ? 'Chưa ghi nhận giao dịch công nợ nào trong toàn bộ thời gian.'
+                : historyTimeMode === 'day'
                 ? `Không có giao dịch công nợ nào trong ngày ${historyDate}.`
+                : historyTimeMode === 'range'
+                ? `Không có giao dịch công nợ nào từ ngày ${historyFromDate} đến ${historyToDate}.`
                 : `Không có giao dịch công nợ nào trong tháng ${historyMonth}.`
             }
           />
@@ -1615,19 +1613,58 @@ export default function Suppliers() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Thời Gian</th>
-                  <th>Nghiệp Vụ</th>
-                  <th style={{ textAlign: 'right' }}>Nợ Trước</th>
-                  <th style={{ textAlign: 'right' }}>Biến Động</th>
-                  <th style={{ textAlign: 'right' }}>Nợ Sau</th>
+                  <th style={{ width: '135px' }}>Thời Gian</th>
+                  <th style={{ width: '120px' }}>Mã Phiếu</th>
+                  <th style={{ width: '95px' }}>Nghiệp Vụ</th>
+                  <th style={{ textAlign: 'right', width: '110px' }}>Nợ Trước</th>
+                  <th style={{ textAlign: 'right', width: '115px' }}>Biến Động</th>
+                  <th style={{ textAlign: 'right', width: '110px' }}>Nợ Sau</th>
                   <th>Lý Do / Ghi Chú</th>
                 </tr>
               </thead>
               <tbody>
                 {debtHistoryRecords.map((r) => {
+                  const isRowSelected = selectedVoucherDetail?.record?.id === r.id;
                   return (
-                    <tr key={r.id}>
-                      <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt, true)}</td>
+                    <tr
+                      key={r.id}
+                      onClick={() => {
+                        setSelectedVoucherDetail({
+                          record: r,
+                          sourceType: r.sourceType,
+                          referenceType: r.referenceType,
+                          referenceId: r.referenceId,
+                          supplier: selectedSupplier,
+                        });
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        backgroundColor: isRowSelected ? 'rgba(37, 99, 235, 0.12)' : undefined,
+                        transition: 'background-color 0.15s ease',
+                      }}
+                      title="Bấm để xem chi tiết phiếu nhập / xuất / thu / chi ở bảng bên trái"
+                    >
+                      <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>{formatDate(r.createdAt, true)}</td>
+                      <td>
+                        {r.referenceId ? (
+                          <span
+                            className="mono"
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              color: 'var(--primary, #2563eb)',
+                              backgroundColor: 'var(--primary-light, #eff6ff)',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(37, 99, 235, 0.2)',
+                            }}
+                          >
+                            {r.referenceId}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
                       <td>
                         <span className={
                           r.sourceType === 'import'
@@ -1665,6 +1702,14 @@ export default function Suppliers() {
           </div>
         )}
       </Drawer>
+
+      {/* Modal Chi Tiết Chứng Từ (Phiếu nhập / xuất / thu / chi) bên trái */}
+      <VoucherDetailModal
+        isOpen={!!selectedVoucherDetail}
+        onClose={() => setSelectedVoucherDetail(null)}
+        voucherInfo={selectedVoucherDetail}
+        placement="left"
+      />
 
       {/* Print Voucher Modal */}
       <PrintVoucherModal

@@ -186,7 +186,7 @@ public class PaymentService : IPaymentService
                     BeforeDebt = beforeDebt,
                     Delta = delta,
                     AfterDebt = afterDebt,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = payment.Date
                 }, ct);
             }
             else if (dto.CustomerId.HasValue)
@@ -211,7 +211,7 @@ public class PaymentService : IPaymentService
                     BeforeDebt = beforeDebt,
                     Delta = delta,
                     AfterDebt = afterDebt,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = payment.Date
                 }, ct);
             }
 
@@ -267,7 +267,7 @@ public class PaymentService : IPaymentService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = payment.Date
                     }, ct);
                 }
                 else if (payment.CustomerId.HasValue && payment.Customer != null)
@@ -289,7 +289,7 @@ public class PaymentService : IPaymentService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = payment.Date
                     }, ct);
                 }
 
@@ -319,7 +319,7 @@ public class PaymentService : IPaymentService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = payment.Date
                     }, ct);
                 }
                 else if (payment.CustomerId.HasValue && payment.Customer != null)
@@ -341,7 +341,7 @@ public class PaymentService : IPaymentService
                         BeforeDebt = beforeDebt,
                         Delta = delta,
                         AfterDebt = afterDebt,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = payment.Date
                     }, ct);
                 }
 

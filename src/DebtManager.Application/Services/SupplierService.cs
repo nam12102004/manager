@@ -288,7 +288,7 @@ public class SupplierService : ISupplierService
         return MapToDto(supplier);
     }
 
-    public async Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, CancellationToken ct = default)
+    public async Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var supplierExists = await _uow.Suppliers.Query().AnyAsync(s => s.Id == supplierId, ct);
         if (!supplierExists)
@@ -298,24 +298,39 @@ public class SupplierService : ISupplierService
 
         var query = _uow.SupplierDebtHistories.Query().Where(h => h.SupplierId == supplierId);
 
-        if (!string.IsNullOrWhiteSpace(month))
+        DateTime? startDate = null;
+        DateTime? endDate = null;
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
-                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
-                var end = start.AddDays(1);
-                var windowStart = start.AddDays(-1);
-                var windowEnd = end.AddDays(1);
-                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+                startDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddDays(1);
             }
             else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
             {
-                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                var end = start.AddMonths(1);
-                var windowStart = start.AddDays(-1);
-                var windowEnd = end.AddDays(1);
-                query = query.Where(h => h.CreatedAt >= windowStart && h.CreatedAt <= windowEnd);
+                startDate = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                endDate = startDate.Value.AddMonths(1);
             }
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(h => h.CreatedAt >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            query = query.Where(h => h.CreatedAt < endDate.Value);
         }
 
         var list = await query
@@ -378,7 +393,7 @@ public class SupplierService : ISupplierService
         return true;
     }
 
-    public async Task<EntityLedgerResponseDto> GetLedgerAsync(int supplierId, string? warehouse = null, string? month = null, CancellationToken ct = default)
+    public async Task<EntityLedgerResponseDto> GetLedgerAsync(int supplierId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var supplier = await _uow.Suppliers.GetByIdAsync(supplierId, ct)
             ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {supplierId}");
@@ -388,7 +403,17 @@ public class SupplierService : ISupplierService
 
         DateTime? startDate = null;
         DateTime? endDate = null;
-        if (!string.IsNullOrWhiteSpace(month))
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
@@ -413,7 +438,11 @@ public class SupplierService : ISupplierService
         }
         if (startDate.HasValue)
         {
-            importQuery = importQuery.Where(v => v.Date >= startDate.Value.AddDays(-1) && v.Date <= endDate!.Value.AddDays(1));
+            importQuery = importQuery.Where(v => v.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            importQuery = importQuery.Where(v => v.Date < endDate.Value);
         }
         var imports = await importQuery.ToListAsync(ct);
         foreach (var im in imports)
@@ -438,7 +467,11 @@ public class SupplierService : ISupplierService
         var paymentQuery = _uow.Payments.Query().Where(p => p.SupplierId == supplierId && p.Status != "cancelled");
         if (startDate.HasValue)
         {
-            paymentQuery = paymentQuery.Where(p => p.Date >= startDate.Value.AddDays(-1) && p.Date <= endDate!.Value.AddDays(1));
+            paymentQuery = paymentQuery.Where(p => p.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            paymentQuery = paymentQuery.Where(p => p.Date < endDate.Value);
         }
         var payments = await paymentQuery.ToListAsync(ct);
         foreach (var pm in payments)
@@ -463,7 +496,11 @@ public class SupplierService : ISupplierService
         var receiptQuery = _uow.Receipts.Query().Where(r => r.SupplierId == supplierId);
         if (startDate.HasValue)
         {
-            receiptQuery = receiptQuery.Where(r => r.Date >= startDate.Value.AddDays(-1) && r.Date <= endDate!.Value.AddDays(1));
+            receiptQuery = receiptQuery.Where(r => r.Date >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            receiptQuery = receiptQuery.Where(r => r.Date < endDate.Value);
         }
         var receipts = await receiptQuery.ToListAsync(ct);
         foreach (var rc in receipts)
@@ -489,7 +526,11 @@ public class SupplierService : ISupplierService
             .Where(h => h.SupplierId == supplierId && (h.SourceType == DomainConstants.SourceTypes.ManualAdjustment || h.SourceType == "init"));
         if (startDate.HasValue)
         {
-            historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value.AddDays(-1) && h.CreatedAt <= endDate!.Value.AddDays(1));
+            historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            historyQuery = historyQuery.Where(h => h.CreatedAt < endDate.Value);
         }
         var histories = await historyQuery.ToListAsync(ct);
         foreach (var h in histories)

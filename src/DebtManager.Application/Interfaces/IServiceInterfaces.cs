@@ -3,6 +3,7 @@ using DebtManager.Application.DTOs.Audit;
 using DebtManager.Application.DTOs.Auth;
 using DebtManager.Application.DTOs.Common;
 using DebtManager.Application.DTOs.Customers;
+using DebtManager.Application.DTOs.Employees;
 using DebtManager.Application.DTOs.ExportVouchers;
 using DebtManager.Application.DTOs.ImportVouchers;
 using DebtManager.Application.DTOs.Owners;
@@ -28,9 +29,9 @@ public interface IProductService
     Task<ProductDto> CreateProductAsync(CreateProductDto dto, CancellationToken ct = default);
     Task<ProductDto> UpdateProductAsync(int id, UpdateProductDto dto, CancellationToken ct = default);
     Task<bool> AdjustStockAsync(int id, StockAdjustDto dto, CancellationToken ct = default);
-    Task<List<StockHistoryDto>> GetStockHistoryAsync(int productId, string? month = null, CancellationToken ct = default);
+    Task<List<StockHistoryDto>> GetStockHistoryAsync(int productId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
     Task<List<string>> GetCategoriesAsync(CancellationToken ct = default);
-    Task<EntityLedgerResponseDto> GetLedgerAsync(int productId, string? warehouse = null, string? month = null, CancellationToken ct = default);
+    Task<EntityLedgerResponseDto> GetLedgerAsync(int productId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
 }
 
 public interface ICustomerService
@@ -41,9 +42,9 @@ public interface ICustomerService
     Task<CustomerDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<CustomerDto> CreateCustomerAsync(CreateCustomerDto dto, CancellationToken ct = default);
     Task<CustomerDto> UpdateCustomerAsync(int id, UpdateCustomerDto dto, CancellationToken ct = default);
-    Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, CancellationToken ct = default);
+    Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
     Task<bool> AdjustDebtAsync(int customerId, CustomerDebtAdjustDto dto, CancellationToken ct = default);
-    Task<EntityLedgerResponseDto> GetLedgerAsync(int customerId, string? warehouse = null, string? month = null, CancellationToken ct = default);
+    Task<EntityLedgerResponseDto> GetLedgerAsync(int customerId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
 }
 
 public interface ISupplierService
@@ -54,24 +55,33 @@ public interface ISupplierService
     Task<SupplierDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<SupplierDto> CreateSupplierAsync(CreateSupplierDto dto, CancellationToken ct = default);
     Task<SupplierDto> UpdateSupplierAsync(int id, UpdateSupplierDto dto, CancellationToken ct = default);
-    Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, CancellationToken ct = default);
+    Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
     Task<bool> AdjustDebtAsync(int supplierId, SupplierDebtAdjustDto dto, CancellationToken ct = default);
-    Task<EntityLedgerResponseDto> GetLedgerAsync(int supplierId, string? warehouse = null, string? month = null, CancellationToken ct = default);
+    Task<EntityLedgerResponseDto> GetLedgerAsync(int supplierId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
 }
 
 public interface IExportService
 {
-    Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default);
-    Task<ExportPagedResult> GetPagedExportsAsync(int? customerId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? search = null, string? warehouse = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
+    Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, int? employeeId = null, string? search = null, CancellationToken ct = default);
+    Task<ExportPagedResult> GetPagedExportsAsync(int? customerId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? search = null, string? warehouse = null, int page = 1, int pageSize = 15, int? employeeId = null, CancellationToken ct = default);
     Task<ExportVoucherDto> GetByIdAsync(long id, CancellationToken ct = default);
     Task<ExportVoucherDto> CreateExportAsync(CreateExportDto dto, CancellationToken ct = default);
     Task<bool> UpdateStatusAsync(long id, string action, CancellationToken ct = default);
     Task<bool> DeleteExportAsync(long id, CancellationToken ct = default);
 }
 
+public interface IEmployeeService
+{
+    Task<List<EmployeeDto>> GetEmployeesAsync(string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
+    Task<EmployeeDto> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<EmployeeDto> CreateEmployeeAsync(CreateEmployeeDto dto, CancellationToken ct = default);
+    Task<bool> DeleteEmployeeAsync(int id, CancellationToken ct = default);
+    Task<(byte[] Bytes, string FileName)> ExportEmployeeSalesExcelAsync(int? employeeId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
+}
+
 public interface IImportService
 {
-    Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default);
+    Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, string? search = null, CancellationToken ct = default);
     Task<ImportPagedResult> GetPagedImportsAsync(int? supplierId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? search = null, string? warehouse = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
     Task<ImportVoucherDto> GetByIdAsync(long id, CancellationToken ct = default);
     Task<ImportVoucherDto> CreateImportAsync(CreateImportDto dto, CancellationToken ct = default);

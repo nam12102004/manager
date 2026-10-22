@@ -18,6 +18,7 @@ public class ExportsController : BaseApiController
     [HttpGet]
     public async Task<IActionResult> GetExports(
         [FromQuery] int? customerId,
+        [FromQuery] int? employeeId,
         [FromQuery] string? month,
         [FromQuery] string? date,
         [FromQuery] string? fromDate,
@@ -31,11 +32,11 @@ public class ExportsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _exportService.GetPagedExportsAsync(customerId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, ct);
+            var paged = await _exportService.GetPagedExportsAsync(customerId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, employeeId, ct);
             return Success(paged);
         }
 
-        var list = await _exportService.GetExportsAsync(customerId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, ct);
+        var list = await _exportService.GetExportsAsync(customerId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, employeeId, q, ct);
         return Success(list);
     }
 

@@ -135,6 +135,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const [historyTimeMode, setHistoryTimeMode] = useState('month'); // 'month' | 'day'
   const [historyMonth, setHistoryMonth] = useState(getCurrentMonthStr());
   const [historyDate, setHistoryDate] = useState(getCurrentDateStr());
+  const [historyFromDate, setHistoryFromDate] = useState(getCurrentDateStr());
+  const [historyToDate, setHistoryToDate] = useState(getCurrentDateStr());
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Form states
@@ -248,7 +250,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedSupplierId, selectedWarehouse, sortBy, selectedCategory, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, notify]);
+  }, [currentPage, searchQuery, selectedSupplierId, selectedWarehouse, sortBy, selectedCategory, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate, notify]);
 
   // Initial & page change load
   useEffect(() => {
@@ -262,7 +264,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       return;
     }
     loadProducts(currentPage);
-  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth]);
+  }, [visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate]);
 
   // Reset to page 1 on filters or search change
   useEffect(() => {
@@ -400,7 +402,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const handleOpenHistory = async (product) => {
     setSelectedProduct(product);
     setIsHistoryOpen(true);
-    const targetPeriod = historyTimeMode === 'day' ? historyDate : historyMonth;
+    const targetPeriod = historyTimeMode === 'all' ? undefined : (historyTimeMode === 'day' ? historyDate : (historyTimeMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
     loadStockHistory(product.id, targetPeriod);
   };
 
@@ -2418,7 +2420,9 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             onModeChange={(newMode) => {
               setHistoryTimeMode(newMode);
               if (selectedProduct) {
-                const p = newMode === 'day' ? historyDate : historyMonth;
+                const p = newMode === 'all'
+                  ? undefined
+                  : (newMode === 'day' ? historyDate : (newMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
                 loadStockHistory(selectedProduct.id, p);
               }
             }}
@@ -2432,8 +2436,19 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               setHistoryDate(d);
               if (selectedProduct) loadStockHistory(selectedProduct.id, d);
             }}
-            showAll={false}
-            showRange={false}
+            fromDate={historyFromDate}
+            onFromDateChange={(fd) => {
+              setHistoryFromDate(fd);
+              if (selectedProduct) loadStockHistory(selectedProduct.id, { fromDate: fd, toDate: historyToDate });
+            }}
+            toDate={historyToDate}
+            onToDateChange={(td) => {
+              setHistoryToDate(td);
+              if (selectedProduct) loadStockHistory(selectedProduct.id, { fromDate: historyFromDate, toDate: td });
+            }}
+            showAll={true}
+            allLabel="Toàn bộ"
+            showRange={true}
           />
         </div>
 
@@ -2448,6 +2463,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             description={
               historyTimeMode === 'day'
                 ? `Không có bản ghi xuất/nhập/điều chỉnh kho nào trong ngày ${historyDate}.`
+                : historyTimeMode === 'range'
+                ? `Không có bản ghi xuất/nhập/điều chỉnh kho nào từ ngày ${historyFromDate} đến ${historyToDate}.`
                 : `Không có bản ghi xuất/nhập/điều chỉnh kho nào trong tháng ${historyMonth}.`
             }
           />
@@ -2473,7 +2490,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                     const whObj = warehouses.find((w) => w.id === r.warehouse);
                     return (
                       <tr key={r.id}>
-                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt || r.changeDate, true)}</td>
+                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.changeDate || r.createdAt, true)}</td>
                         <td>
                           <span className="badge badge-neutral">{whObj?.shortName || whObj?.name || r.warehouse}</span>
                         </td>

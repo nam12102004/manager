@@ -10,6 +10,8 @@ public class CreateExportItemDto
 public class CreateExportDto
 {
     public int CustomerId { get; set; }
+    public int? EmployeeId { get; set; }
+    public string? EmployeeName { get; set; }
     public string Warehouse { get; set; } = "warehouse1";
     public DateTime? Date { get; set; }
     public decimal? DiscountPercent { get; set; }
@@ -41,6 +43,8 @@ public class ExportVoucherDto
     public int CustomerId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public decimal CustomerDebt { get; set; }
+    public int? EmployeeId { get; set; }
+    public string? EmployeeName { get; set; }
     public decimal SubtotalSale { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TotalSale { get; set; }

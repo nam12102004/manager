@@ -5,7 +5,6 @@ import { useAuth } from '../../context/AuthContext';
 export default function Header({
   pageTitle,
   pageSubtitle,
-  onQuickAction,
 }) {
   const { isDark, toggleTheme } = useTheme();
   const { user } = useAuth();
@@ -52,34 +51,7 @@ export default function Header({
           <span>Kho đa điểm</span>
         </div>
 
-        {/* Quick Actions Dropdown / Buttons (hidden when on products/warehouse tab) */}
-        {onQuickAction && !pageTitle?.toLowerCase().includes('kho') && !pageTitle?.toLowerCase().includes('sản phẩm') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button
-              onClick={() => onQuickAction('new-export')}
-              className="btn btn-primary btn-sm"
-              title="Tạo phiếu xuất mới"
-            >
-              <span>Xuất</span>
-            </button>
-            <button
-              onClick={() => onQuickAction('new-import')}
-              className="btn btn-outline btn-sm"
-              title="Tạo phiếu nhập mới"
-            >
-              <span>Nhập</span>
-            </button>
-            <button
-              onClick={() => onQuickAction('new-receipt')}
-              className="btn btn-outline btn-sm"
-              title="Lập phiếu thu tiền"
-            >
-              <span>Thu tiền</span>
-            </button>
-          </div>
-        )}
 
-        <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }} />
 
         {/* Theme Toggle Button */}
         <button

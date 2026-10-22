@@ -16,6 +16,7 @@ import Exports from './pages/Exports';
 import Imports from './pages/Imports';
 import Customers from './pages/Customers';
 import Suppliers from './pages/Suppliers';
+import Employees from './pages/Employees';
 import CashBook from './pages/CashBook';
 import Reports from './pages/Reports';
 import ExcelExport from './pages/ExcelExport';
@@ -31,6 +32,7 @@ const VALID_BASE_TABS = [
   'imports',
   'customers',
   'suppliers',
+  'employees',
   'cashbook',
   'reports',
   'excel-export',
@@ -60,7 +62,6 @@ const getInitialTab = () => {
 function AppContent() {
   const { user, isAuthenticated, loading } = useAuth();
   const [activeTab, setActiveTabState] = useState(getInitialTab);
-  const [quickActionTrigger, setQuickActionTrigger] = useState(null);
 
   const isAdmin = user?.role?.toLowerCase() === 'admin';
 
@@ -134,19 +135,6 @@ function AppContent() {
     return <Login />;
   }
 
-  // Handle Quick Action from Header
-  const handleQuickAction = (actionType) => {
-    if (actionType === 'new-export') {
-      setActiveTab('exports');
-      setQuickActionTrigger('new-export-' + Date.now());
-    } else if (actionType === 'new-import') {
-      setActiveTab('imports');
-      setQuickActionTrigger('new-import-' + Date.now());
-    } else if (actionType === 'new-receipt') {
-      setActiveTab('cashbook');
-      setQuickActionTrigger('new-receipt-' + Date.now());
-    }
-  };
 
   const isProductsTab = activeTab === 'products' || activeTab.startsWith('products:');
   const selectedWarehouse = activeTab.includes(':') ? activeTab.split(':')[1] : 'overview';
@@ -196,6 +184,11 @@ function AppContent() {
           title: 'Nhà Cung Cấp & Sổ Nợ',
           subtitle: 'Quản lý thông tin nhà cung ứng và công nợ phải chi',
         };
+      case 'employees':
+        return {
+          title: 'Quản Lý Nhân Viên',
+          subtitle: 'Tạo, xóa nhân viên và xem danh sách phiếu xuất hàng, tổng giá trị theo thời gian',
+        };
       case 'cashbook':
         return {
           title: 'Thu - Chi Tiền Mặt',
@@ -209,7 +202,7 @@ function AppContent() {
       case 'excel-export':
         return {
           title: 'Xuất Dữ Liệu Excel (Chạy Ngầm)',
-          subtitle: 'Kết xuất ma trận xuất hàng ngày (1..31) doanh số & số lượng, sao lưu CSDL không nghẽn máy',
+          subtitle: 'Kết xuất ma trận xuất hàng ngày (1..31) doanh số & số lượng không nghẽn máy',
         };
       case 'settings':
         return {
@@ -239,12 +232,10 @@ function AppContent() {
       onTabChange={setActiveTab}
       pageTitle={meta.title}
       pageSubtitle={meta.subtitle}
-      onQuickAction={handleQuickAction}
     >
       {activeTab === 'dashboard' && (
         <Dashboard
           onNavigate={setActiveTab}
-          onQuickAction={handleQuickAction}
         />
       )}
       {activeTab === 'product-catalog' && (
@@ -252,33 +243,16 @@ function AppContent() {
       )}
       {isProductsTab && (
         <Products
-          key={quickActionTrigger}
           initialWarehouse={selectedWarehouse}
           onWarehouseChange={(whId) => setActiveTab(`products:${whId}`)}
         />
       )}
-      {activeTab === 'exports' && (
-        <Exports
-          key={quickActionTrigger}
-          initialOpenCreate={quickActionTrigger?.startsWith('new-export')}
-        />
-      )}
-      {activeTab === 'imports' && (
-        <Imports
-          key={quickActionTrigger}
-          initialOpenCreate={quickActionTrigger?.startsWith('new-import')}
-        />
-      )}
-      {activeTab === 'customers' && (
-        <Customers onQuickAction={handleQuickAction} />
-      )}
+      {activeTab === 'exports' && <Exports />}
+      {activeTab === 'imports' && <Imports />}
+      {activeTab === 'customers' && <Customers />}
       {activeTab === 'suppliers' && <Suppliers />}
-      {activeTab === 'cashbook' && (
-        <CashBook
-          key={quickActionTrigger}
-          initialOpenReceipt={quickActionTrigger?.startsWith('new-receipt')}
-        />
-      )}
+      {activeTab === 'employees' && <Employees />}
+      {activeTab === 'cashbook' && <CashBook />}
       {activeTab === 'reports' && <Reports />}
       {activeTab === 'excel-export' && <ExcelExport />}
       {activeTab === 'history' && (isAdmin ? <AuditHistory /> : <Dashboard />)}

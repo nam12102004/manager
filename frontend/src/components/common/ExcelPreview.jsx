@@ -295,6 +295,8 @@ function formatCellValue(key, value) {
       k.includes('đầu kỳ') ||
       k.includes('cuối kỳ') ||
       k.includes('dư nợ') ||
+      k.includes('đk') ||
+      k.includes('ck') ||
       (k.includes('tiền') && !k.includes('tiến'))
     ) {
       return formatVND(value);
@@ -352,6 +354,8 @@ function isNumericColumn(key) {
     k.includes('tăng') ||
     k.includes('giảm') ||
     k.includes('cuối kỳ') ||
+    k.includes('đk') ||
+    k.includes('ck') ||
     k.includes('nợ') ||
     k.includes('kho') ||
     k.includes('ds') ||
@@ -542,7 +546,9 @@ export default function ExcelPreview({
                     row['STT'] === 'TỔNG' ||
                     row['STT'] === 'TỔNG CỘNG' ||
                     row['Mã SKU'] === 'CỘNG' ||
-                    row['Mã đối tác'] === 'CỘNG';
+                    row['Mã đối tác'] === 'CỘNG' ||
+                    row['Loại'] === 'CỘNG' ||
+                    String(row['Nhân viên phụ trách'] || '').startsWith('Toàn bộ');
                   const isSubRow =
                     String(row['Tên sản phẩm'] || '').startsWith('↳') ||
                     String(row['Khách hàng'] || '').startsWith('↳') ||
@@ -562,7 +568,7 @@ export default function ExcelPreview({
                         let tdClass = '';
                         if (fc === 'STT') tdClass = 'ep-td-stt';
                         else if (fc.includes('Mã')) tdClass = 'ep-td-code';
-                        else if (fc.includes('Tên') || fc.includes('Khách') || fc.includes('Nhà'))
+                        else if (fc.includes('Tên') || fc.includes('Khách') || fc.includes('Nhà') || fc.includes('Nhân viên'))
                           tdClass = 'ep-td-name';
 
                         return (

@@ -455,7 +455,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                         <td className="mono" style={{ fontWeight: 700, color: 'var(--success)' }}>
                           {r.receiptNumber}
                         </td>
-                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.createdAt || r.date, true)}</td>
+                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.date || r.createdAt, true)}</td>
                         <td style={{ fontWeight: 600 }}>{partnerName}</td>
                         <td>
                           <span className="badge badge-neutral">{methodObj?.label || r.method || 'Tiền mặt'}</span>
@@ -550,7 +550,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                         <td className="mono" style={{ fontWeight: 700, color: 'var(--danger)' }}>
                           {p.paymentNumber}
                         </td>
-                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.createdAt || p.date, true)}</td>
+                        <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.date || p.createdAt, true)}</td>
                         <td style={{ fontWeight: 600 }}>{partnerName}</td>
                         <td>
                           <span className="badge badge-neutral">{methodObj?.label || p.method || 'Tiền mặt'}</span>

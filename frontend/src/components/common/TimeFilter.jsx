@@ -22,6 +22,7 @@ export default function TimeFilter({
   toDate = '',
   onToDateChange,
   showAll = true,
+  allLabel = 'Toàn bộ',
   showRange = true,
   style = {},
 }) {
@@ -129,7 +130,7 @@ export default function TimeFilter({
             }}
             onClick={() => onModeChange?.('all')}
           >
-            Tất cả
+            {allLabel}
           </button>
         )}
       </div>

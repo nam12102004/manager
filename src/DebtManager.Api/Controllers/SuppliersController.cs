@@ -67,8 +67,10 @@ public class SuppliersController : BaseApiController
     public async Task<ActionResult<ApiResponse<List<SupplierDebtHistoryDto>>>> GetDebtHistory(
         int id,
         [FromQuery] string? month,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
         CancellationToken ct)
-        => Success(await _supplierService.GetDebtHistoryAsync(id, month, ct));
+        => Success(await _supplierService.GetDebtHistoryAsync(id, month, fromDate, toDate, ct));
 
     [HttpPost("{id:int}/debt-adjust")]
     public async Task<ActionResult<ApiResponse<bool>>> AdjustDebt(
@@ -82,6 +84,8 @@ public class SuppliersController : BaseApiController
         int id,
         [FromQuery] string? warehouse,
         [FromQuery] string? month,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
         CancellationToken ct)
-        => Success(await _supplierService.GetLedgerAsync(id, warehouse, month, ct));
+        => Success(await _supplierService.GetLedgerAsync(id, warehouse, month, fromDate, toDate, ct));
 }
