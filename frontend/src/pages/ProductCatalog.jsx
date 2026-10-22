@@ -29,6 +29,8 @@ import Pagination from '../components/common/Pagination';
 import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
 import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
 import { productService, warehouseService } from '../services';
+import useDragScroll from '../hooks/useDragScroll';
+import TableScrollContainer from '../components/common/TableScrollContainer';
 
 const PRODUCT_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -43,6 +45,7 @@ const PRODUCT_SORT_OPTIONS = [
 ];
 
 export default function ProductCatalog() {
+  const tableContainerRef = useDragScroll();
   const notify = useNotification();
 
   const [products, setProducts] = useState([]);
@@ -832,7 +835,8 @@ export default function ProductCatalog() {
           }
         />
       ) : (
-        <div className="table-responsive" style={{ borderTop: 'none', borderRadius: '0 0 var(--radius, 8px) var(--radius, 8px)' }}>
+        <TableScrollContainer targetRef={tableContainerRef}>
+        <div ref={tableContainerRef} className="table-responsive" style={{ borderTop: 'none', borderRadius: '0 0 var(--radius, 8px) var(--radius, 8px)' }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -1116,6 +1120,7 @@ export default function ProductCatalog() {
             )}
           </table>
         </div>
+        </TableScrollContainer>
       )}
 
       {/* Modal Sổ Chi Tiết Nhập / Xuất / Thu / Chi Sản Phẩm */}

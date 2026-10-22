@@ -38,6 +38,7 @@ import VoucherDetailModal from '../components/common/VoucherDetailModal';
 import { customerService, settingService, warehouseService } from '../services';
 import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
 import useDragScroll from '../hooks/useDragScroll';
+import TableScrollContainer from '../components/common/TableScrollContainer';
 
 const CUSTOMER_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -658,6 +659,7 @@ export default function Customers() {
           }
         />
       ) : (
+        <TableScrollContainer targetRef={tableContainerRef}>
         <div ref={tableContainerRef} className="table-responsive" style={{ borderTop: 'none', borderRadius: '0 0 var(--radius, 8px) var(--radius, 8px)' }}>
           <table className="data-table">
             <thead>
@@ -889,22 +891,7 @@ export default function Customers() {
                         >
                           <Edit2 size={15} />
                         </button>
-                        <button
-                          className="btn btn-outline btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--success-text)' }}
-                          title="Lập phiếu thu tiền"
-                          onClick={() => handleOpenReceipt(c)}
-                        >
-                          <Receipt size={15} />
-                        </button>
-                        <button
-                          className="btn btn-outline btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--danger-text, #dc2626)', borderColor: '#fecaca', backgroundColor: '#fef2f2' }}
-                          title="Lập phiếu chi hoàn tiền cho KH"
-                          onClick={() => handleOpenPayment(c)}
-                        >
-                          <CreditCard size={15} />
-                        </button>
+
                         <button
                           className="btn btn-outline btn-icon"
                           style={{ width: '32px', height: '32px', color: 'var(--warning-text)' }}
@@ -929,6 +916,7 @@ export default function Customers() {
             </tbody>
           </table>
         </div>
+        </TableScrollContainer>
       )}
 
       {/* Modal Sổ Chi Tiết Giao Dịch & Sổ Nợ Khách Hàng */}

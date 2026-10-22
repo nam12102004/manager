@@ -38,6 +38,7 @@ import VoucherDetailModal from '../components/common/VoucherDetailModal';
 import { supplierService, settingService, warehouseService } from '../services';
 import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
 import useDragScroll from '../hooks/useDragScroll';
+import TableScrollContainer from '../components/common/TableScrollContainer';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -133,17 +134,6 @@ export default function Suppliers() {
     note: '',
   });
 
-  const [paymentData, setPaymentData] = useState({
-    amount: 0,
-    method: 'bank_transfer',
-    notes: '',
-  });
-
-  const [receiptData, setReceiptData] = useState({
-    amount: 0,
-    method: 'bank_transfer',
-    notes: '',
-  });
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -358,89 +348,6 @@ export default function Suppliers() {
       setSubmitting(false);
     }
   };
-
-  // Submit Payment via cashBookService
-  const handlePaymentSubmit = async (e) => {
-    e.preventDefault();
-    if (Number(paymentData.amount || 0) <= 0) {
-      notify.error('Số tiền chi phải lớn hơn 0');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const created = await cashBookService.createPayment({
-        partnerType: 'supplier',
-        partnerId: selectedSupplier.id,
-        supplierId: selectedSupplier.id,
-        amount: Number(paymentData.amount),
-        method: paymentData.method,
-        notes: paymentData.notes,
-        date: new Date().toISOString(),
-      });
-      notify.success('Lập phiếu chi tiền thành công!');
-      setIsPaymentOpen(false);
-      loadSuppliers();
-
-      if (created) {
-        setPrintVoucher({
-          voucher: {
-            ...created,
-            supplierName: selectedSupplier.name,
-            supplierAddress: parseJsonList(selectedSupplier.addressesJson),
-          },
-          type: 'payment',
-        });
-        setIsPrintModalOpen(true);
-      }
-    } catch (err) {
-      notify.error(err.message || 'Lập phiếu chi thất bại');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Submit Receipt via cashBookService (Thu tiền từ NCC)
-  const handleReceiptSubmit = async (e) => {
-    e.preventDefault();
-    if (Number(receiptData.amount || 0) <= 0) {
-      notify.error('Số tiền thu phải lớn hơn 0');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const created = await cashBookService.createReceipt({
-        partnerType: 'supplier',
-        partnerId: selectedSupplier.id,
-        supplierId: selectedSupplier.id,
-        amount: Number(receiptData.amount),
-        method: receiptData.method,
-        notes: receiptData.notes,
-        date: new Date().toISOString(),
-      });
-      notify.success('Lập phiếu thu tiền từ NCC thành công!');
-      setIsReceiptOpen(false);
-      loadSuppliers();
-
-      if (created) {
-        setPrintVoucher({
-          voucher: {
-            ...created,
-            supplierName: selectedSupplier.name,
-            supplierAddress: parseJsonList(selectedSupplier.addressesJson),
-          },
-          type: 'receipt',
-        });
-        setIsPrintModalOpen(true);
-      }
-    } catch (err) {
-      notify.error(err.message || 'Lập phiếu thu thất bại');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
 
   const scrollTabs = (direction) => {
     if (regionTabsRef.current) {
@@ -759,6 +666,7 @@ export default function Suppliers() {
           }
         />
       ) : (
+        <TableScrollContainer targetRef={tableContainerRef}>
         <div ref={tableContainerRef} className="table-responsive">
           <table className="data-table">
             <thead>
@@ -995,22 +903,6 @@ export default function Suppliers() {
                         </button>
                         <button
                           className="btn btn-outline btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--success-text, #16a34a)', borderColor: '#bbf7d0', backgroundColor: '#f0fdf4' }}
-                          title="Lập phiếu thu tiền từ NCC (hoàn tiền/thưởng/hoàn cọc)"
-                          onClick={() => handleOpenReceipt(s)}
-                        >
-                          <ArrowDownLeft size={15} />
-                        </button>
-                        <button
-                          className="btn btn-outline btn-icon"
-                          style={{ width: '32px', height: '32px', color: 'var(--warning-text)' }}
-                          title="Lập phiếu chi tiền trả NCC"
-                          onClick={() => handleOpenPayment(s)}
-                        >
-                          <CreditCard size={15} />
-                        </button>
-                        <button
-                          className="btn btn-outline btn-icon"
                           style={{ width: '32px', height: '32px' }}
                           title="Điều chỉnh công nợ"
                           onClick={() => handleOpenAdjust(s)}
@@ -1033,6 +925,7 @@ export default function Suppliers() {
             </tbody>
           </table>
         </div>
+        </TableScrollContainer>
       )}
 
       {/* Modal Sổ Chi Tiết Giao Dịch & Công Nợ Nhà Cung Cấp */}
@@ -1394,151 +1287,6 @@ export default function Suppliers() {
               rows={2}
               value={adjustData.note}
               onChange={(e) => setAdjustData({ ...adjustData, note: e.target.value })}
-            />
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal Lập Phiếu Chi Nhanh */}
-      <Modal
-        isOpen={isPaymentOpen}
-        onClose={() => setIsPaymentOpen(false)}
-        title={`Lập Phiếu Chi Trả Tiền: ${selectedSupplier?.name || ''}`}
-        size="md"
-        footer={
-          <>
-            <button className="btn btn-outline" onClick={() => setIsPaymentOpen(false)} disabled={submitting}>
-              Hủy
-            </button>
-            <button className="btn btn-warning" onClick={handlePaymentSubmit} disabled={submitting}>
-              {submitting ? 'Đang lưu...' : 'Xác nhận chi tiền'}
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handlePaymentSubmit}>
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--warning-light)',
-              color: 'var(--warning-text)',
-              marginBottom: '1rem',
-              fontSize: '0.875rem',
-            }}
-          >
-            Số nợ hiện tại cần trả: <strong>{formatVND(selectedSupplier?.debt < 0 ? Math.abs(selectedSupplier?.debt) : 0)}</strong>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Số Tiền Chi <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              className="form-input mono"
-              min="1"
-              value={paymentData.amount}
-              onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Phương Thức Thanh Toán</label>
-            <select
-              className="form-select"
-              value={paymentData.method}
-              onChange={(e) => setPaymentData({ ...paymentData, method: e.target.value })}
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Ghi Chú Phiếu Chi</label>
-            <textarea
-              className="form-textarea"
-              rows={2}
-              value={paymentData.notes}
-              onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
-            />
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal Lập Phiếu Thu Nhanh Từ NCC */}
-      <Modal
-        isOpen={isReceiptOpen}
-        onClose={() => setIsReceiptOpen(false)}
-        title={`Lập Phiếu Thu Tiền Từ NCC: ${selectedSupplier?.name || ''}`}
-        size="md"
-        footer={
-          <>
-            <button className="btn btn-outline" onClick={() => setIsReceiptOpen(false)} disabled={submitting}>
-              Hủy
-            </button>
-            <button className="btn btn-success" onClick={handleReceiptSubmit} disabled={submitting}>
-              {submitting ? 'Đang lưu...' : 'Xác nhận thu tiền'}
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handleReceiptSubmit}>
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              background: '#ecfdf5',
-              color: '#065f46',
-              border: '1px solid #a7f3d0',
-              marginBottom: '1rem',
-              fontSize: '0.875rem',
-            }}
-          >
-            Dư nợ hiện tại: <strong>{selectedSupplier?.debt > 0 ? `Đang nộp trước ${formatVND(selectedSupplier.debt)}` : `Cần thanh toán ${formatVND(Math.abs(selectedSupplier?.debt || 0))}`}</strong>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Số Tiền Thu <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              className="form-input mono"
-              min="1"
-              value={receiptData.amount}
-              onChange={(e) => setReceiptData({ ...receiptData, amount: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Phương Thức Thanh Toán</label>
-            <select
-              className="form-select"
-              value={receiptData.method}
-              onChange={(e) => setReceiptData({ ...receiptData, method: e.target.value })}
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Ghi Chú Phiếu Thu</label>
-            <textarea
-              className="form-textarea"
-              rows={2}
-              value={receiptData.notes}
-              onChange={(e) => setReceiptData({ ...receiptData, notes: e.target.value })}
             />
           </div>
         </form>
