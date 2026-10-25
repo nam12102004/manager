@@ -16,6 +16,7 @@ import {
   Printer,
   ArrowDownLeft,
   ArrowUpRight,
+  Lock,
 } from 'lucide-react';
 import { formatVND, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { PAYMENT_METHODS } from '../utils/constants';
@@ -374,7 +375,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Tìm theo số phiếu, tên đối tác, ghi chú..."
+          placeholder="Tìm theo số phiếu, mã/tên đối tác (KH/NCC), ghi chú..."
           style={{ flex: 1, minWidth: '280px' }}
         />
 
@@ -448,6 +449,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                 </thead>
                 <tbody>
                   {receipts.map((r) => {
+                    const code = r.customerCode || r.supplierCode;
                     const partnerName = r.customerName
                       ? `Khách: ${r.customerName}`
                       : r.supplierName
@@ -461,7 +463,14 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                           {r.receiptNumber}
                         </td>
                         <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.date || r.createdAt, true)}</td>
-                        <td style={{ fontWeight: 600 }}>{partnerName}</td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{partnerName}</div>
+                          {code && (
+                            <div className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              Mã: {code}
+                            </div>
+                          )}
+                        </td>
                         <td>
                           <span className="badge badge-neutral">{methodObj?.label || r.method || 'Tiền mặt'}</span>
                         </td>
@@ -481,14 +490,26 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                           >
                             <Printer size={15} />
                           </button>
-                          <button
-                            className="btn btn-ghost btn-icon"
-                            style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
-                            title="Xóa phiếu thu này"
-                            onClick={() => handleOpenDelete(r, 'receipt')}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {r.relatedVoucherType === 'export_voucher' && r.relatedVoucherId ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-icon"
+                              style={{ width: '32px', height: '32px', color: 'var(--text-muted)', cursor: 'not-allowed', opacity: 0.5 }}
+                              title={`Phiếu thu tự động từ Phiếu xuất ${r.relatedVoucherId}. Vui lòng hủy/sửa trên Phiếu xuất.`}
+                              disabled
+                            >
+                              <Lock size={15} />
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-ghost btn-icon"
+                              style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
+                              title="Xóa phiếu thu này"
+                              onClick={() => handleOpenDelete(r, 'receipt')}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -545,6 +566,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                 </thead>
                 <tbody>
                   {payments.map((p) => {
+                    const code = p.supplierCode || p.customerCode;
                     const partnerName = p.supplierName
                       ? `NCC: ${p.supplierName}`
                       : p.customerName
@@ -558,7 +580,14 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                           {p.paymentNumber}
                         </td>
                         <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.date || p.createdAt, true)}</td>
-                        <td style={{ fontWeight: 600 }}>{partnerName}</td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{partnerName}</div>
+                          {code && (
+                            <div className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              Mã: {code}
+                            </div>
+                          )}
+                        </td>
                         <td>
                           <span className="badge badge-neutral">{methodObj?.label || p.method || 'Tiền mặt'}</span>
                         </td>
@@ -583,14 +612,26 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                           >
                             <Printer size={15} />
                           </button>
-                          <button
-                            className="btn btn-ghost btn-icon"
-                            style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
-                            title="Xóa phiếu chi này"
-                            onClick={() => handleOpenDelete(p, 'payment')}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {p.relatedVoucherType === 'import_voucher' && p.relatedVoucherId ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-icon"
+                              style={{ width: '32px', height: '32px', color: 'var(--text-muted)', cursor: 'not-allowed', opacity: 0.5 }}
+                              title={`Phiếu chi tự động từ Phiếu nhập ${p.relatedVoucherId}. Vui lòng hủy/sửa trên Phiếu nhập.`}
+                              disabled
+                            >
+                              <Lock size={15} />
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-ghost btn-icon"
+                              style={{ width: '32px', height: '32px', color: 'var(--danger)' }}
+                              title="Xóa phiếu chi này"
+                              onClick={() => handleOpenDelete(p, 'payment')}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

@@ -36,7 +36,7 @@ public class PaymentsController : BaseApiController
             return Success(paged);
         }
 
-        var list = await _paymentService.GetPaymentsAsync(supplierId, customerId, q, ct);
+        var list = await _paymentService.GetPaymentsAsync(supplierId, customerId, q, month, date, fromDate, toDate, ct);
         return Success(list);
     }
 

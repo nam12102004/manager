@@ -18,7 +18,7 @@ public class ReceiptService : IReceiptService
         _uow = uow;
     }
 
-    public async Task<List<ReceiptDto>> GetReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, CancellationToken ct = default)
+    public async Task<List<ReceiptDto>> GetReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var query = _uow.Receipts.Query()
             .Include(r => r.Customer)
@@ -32,9 +32,39 @@ public class ReceiptService : IReceiptService
         {
             var s = search.Trim().ToLower();
             query = query.Where(r => r.ReceiptNumber.ToLower().Contains(s) ||
-                                     (r.Customer != null && r.Customer.Name.ToLower().Contains(s)) ||
-                                     (r.Supplier != null && r.Supplier.Name.ToLower().Contains(s)) ||
+                                     (r.Customer != null && ((r.Customer.Code != null && r.Customer.Code.ToLower().Contains(s)) || r.Customer.Name.ToLower().Contains(s))) ||
+                                     (r.Supplier != null && ((r.Supplier.Code != null && r.Supplier.Code.ToLower().Contains(s)) || r.Supplier.Name.ToLower().Contains(s))) ||
                                      (r.Notes != null && r.Notes.ToLower().Contains(s)));
+        }
+
+        var effectiveDate = !string.IsNullOrWhiteSpace(date) ? date : month;
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            var start = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+            query = query.Where(r => r.Date >= start);
+        }
+
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            var end = new DateTime(pTo.Year, pTo.Month, pTo.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+            query = query.Where(r => r.Date <= end);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(effectiveDate))
+        {
+            if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                query = query.Where(r => r.Date >= start && r.Date < end);
+            }
+            else if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                query = query.Where(r => r.Date >= start && r.Date < end);
+            }
         }
 
         var list = await query.OrderByDescending(r => r.Date)
@@ -71,8 +101,8 @@ public class ReceiptService : IReceiptService
         {
             var s = search.Trim().ToLower();
             query = query.Where(r => r.ReceiptNumber.ToLower().Contains(s) ||
-                                     (r.Customer != null && r.Customer.Name.ToLower().Contains(s)) ||
-                                     (r.Supplier != null && r.Supplier.Name.ToLower().Contains(s)) ||
+                                     (r.Customer != null && ((r.Customer.Code != null && r.Customer.Code.ToLower().Contains(s)) || r.Customer.Name.ToLower().Contains(s))) ||
+                                     (r.Supplier != null && ((r.Supplier.Code != null && r.Supplier.Code.ToLower().Contains(s)) || r.Supplier.Name.ToLower().Contains(s))) ||
                                      (r.Notes != null && r.Notes.ToLower().Contains(s)));
         }
 
@@ -167,6 +197,7 @@ public class ReceiptService : IReceiptService
             {
                 var customer = await _uow.Customers.GetByIdAsync(dto.CustomerId.Value, ct)
                     ?? throw new InvalidOperationException("Không tìm thấy khách hàng");
+                receipt.Customer = customer;
 
                 var beforeDebt = customer.Debt;
                 var delta = -dto.Amount; // Thu tiền làm giảm nợ khách hàng
@@ -192,6 +223,7 @@ public class ReceiptService : IReceiptService
             {
                 var supplier = await _uow.Suppliers.GetByIdAsync(dto.SupplierId.Value, ct)
                     ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {dto.SupplierId.Value}");
+                receipt.Supplier = supplier;
 
                 var beforeDebt = supplier.Debt;
                 var delta = -dto.Amount; // Thu tiền từ NCC: giảm phải thu / tăng phải trả (delta = -Amount)
@@ -231,6 +263,11 @@ public class ReceiptService : IReceiptService
     {
         var receipt = await _uow.Receipts.GetByIdAsync(id, ct)
             ?? throw new NotFoundException($"Không tìm thấy phiếu thu có ID {id}");
+
+        if (receipt.RelatedVoucherType == "export_voucher" && !string.IsNullOrWhiteSpace(receipt.RelatedVoucherId))
+        {
+            throw new BusinessRuleException($"Phiếu thu {receipt.ReceiptNumber} được tạo tự động từ Phiếu xuất {receipt.RelatedVoucherId}. Vui lòng hủy hoặc điều chỉnh trực tiếp trên Phiếu xuất tương ứng để đảm bảo toàn vẹn dữ liệu.");
+        }
 
         await _uow.BeginTransactionAsync(ct);
         try
@@ -307,8 +344,10 @@ public class ReceiptService : IReceiptService
         Date = r.Date,
         CustomerId = r.CustomerId,
         CustomerName = r.Customer?.Name,
+        CustomerCode = r.Customer?.Code,
         SupplierId = r.SupplierId,
         SupplierName = r.Supplier?.Name,
+        SupplierCode = r.Supplier?.Code,
         Amount = r.Amount,
         Method = r.Method,
         RelatedVoucherType = r.RelatedVoucherType,

@@ -1,4 +1,4 @@
-import { formatVND, formatDate, formatNumber, numberToWordsVN } from './formatters';
+﻿import { formatVND, formatDate, formatNumber, numberToWordsVN } from './formatters';
 import { warehouseService } from '../services/warehouseService';
 
 /**
@@ -626,10 +626,11 @@ export function generateVoucherHtml({ voucher, type = 'receipt', ownerInfo = nul
   const year = vDate.getFullYear();
 
   const partnerLabel = isReceipt ? 'Họ và tên người nộp tiền:' : 'Họ và tên người nhận tiền:';
+  const partnerCode = voucher.customerCode || voucher.supplierCode;
   const partnerName = voucher.customerName 
-    ? voucher.customerName 
+    ? (partnerCode ? voucher.customerName + ' (' + partnerCode + ')' : voucher.customerName) 
     : voucher.supplierName 
-    ? voucher.supplierName 
+    ? (partnerCode ? voucher.supplierName + ' (' + partnerCode + ')' : voucher.supplierName) 
     : (voucher.partnerName || 'Khách vãng lai / Đối tác');
 
   const partnerAddress = voucher.customerAddress || voucher.supplierAddress || voucher.address || '—';

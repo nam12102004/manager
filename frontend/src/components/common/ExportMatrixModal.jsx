@@ -95,6 +95,23 @@ export default function ExportMatrixModal() {
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedWarehouse, setSelectedWarehouse] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
+
+  const filteredProducts = useMemo(() => {
+    if (partnerType === 'supplier' && selectedSupplierId) {
+      return products.filter((p) => p.supplierId != null && String(p.supplierId) === String(selectedSupplierId));
+    }
+    return products;
+  }, [products, partnerType, selectedSupplierId]);
+
+  // Prune selected product if it does not belong to the selected supplier
+  useEffect(() => {
+    if (partnerType === 'supplier' && selectedSupplierId && selectedProductId) {
+      const exists = filteredProducts.some((p) => String(p.id) === String(selectedProductId));
+      if (!exists) {
+        setSelectedProductId('');
+      }
+    }
+  }, [filteredProducts, partnerType, selectedSupplierId, selectedProductId]);
   const [timeScope, setTimeScope] = useState('month'); // 'month' | 'all' | 'custom'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
   const [fromDate, setFromDate] = useState(getCurrentDateStr());
@@ -567,7 +584,7 @@ export default function ExportMatrixModal() {
                     <span>Sản Phẩm</span>
                   </label>
                   <SearchableSelect
-                    options={products.map((p) => ({
+                    options={filteredProducts.map((p) => ({
                       id: p.id,
                       value: p.id,
                       label: p.name,
@@ -576,7 +593,13 @@ export default function ExportMatrixModal() {
                     }))}
                     value={selectedProductId}
                     onChange={(val) => setSelectedProductId(val ?? '')}
-                    placeholder="Tất cả sản phẩm"
+                    placeholder={
+                      partnerType === 'supplier' && selectedSupplierId
+                        ? filteredProducts.length > 0
+                          ? `Tất cả sản phẩm của NCC (${filteredProducts.length})`
+                          : 'NCC không có sản phẩm nào'
+                        : 'Tất cả sản phẩm'
+                    }
                     searchPlaceholder="Tìm tên SP, mã SKU..."
                     disabled={loadingDeps}
                   />

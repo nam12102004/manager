@@ -52,10 +52,6 @@ const getInitialTab = () => {
   if (isValidTab(hash)) {
     return hash;
   }
-  const savedTab = localStorage.getItem('debtmanager_active_tab');
-  if (savedTab && isValidTab(savedTab)) {
-    return savedTab;
-  }
   return 'dashboard';
 };
 
@@ -74,7 +70,6 @@ function AppContent() {
 
       if (isValidTab(tab)) {
         setActiveTabState(tab);
-        localStorage.setItem('debtmanager_active_tab', tab);
         if (window.location.hash.replace(/^#\/?/, '').trim() !== tab) {
           window.location.hash = tab;
         }
@@ -95,7 +90,6 @@ function AppContent() {
     if (currentHash !== activeTab) {
       window.location.hash = activeTab;
     }
-    localStorage.setItem('debtmanager_active_tab', activeTab);
 
     const handleHashChange = () => {
       let newHash = window.location.hash.replace(/^#\/?/, '').trim();
@@ -104,7 +98,6 @@ function AppContent() {
       }
       if (isValidTab(newHash)) {
         setActiveTabState(newHash);
-        localStorage.setItem('debtmanager_active_tab', newHash);
       }
     };
 

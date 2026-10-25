@@ -320,6 +320,27 @@ public class ImportService : IImportService
                 }, ct);
             }
 
+            // Tự động ghi nhận Phiếu chi (Payment) cho khoản thanh toán ngay cho NCC
+            if (paidAmount > 0)
+            {
+                var paymentNumber = $"PC{voucherDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                var payment = new Payment
+                {
+                    PaymentNumber = paymentNumber,
+                    Date = voucherDate,
+                    SupplierId = supplier.Id,
+                    Supplier = supplier,
+                    Amount = paidAmount,
+                    Method = "bank_transfer",
+                    Status = DomainConstants.VoucherStatuses.Confirmed,
+                    RelatedVoucherType = "import_voucher",
+                    RelatedVoucherId = voucherNumber,
+                    Notes = $"Thanh toán tiền nhập hàng theo phiếu {voucherNumber}",
+                    CreatedAt = voucherDate
+                };
+                await _uow.Payments.AddAsync(payment, ct);
+            }
+
             await _uow.ImportVouchers.AddAsync(voucher, ct);
             await _uow.SaveChangesAsync(ct);
             await _uow.CommitAsync(ct);
@@ -414,6 +435,17 @@ public class ImportService : IImportService
 
                 voucher.Status = DomainConstants.VoucherStatuses.Cancelled;
                 voucher.CancelledAt = DateTime.UtcNow;
+
+                // Hủy phiếu chi gắn với phiếu nhập nếu có
+                var linkedPayments = await _uow.Payments.Query()
+                    .Where(p => p.RelatedVoucherId == voucher.VoucherNumber && p.RelatedVoucherType == "import_voucher")
+                    .ToListAsync(ct);
+                foreach (var p in linkedPayments)
+                {
+                    p.Status = DomainConstants.VoucherStatuses.Cancelled;
+                    p.CancelledAt = DateTime.UtcNow;
+                    _uow.Payments.Update(p);
+                }
             }
             else if (action.Equals("restore", StringComparison.OrdinalIgnoreCase))
             {
@@ -479,6 +511,17 @@ public class ImportService : IImportService
 
                 voucher.Status = DomainConstants.VoucherStatuses.Confirmed;
                 voucher.CancelledAt = null;
+
+                // Khôi phục phiếu chi gắn với phiếu nhập nếu có
+                var linkedPayments = await _uow.Payments.Query()
+                    .Where(p => p.RelatedVoucherId == voucher.VoucherNumber && p.RelatedVoucherType == "import_voucher")
+                    .ToListAsync(ct);
+                foreach (var p in linkedPayments)
+                {
+                    p.Status = DomainConstants.VoucherStatuses.Confirmed;
+                    p.CancelledAt = null;
+                    _uow.Payments.Update(p);
+                }
             }
 
             _uow.ImportVouchers.Update(voucher);
@@ -508,6 +551,14 @@ public class ImportService : IImportService
             if (voucher.Status == DomainConstants.VoucherStatuses.Confirmed)
             {
                 await UpdateStatusAsync(id, "cancel", ct);
+            }
+
+            var linkedPayments = await _uow.Payments.Query()
+                .Where(p => p.RelatedVoucherId == voucher.VoucherNumber && p.RelatedVoucherType == "import_voucher")
+                .ToListAsync(ct);
+            if (linkedPayments.Count > 0)
+            {
+                _uow.Payments.RemoveRange(linkedPayments);
             }
 
             _uow.ImportVoucherItems.RemoveRange(voucher.Items);

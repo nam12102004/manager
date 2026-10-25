@@ -4,6 +4,7 @@ import {
   TrendingUp,
   CreditCard,
   Building,
+  ArrowUpRight,
   ArrowDownLeft,
   AlertTriangle,
   Receipt,
@@ -17,7 +18,7 @@ import StatCard from '../components/common/StatCard';
 import { dashboardService } from '../services';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr } from '../utils/formatters';
 
-export default function Dashboard({ onNavigate }) {
+export default function Dashboard({ onNavigate, onQuickAction }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     metrics: {
@@ -78,7 +79,7 @@ export default function Dashboard({ onNavigate }) {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Làm mới</span>
           </button>
-          <button className="btn btn-primary" onClick={() => onQuickAction?.('new-export')}>
+          <button className="btn btn-primary" onClick={() => (onQuickAction ? onQuickAction('new-export') : onNavigate?.('exports'))}>
             <ArrowUpRight size={16} />
             <span>Lập phiếu xuất</span>
           </button>

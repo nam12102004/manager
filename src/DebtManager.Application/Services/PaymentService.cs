@@ -18,7 +18,7 @@ public class PaymentService : IPaymentService
         _uow = uow;
     }
 
-    public async Task<List<PaymentDto>> GetPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, CancellationToken ct = default)
+    public async Task<List<PaymentDto>> GetPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
         var query = _uow.Payments.Query()
             .Include(p => p.Supplier)
@@ -32,9 +32,39 @@ public class PaymentService : IPaymentService
         {
             var s = search.Trim().ToLower();
             query = query.Where(p => p.PaymentNumber.ToLower().Contains(s) ||
-                                     (p.Supplier != null && p.Supplier.Name.ToLower().Contains(s)) ||
-                                     (p.Customer != null && p.Customer.Name.ToLower().Contains(s)) ||
+                                     (p.Supplier != null && ((p.Supplier.Code != null && p.Supplier.Code.ToLower().Contains(s)) || p.Supplier.Name.ToLower().Contains(s))) ||
+                                     (p.Customer != null && ((p.Customer.Code != null && p.Customer.Code.ToLower().Contains(s)) || p.Customer.Name.ToLower().Contains(s))) ||
                                      (p.Notes != null && p.Notes.ToLower().Contains(s)));
+        }
+
+        var effectiveDate = !string.IsNullOrWhiteSpace(date) ? date : month;
+
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
+        {
+            var start = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+            query = query.Where(p => p.Date >= start);
+        }
+
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
+        {
+            var end = new DateTime(pTo.Year, pTo.Month, pTo.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+            query = query.Where(p => p.Date <= end);
+        }
+
+        if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(effectiveDate))
+        {
+            if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                query = query.Where(p => p.Date >= start && p.Date < end);
+            }
+            else if (DateTime.TryParseExact(effectiveDate.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
+            {
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                query = query.Where(p => p.Date >= start && p.Date < end);
+            }
         }
 
         var list = await query.OrderByDescending(p => p.Date)
@@ -71,8 +101,8 @@ public class PaymentService : IPaymentService
         {
             var s = search.Trim().ToLower();
             query = query.Where(p => p.PaymentNumber.ToLower().Contains(s) ||
-                                     (p.Supplier != null && p.Supplier.Name.ToLower().Contains(s)) ||
-                                     (p.Customer != null && p.Customer.Name.ToLower().Contains(s)) ||
+                                     (p.Supplier != null && ((p.Supplier.Code != null && p.Supplier.Code.ToLower().Contains(s)) || p.Supplier.Name.ToLower().Contains(s))) ||
+                                     (p.Customer != null && ((p.Customer.Code != null && p.Customer.Code.ToLower().Contains(s)) || p.Customer.Name.ToLower().Contains(s))) ||
                                      (p.Notes != null && p.Notes.ToLower().Contains(s)));
         }
 
@@ -168,6 +198,7 @@ public class PaymentService : IPaymentService
             {
                 var supplier = await _uow.Suppliers.GetByIdAsync(dto.SupplierId.Value, ct)
                     ?? throw new InvalidOperationException("Không tìm thấy nhà cung cấp");
+                payment.Supplier = supplier;
 
                 var beforeDebt = supplier.Debt;
                 var delta = dto.Amount; // Chi tiền trả NCC làm nợ âm tiến về 0 (+delta)
@@ -193,6 +224,7 @@ public class PaymentService : IPaymentService
             {
                 var customer = await _uow.Customers.GetByIdAsync(dto.CustomerId.Value, ct)
                     ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {dto.CustomerId.Value}");
+                payment.Customer = customer;
 
                 var beforeDebt = customer.Debt;
                 var delta = dto.Amount; // Chi tiền cho khách (hoàn tiền hoặc tăng phải thu): delta = +Amount
@@ -369,6 +401,11 @@ public class PaymentService : IPaymentService
             .FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy phiếu chi có ID {id}");
 
+        if (payment.RelatedVoucherType == "import_voucher" && !string.IsNullOrWhiteSpace(payment.RelatedVoucherId))
+        {
+            throw new BusinessRuleException($"Phiếu chi {payment.PaymentNumber} được tạo tự động từ Phiếu nhập {payment.RelatedVoucherId}. Vui lòng hủy hoặc điều chỉnh trực tiếp trên Phiếu nhập tương ứng để đảm bảo toàn vẹn dữ liệu.");
+        }
+
         await _uow.BeginTransactionAsync(ct);
         try
         {
@@ -396,8 +433,10 @@ public class PaymentService : IPaymentService
         Date = p.Date,
         SupplierId = p.SupplierId,
         SupplierName = p.Supplier?.Name,
+        SupplierCode = p.Supplier?.Code,
         CustomerId = p.CustomerId,
         CustomerName = p.Customer?.Name,
+        CustomerCode = p.Customer?.Code,
         Amount = p.Amount,
         Method = p.Method,
         Status = p.Status,

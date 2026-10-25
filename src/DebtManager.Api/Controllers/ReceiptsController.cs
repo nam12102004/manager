@@ -35,7 +35,7 @@ public class ReceiptsController : BaseApiController
             return Success(paged);
         }
 
-        var list = await _receiptService.GetReceiptsAsync(customerId, supplierId, q, ct);
+        var list = await _receiptService.GetReceiptsAsync(customerId, supplierId, q, month, date, fromDate, toDate, ct);
         return Success(list);
     }
 

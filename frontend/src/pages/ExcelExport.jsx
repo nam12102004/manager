@@ -808,16 +808,37 @@ export default function ExcelExport() {
     [suppliers]
   );
 
+  const isSupplier = partnerType === 'supplier';
+
+  const filteredProducts = useMemo(() => {
+    if (isSupplier && selectedSupplierIds.length > 0) {
+      const selectedSet = new Set(selectedSupplierIds.map((id) => Number(id)));
+      return products.filter((p) => p.supplierId != null && selectedSet.has(Number(p.supplierId)));
+    }
+    return products;
+  }, [products, isSupplier, selectedSupplierIds]);
+
+  // Prune selected products that do not belong to the selected suppliers
+  useEffect(() => {
+    if (isSupplier && selectedSupplierIds.length > 0 && selectedProductIds.length > 0) {
+      const validIds = new Set(filteredProducts.map((p) => p.id));
+      setSelectedProductIds((prev) => {
+        const next = prev.filter((id) => validIds.has(Number(id)));
+        return next.length === prev.length ? prev : next;
+      });
+    }
+  }, [filteredProducts, isSupplier, selectedSupplierIds]);
+
   const productOptions = useMemo(
     () =>
-      products.map((p) => ({
+      filteredProducts.map((p) => ({
         id: p.id,
         value: p.id,
         label: p.name,
         code: p.sku,
         subLabel: p.uom || '',
       })),
-    [products]
+    [filteredProducts]
   );
 
   const warehouseOptions = useMemo(
@@ -843,14 +864,12 @@ export default function ExcelExport() {
     [employees]
   );
 
-  const isSupplier = partnerType === 'supplier';
   const showPartnerFilter =
     reportType !== 'inventory' &&
     (reportType === 'cashflow' ||
       reportType === 'debt' ||
-      ((reportType === 'sales' || reportType === 'purchases') &&
-        groupBy !== 'product' &&
-        groupBy !== 'warehouse_product') ||
+      reportType === 'sales' ||
+      reportType === 'purchases' ||
       (reportType === 'inout' && groupBy === 'product_partner'));
 
   const showPartnerTypeSwitcher =
@@ -918,7 +937,9 @@ export default function ExcelExport() {
 
   const productCountText =
     selectedProductIds.length === 0
-      ? 'Tất cả sản phẩm'
+      ? isSupplier && selectedSupplierIds.length > 0
+        ? `Tất cả SP của ${selectedSupplierIds.length} NCC đã chọn (${filteredProducts.length} SP)`
+        : 'Tất cả sản phẩm'
       : `${selectedProductIds.length} sản phẩm`;
 
   const isWhBreakdownActive = useMemo(() => {
@@ -1743,7 +1764,13 @@ export default function ExcelExport() {
                         options={productOptions}
                         value={selectedProductIds}
                         onChange={touch(setSelectedProductIds)}
-                        placeholder="Tất cả sản phẩm"
+                        placeholder={
+                          isSupplier && selectedSupplierIds.length > 0
+                            ? filteredProducts.length > 0
+                              ? `Tất cả SP của ${selectedSupplierIds.length} NCC (${filteredProducts.length})`
+                              : 'NCC đã chọn không có sản phẩm nào'
+                            : 'Tất cả sản phẩm'
+                        }
                         searchPlaceholder="Tìm theo tên sản phẩm, mã SKU..."
                         disabled={loadingDeps}
                       />

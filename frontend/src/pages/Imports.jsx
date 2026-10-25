@@ -58,6 +58,10 @@ export default function Imports({ initialOpenCreate = false }) {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
+  // Column visibility toggles (default false / unchecked)
+  const [showPaid, setShowPaid] = useState(false);
+  const [showDebt, setShowDebt] = useState(false);
+
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(initialOpenCreate);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -407,6 +411,50 @@ export default function Imports({ initialOpenCreate = false }) {
         />
       </div>
 
+      {/* Column Visibility Options */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        gap: '1rem',
+        margin: '0.5rem 0 1rem 0',
+      }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          padding: '0.45rem 0.85rem',
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-color)',
+          fontSize: '0.8125rem',
+        }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Hiển thị cột:</span>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={showPaid}
+              onChange={(e) => setShowPaid(e.target.checked)}
+              style={{ cursor: 'pointer', accentColor: 'var(--primary)', width: '15px', height: '15px' }}
+            />
+            <span style={{ fontWeight: showPaid ? 600 : 400, color: showPaid ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+              Đã trả NCC
+            </span>
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={showDebt}
+              onChange={(e) => setShowDebt(e.target.checked)}
+              style={{ cursor: 'pointer', accentColor: 'var(--primary)', width: '15px', height: '15px' }}
+            />
+            <span style={{ fontWeight: showDebt ? 600 : 400, color: showDebt ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+              Còn nợ NCC
+            </span>
+          </label>
+        </div>
+      </div>
+
       {/* Imports Table */}
       {importsList.length === 0 && !loading ? (
         <EmptyState
@@ -441,8 +489,8 @@ export default function Imports({ initialOpenCreate = false }) {
                 <th style={{ textAlign: 'right' }}>Tiền Hàng</th>
                 <th style={{ textAlign: 'right' }}>Chiết Khấu</th>
                 <th style={{ textAlign: 'right' }}>Tổng Tiền</th>
-                <th style={{ textAlign: 'right' }}>Đã Trả NCC</th>
-                <th style={{ textAlign: 'right' }}>Còn Nợ NCC</th>
+                {showPaid && <th style={{ textAlign: 'right' }}>Đã Trả NCC</th>}
+                {showDebt && <th style={{ textAlign: 'right' }}>Còn Nợ NCC</th>}
                 <th style={{ textAlign: 'center' }}>Trạng Thái</th>
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
               </tr>
@@ -497,12 +545,16 @@ export default function Imports({ initialOpenCreate = false }) {
                   <td style={{ textAlign: 'right', fontWeight: 700 }} className="mono">
                     {formatVND(imp.totalAmount)}
                   </td>
-                  <td style={{ textAlign: 'right', color: 'var(--success)' }} className="mono">
-                    {formatVND(imp.paidAmount)}
-                  </td>
-                  <td style={{ textAlign: 'right', color: imp.unpaidAmount > 0 ? 'var(--warning-text)' : 'var(--text-muted)' }} className="mono">
-                    {formatVND(imp.unpaidAmount)}
-                  </td>
+                  {showPaid && (
+                    <td style={{ textAlign: 'right', color: 'var(--success)' }} className="mono">
+                      {formatVND(imp.paidAmount)}
+                    </td>
+                  )}
+                  {showDebt && (
+                    <td style={{ textAlign: 'right', color: imp.unpaidAmount > 0 ? 'var(--warning-text)' : 'var(--text-muted)' }} className="mono">
+                      {formatVND(imp.unpaidAmount)}
+                    </td>
+                  )}
                   <td style={{ textAlign: 'center' }}>
                     <span className={`badge badge-${imp.status === 'cancelled' ? 'danger' : 'info'}`}>
                       {imp.status === 'cancelled' ? 'Đã hủy' : 'Đã nhập kho'}

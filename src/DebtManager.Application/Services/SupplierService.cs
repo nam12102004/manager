@@ -492,6 +492,28 @@ public class SupplierService : ISupplierService
             });
         }
 
+        // Backward compatibility: tự động bổ sung dòng chi nếu có phiếu nhập trả ngay nhưng chưa có phiếu chi
+        foreach (var im in imports)
+        {
+            if (im.PaidAmount > 0 && !payments.Any(p => p.RelatedVoucherId == im.VoucherNumber))
+            {
+                ledgerItems.Add(new EntityLedgerItemDto
+                {
+                    Id = im.Id,
+                    Date = im.Date,
+                    VoucherNumber = $"PC-{im.VoucherNumber}",
+                    VoucherType = "payment",
+                    VoucherTypeLabel = "Phiếu chi",
+                    Warehouse = isAllWh ? null : wh,
+                    Description = $"Thanh toán tiền nhập hàng theo phiếu {im.VoucherNumber}",
+                    ImportAmount = 0,
+                    ExportAmount = 0,
+                    ReceiptAmount = 0,
+                    PaymentAmount = im.PaidAmount
+                });
+            }
+        }
+
         // 3. Receipts (Thu tiền NCC bồi hoàn/trả lại)
         var receiptQuery = _uow.Receipts.Query().Where(r => r.SupplierId == supplierId);
         if (startDate.HasValue)
@@ -521,9 +543,9 @@ public class SupplierService : ISupplierService
             });
         }
 
-        // 4. Manual Debt Adjustments / Initial Debt
+        // 4. Manual Debt Adjustments (Điều chỉnh nợ thủ công)
         var historyQuery = _uow.SupplierDebtHistories.Query()
-            .Where(h => h.SupplierId == supplierId && (h.SourceType == DomainConstants.SourceTypes.ManualAdjustment || h.SourceType == "init"));
+            .Where(h => h.SupplierId == supplierId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment);
         if (startDate.HasValue)
         {
             historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value);
@@ -541,7 +563,7 @@ public class SupplierService : ISupplierService
                 Date = h.CreatedAt,
                 VoucherNumber = h.ReferenceId ?? $"DC{h.Id:D5}",
                 VoucherType = "adjust",
-                VoucherTypeLabel = h.SourceType == "init" ? "Số dư đầu" : "Điều chỉnh",
+                VoucherTypeLabel = "Điều chỉnh",
                 Warehouse = isAllWh ? null : wh,
                 Description = string.IsNullOrWhiteSpace(h.Note) ? (h.Reason ?? "Điều chỉnh công nợ") : $"{h.Reason} - {h.Note}",
                 ImportAmount = h.Delta > 0 ? h.Delta : 0,
@@ -551,10 +573,57 @@ public class SupplierService : ISupplierService
             });
         }
 
-        var sorted = ledgerItems.OrderBy(i => i.Date).ThenBy(i => i.Id).ToList();
-        decimal runningBalance = 0;
-        foreach (var item in sorted)
+        // Tính biến động phát sinh sau kỳ (nếu có endDate)
+        decimal netChangeAfterEnd = 0;
+        if (endDate.HasValue)
         {
+            var impAfter = await _uow.ImportVouchers.Query()
+                .Where(v => v.SupplierId == supplierId && v.Status != "cancelled" && v.Date >= endDate.Value)
+                .SumAsync(v => (decimal?)v.TotalAmount, ct) ?? 0;
+            var rcAfter = await _uow.Receipts.Query()
+                .Where(r => r.SupplierId == supplierId && r.Date >= endDate.Value)
+                .SumAsync(r => (decimal?)r.Amount, ct) ?? 0;
+            var pmAfter = await _uow.Payments.Query()
+                .Where(p => p.SupplierId == supplierId && p.Status != "cancelled" && p.Date >= endDate.Value)
+                .SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
+            var adjAfter = await _uow.SupplierDebtHistories.Query()
+                .Where(h => h.SupplierId == supplierId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment && h.CreatedAt >= endDate.Value)
+                .SumAsync(h => (decimal?)h.Delta, ct) ?? 0;
+            netChangeAfterEnd = impAfter + rcAfter - pmAfter + adjAfter;
+        }
+
+        var closingBalance = supplier.Debt - netChangeAfterEnd;
+        var periodNetChange = ledgerItems.Sum(i => (i.ImportAmount + i.ReceiptAmount) - (i.PaymentAmount + i.ExportAmount));
+        var openingBalance = closingBalance - periodNetChange;
+
+        var sorted = ledgerItems.OrderBy(i => i.Date).ThenBy(i => i.Id).ToList();
+
+        // Nếu có số dư đầu kỳ, thêm bản ghi đầu kỳ vào Sổ chi tiết
+        if (openingBalance != 0)
+        {
+            var earliestDate = sorted.Count > 0 ? sorted[0].Date.AddSeconds(-1) : (startDate ?? DateTime.UtcNow);
+            sorted.Insert(0, new EntityLedgerItemDto
+            {
+                Id = 0,
+                Date = earliestDate,
+                VoucherNumber = "DUDAY",
+                VoucherType = "init",
+                VoucherTypeLabel = "Số dư đầu",
+                Warehouse = isAllWh ? null : wh,
+                Description = startDate.HasValue ? "Số dư nợ đầu kỳ" : "Số dư công nợ ban đầu",
+                ImportAmount = openingBalance > 0 ? openingBalance : 0,
+                ExportAmount = 0,
+                ReceiptAmount = 0,
+                PaymentAmount = openingBalance < 0 ? -openingBalance : 0,
+                Balance = openingBalance
+            });
+        }
+
+        decimal runningBalance = openingBalance;
+        int startIndex = openingBalance != 0 ? 1 : 0;
+        for (int i = startIndex; i < sorted.Count; i++)
+        {
+            var item = sorted[i];
             runningBalance += (item.ImportAmount + item.ReceiptAmount) - (item.PaymentAmount + item.ExportAmount);
             item.Balance = runningBalance;
         }

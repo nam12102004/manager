@@ -369,6 +369,26 @@ public class ExportService : IExportService
                 await _uow.CustomerDebtHistories.AddAsync(debtHistory, ct);
             }
 
+            // Tự động ghi nhận Phiếu thu (Receipt) cho khoản thanh toán ngay để đồng bộ Sổ quỹ & Sổ chi tiết
+            if (paidAmount > 0)
+            {
+                var receiptNumber = $"PT{voucherDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                var receipt = new Receipt
+                {
+                    ReceiptNumber = receiptNumber,
+                    Date = voucherDate,
+                    CustomerId = customer.Id,
+                    Customer = customer,
+                    Amount = paidAmount,
+                    Method = "cash",
+                    RelatedVoucherType = "export_voucher",
+                    RelatedVoucherId = voucherNumber,
+                    Notes = $"Thu tiền bán hàng ngay theo phiếu xuất {voucherNumber}",
+                    CreatedAt = voucherDate
+                };
+                await _uow.Receipts.AddAsync(receipt, ct);
+            }
+
             await _uow.ExportVouchers.AddAsync(voucher, ct);
             await _uow.SaveChangesAsync(ct);
             await _uow.CommitAsync(ct);
@@ -463,6 +483,15 @@ public class ExportService : IExportService
 
                 voucher.Status = DomainConstants.VoucherStatuses.Cancelled;
                 voucher.CancelledAt = DateTime.UtcNow;
+
+                // Đồng bộ hủy phiếu thu gắn với phiếu xuất nếu có
+                var linkedReceipts = await _uow.Receipts.Query()
+                    .Where(r => r.RelatedVoucherId == voucher.VoucherNumber && r.RelatedVoucherType == "export_voucher")
+                    .ToListAsync(ct);
+                if (linkedReceipts.Count > 0)
+                {
+                    _uow.Receipts.RemoveRange(linkedReceipts);
+                }
             }
             else if (action.Equals("restore", StringComparison.OrdinalIgnoreCase))
             {
@@ -528,6 +557,32 @@ public class ExportService : IExportService
 
                 voucher.Status = DomainConstants.VoucherStatuses.Active;
                 voucher.CancelledAt = null;
+
+                // Khôi phục phiếu thu gắn với phiếu xuất nếu có thanh toán ngay
+                if (voucher.PaidAmount > 0 && voucher.CustomerId > 0)
+                {
+                    var existingReceipt = await _uow.Receipts.Query()
+                        .FirstOrDefaultAsync(r => r.RelatedVoucherId == voucher.VoucherNumber && r.RelatedVoucherType == "export_voucher", ct);
+
+                    if (existingReceipt == null)
+                    {
+                        var receiptDate = voucher.Date;
+                        var receiptNumber = $"PT{receiptDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                        var newReceipt = new Receipt
+                        {
+                            ReceiptNumber = receiptNumber,
+                            Date = receiptDate,
+                            CustomerId = voucher.CustomerId,
+                            Amount = voucher.PaidAmount,
+                            Method = "cash",
+                            RelatedVoucherType = "export_voucher",
+                            RelatedVoucherId = voucher.VoucherNumber,
+                            Notes = $"Thu tiền bán hàng ngay theo phiếu xuất {voucher.VoucherNumber} (Khôi phục)",
+                            CreatedAt = receiptDate
+                        };
+                        await _uow.Receipts.AddAsync(newReceipt, ct);
+                    }
+                }
             }
 
             _uow.ExportVouchers.Update(voucher);
@@ -558,6 +613,14 @@ public class ExportService : IExportService
             if (voucher.Status == DomainConstants.VoucherStatuses.Active)
             {
                 await UpdateStatusAsync(id, "cancel", ct);
+            }
+
+            var linkedReceipts = await _uow.Receipts.Query()
+                .Where(r => r.RelatedVoucherId == voucher.VoucherNumber && r.RelatedVoucherType == "export_voucher")
+                .ToListAsync(ct);
+            if (linkedReceipts.Count > 0)
+            {
+                _uow.Receipts.RemoveRange(linkedReceipts);
             }
 
             _uow.ExportVoucherItems.RemoveRange(voucher.Items);

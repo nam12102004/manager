@@ -34,8 +34,8 @@ export const dashboardService = {
       suppliersApi.getAll(),
       exportsApi.getAll({ month }),
       importsApi.getAll({ month }),
-      receiptsApi.getAll(),
-      paymentsApi.getAll(),
+      receiptsApi.getAll({ month }),
+      paymentsApi.getAll({ month }),
     ]);
 
     const products = prodsRes.status === 'fulfilled' && Array.isArray(prodsRes.value) ? prodsRes.value : [];

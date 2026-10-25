@@ -19,8 +19,10 @@ public class ReceiptDto
     public DateTime Date { get; set; }
     public int? CustomerId { get; set; }
     public string? CustomerName { get; set; }
+    public string? CustomerCode { get; set; }
     public int? SupplierId { get; set; }
     public string? SupplierName { get; set; }
+    public string? SupplierCode { get; set; }
     public decimal Amount { get; set; }
     public string? Method { get; set; }
     public string? RelatedVoucherType { get; set; }

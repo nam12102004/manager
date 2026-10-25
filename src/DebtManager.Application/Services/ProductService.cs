@@ -743,22 +743,74 @@ public class ProductService : IProductService
             });
         }
 
-        var sorted = ledgerItems.OrderBy(i => i.Date).ThenBy(i => i.Id).ToList();
-        decimal runningStock = 0;
-        foreach (var item in sorted)
-        {
-            runningStock += (item.ImportQty - item.ExportQty);
-            item.Balance = runningStock;
-        }
-
-        var resultList = sorted.OrderByDescending(i => i.Date).ThenByDescending(i => i.Id).ToList();
-
         decimal currentBalance = isAllWh
             ? product.TotalStock
             : (wh == "warehouse1" ? product.StockWarehouse1
                : wh == "warehouse2" ? product.StockWarehouse2
                : wh == "warehouse3" ? product.StockWarehouse3
                : product.GetAllWarehouseStocks().GetValueOrDefault(wh, 0));
+
+        // Tính biến động phát sinh sau kỳ (nếu có endDate)
+        decimal netChangeAfterEnd = 0;
+        if (endDate.HasValue)
+        {
+            var impAfterQuery = _uow.ImportVoucherItems.Query()
+                .Where(i => i.ProductId == productId && i.ImportVoucher.Status != "cancelled" && i.ImportVoucher.Date >= endDate.Value);
+            if (!isAllWh) impAfterQuery = impAfterQuery.Where(i => i.ImportVoucher.Warehouse.ToLower() == wh);
+            var impAfter = await impAfterQuery.SumAsync(i => (decimal?)i.Quantity, ct) ?? 0;
+
+            var expAfterQuery = _uow.ExportVoucherItems.Query()
+                .Where(i => i.ProductId == productId && i.ExportVoucher.Status != "cancelled" && i.ExportVoucher.Date >= endDate.Value);
+            if (!isAllWh) expAfterQuery = expAfterQuery.Where(i => i.ExportVoucher.Warehouse.ToLower() == wh);
+            var expAfter = await expAfterQuery.SumAsync(i => (decimal?)i.Quantity, ct) ?? 0;
+
+            var adjAfterQuery = _uow.StockHistories.Query()
+                .Where(h => h.ProductId == productId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment && h.ChangeDate >= endDate.Value);
+            if (!isAllWh) adjAfterQuery = adjAfterQuery.Where(h => h.Warehouse.ToLower() == wh);
+            var adjAfter = await adjAfterQuery.SumAsync(h => (decimal?)h.Delta, ct) ?? 0;
+
+            netChangeAfterEnd = impAfter - expAfter + adjAfter;
+        }
+
+        var closingStock = currentBalance - netChangeAfterEnd;
+        var periodNetChange = ledgerItems.Sum(i => i.ImportQty - i.ExportQty);
+        var openingStock = closingStock - periodNetChange;
+
+        var sorted = ledgerItems.OrderBy(i => i.Date).ThenBy(i => i.Id).ToList();
+
+        // Nếu có số dư tồn đầu kỳ, thêm bản ghi đầu kỳ vào Thẻ kho
+        if (openingStock != 0)
+        {
+            var earliestDate = sorted.Count > 0 ? sorted[0].Date.AddSeconds(-1) : (startDate ?? DateTime.UtcNow);
+            sorted.Insert(0, new EntityLedgerItemDto
+            {
+                Id = 0,
+                Date = earliestDate,
+                VoucherNumber = "DUDAY",
+                VoucherType = "init",
+                VoucherTypeLabel = "Tồn đầu",
+                Warehouse = isAllWh ? "Tất cả kho" : wh,
+                Description = startDate.HasValue ? "Số lượng tồn đầu kỳ" : "Số lượng tồn ban đầu",
+                ImportQty = openingStock > 0 ? openingStock : 0,
+                ImportAmount = (openingStock > 0 ? openingStock : 0) * product.UnitCost,
+                ExportQty = openingStock < 0 ? -openingStock : 0,
+                ExportAmount = (openingStock < 0 ? -openingStock : 0) * product.UnitCost,
+                ReceiptAmount = 0,
+                PaymentAmount = 0,
+                Balance = openingStock
+            });
+        }
+
+        decimal runningStock = openingStock;
+        int startIndex = openingStock != 0 ? 1 : 0;
+        for (int i = startIndex; i < sorted.Count; i++)
+        {
+            var item = sorted[i];
+            runningStock += (item.ImportQty - item.ExportQty);
+            item.Balance = runningStock;
+        }
+
+        var resultList = sorted.OrderByDescending(i => i.Date).ThenByDescending(i => i.Id).ToList();
 
         return new EntityLedgerResponseDto
         {

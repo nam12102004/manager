@@ -9,6 +9,7 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly DebtManagerDbContext _context;
     private IDbContextTransaction? _transaction;
+    private int _transactionDepth = 0;
     private readonly Dictionary<Type, object> _repositories = new();
 
     public UnitOfWork(DebtManagerDbContext context)
@@ -69,12 +70,21 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task BeginTransactionAsync(CancellationToken ct = default)
     {
-        _transaction = await _context.Database.BeginTransactionAsync(ct);
+        if (_transaction == null && _context.Database.CurrentTransaction == null)
+        {
+            _transaction = await _context.Database.BeginTransactionAsync(ct);
+        }
+        _transactionDepth++;
     }
 
     public async Task CommitAsync(CancellationToken ct = default)
     {
-        if (_transaction != null)
+        if (_transactionDepth > 0)
+        {
+            _transactionDepth--;
+        }
+
+        if (_transactionDepth == 0 && _transaction != null)
         {
             await _transaction.CommitAsync(ct);
             await _transaction.DisposeAsync();
@@ -84,6 +94,7 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task RollbackAsync(CancellationToken ct = default)
     {
+        _transactionDepth = 0;
         if (_transaction != null)
         {
             await _transaction.RollbackAsync(ct);
