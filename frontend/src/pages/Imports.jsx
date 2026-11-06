@@ -21,6 +21,7 @@ import SearchableSelect from '../components/common/SearchableSelect';
 import TimeFilter from '../components/common/TimeFilter';
 import Pagination from '../components/common/Pagination';
 import { importService, warehouseService, getProductStockForWarehouse } from '../services';
+import { getProductUnits, formatStockDisplay } from '../utils/uomHelper';
 import { generateImportHtml, printInNewTab } from '../utils/printVoucher';
 
 export default function Imports({ initialOpenCreate = false }) {
@@ -158,6 +159,10 @@ export default function Imports({ initialOpenCreate = false }) {
   const handleOpenCreate = () => {
     loadDependencies();
     const currentWhs = warehouseService.getWarehousesSync();
+    const firstP = products.length > 0 ? products[0] : null;
+    const units = firstP ? getProductUnits(firstP) : [];
+    const defUnit = units.find((u) => u.isBaseUnit) || units[0];
+
     setCreateForm({
       supplierId: suppliers.length > 0 ? String(suppliers[0].id) : '',
       warehouse: currentWhs[0]?.id || 'warehouse1',
@@ -167,9 +172,13 @@ export default function Imports({ initialOpenCreate = false }) {
       notes: '',
       items: [
         {
-          productId: products.length > 0 ? products[0].id : '',
+          productId: firstP ? firstP.id : '',
           quantity: 10,
-          unitPrice: products.length > 0 ? products[0].unitCost : 0,
+          unitName: defUnit?.unitName || firstP?.uom || 'Cái',
+          conversionRate: defUnit?.conversionRate || 1,
+          unitPrice: defUnit && defUnit.conversionRate > 1
+            ? (firstP?.unitCost || 0) * defUnit.conversionRate
+            : (firstP?.unitCost || 0),
         },
       ],
     });
@@ -179,14 +188,22 @@ export default function Imports({ initialOpenCreate = false }) {
   // Add Item Row
   const handleAddItem = () => {
     if (products.length === 0) return;
+    const firstP = products[0];
+    const units = getProductUnits(firstP);
+    const defUnit = units.find((u) => u.isBaseUnit) || units[0];
+
     setCreateForm((prev) => ({
       ...prev,
       items: [
         ...prev.items,
         {
-          productId: products[0].id,
+          productId: firstP.id,
           quantity: 1,
-          unitPrice: products[0].unitCost,
+          unitName: defUnit?.unitName || firstP.uom || 'Cái',
+          conversionRate: defUnit?.conversionRate || 1,
+          unitPrice: defUnit && defUnit.conversionRate > 1
+            ? (firstP.unitCost || 0) * defUnit.conversionRate
+            : (firstP.unitCost || 0),
         },
       ],
     }));
@@ -210,7 +227,22 @@ export default function Imports({ initialOpenCreate = false }) {
         const prod = products.find((p) => p.id === Number(value));
         item.productId = Number(value);
         if (prod) {
-          item.unitPrice = prod.unitCost;
+          const units = getProductUnits(prod);
+          const defUnit = units.find((u) => u.isBaseUnit) || units[0];
+          item.unitName = defUnit?.unitName || prod.uom || 'Cái';
+          item.conversionRate = defUnit?.conversionRate || 1;
+          item.unitPrice = defUnit && defUnit.conversionRate > 1
+            ? (prod.unitCost || 0) * defUnit.conversionRate
+            : (prod.unitCost || 0);
+        }
+      } else if (field === 'unit') {
+        const prod = products.find((p) => p.id === Number(item.productId));
+        const units = getProductUnits(prod);
+        const selUnit = units.find((u) => u.unitName === value);
+        if (selUnit) {
+          item.unitName = selUnit.unitName;
+          item.conversionRate = selUnit.conversionRate;
+          item.unitPrice = (prod?.unitCost || 0) * selUnit.conversionRate;
         }
       } else {
         item[field] = Number(value);
@@ -564,17 +596,21 @@ export default function Imports({ initialOpenCreate = false }) {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '45%' }}>Sản Phẩm</th>
-                    <th style={{ width: '20%', textAlign: 'right' }}>Số Lượng Nhập</th>
-                    <th style={{ width: '20%', textAlign: 'right' }}>Đơn Giá Nhập</th>
-                    <th style={{ width: '15%', textAlign: 'right' }}>Thành Tiền</th>
-                    <th style={{ width: '5%', textAlign: 'center' }}>Xóa</th>
+                    <th style={{ width: '36%' }}>Sản Phẩm</th>
+                    <th style={{ width: '14%' }}>ĐVT</th>
+                    <th style={{ width: '16%', textAlign: 'right' }}>Số Lượng Nhập</th>
+                    <th style={{ width: '16%', textAlign: 'right' }}>Đơn Giá Nhập</th>
+                    <th style={{ width: '14%', textAlign: 'right' }}>Thành Tiền</th>
+                    <th style={{ width: '4%', textAlign: 'center' }}>Xóa</th>
                   </tr>
                 </thead>
                 <tbody>
                   {createForm.items.map((item, idx) => {
                     const prod = products.find((p) => p.id === Number(item.productId));
+                    const convRate = Number(item.conversionRate || 1);
+                    const baseQty = Number(item.quantity || 0) * convRate;
                     const lineTotal = Number(item.quantity || 0) * Number(item.unitPrice || 0);
+                    const availableUnits = getProductUnits(prod);
 
                     return (
                       <tr key={idx}>
@@ -605,6 +641,20 @@ export default function Imports({ initialOpenCreate = false }) {
                           />
                         </td>
                         <td>
+                          <select
+                            className="form-select form-select-sm"
+                            value={item.unitName || prod?.uom || 'Cái'}
+                            onChange={(e) => handleUpdateItem(idx, 'unit', e.target.value)}
+                            style={{ fontWeight: 600, fontSize: '0.8125rem' }}
+                          >
+                            {availableUnits.map((u) => (
+                              <option key={u.id || u.unitName} value={u.unitName}>
+                                {u.unitName} {Number(u.conversionRate) !== 1 ? `(x${u.conversionRate})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
                           <input
                             type="number"
                             min="0.001"
@@ -615,6 +665,11 @@ export default function Imports({ initialOpenCreate = false }) {
                             onChange={(e) => handleUpdateItem(idx, 'quantity', e.target.value)}
                             required
                           />
+                          {convRate !== 1 && (
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textAlign: 'right', marginTop: '2px' }}>
+                              = {formatNumber(baseQty)} {prod?.uom || ''}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <input
@@ -627,6 +682,11 @@ export default function Imports({ initialOpenCreate = false }) {
                             onChange={(e) => handleUpdateItem(idx, 'unitPrice', e.target.value)}
                             required
                           />
+                          {convRate !== 1 && item.unitPrice > 0 && (
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textAlign: 'right', marginTop: '2px' }}>
+                              ~{formatVND(Math.round(item.unitPrice / convRate))}/{prod?.uom || 'ĐVT'}
+                            </div>
+                          )}
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: 700 }} className="mono">
                           {formatVND(lineTotal)}
@@ -783,6 +843,7 @@ export default function Imports({ initialOpenCreate = false }) {
                   <tr>
                     <th>STT</th>
                     <th>Tên Hàng Hóa</th>
+                    <th style={{ textAlign: 'center' }}>ĐVT</th>
                     <th style={{ textAlign: 'right' }}>Số Lượng</th>
                     <th style={{ textAlign: 'right' }}>Đơn Giá Nhập</th>
                     <th style={{ textAlign: 'right' }}>Thành Tiền</th>
@@ -796,7 +857,15 @@ export default function Imports({ initialOpenCreate = false }) {
                         <strong>{it.productName || it.sku}</strong>
                         {it.sku && <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '6px' }}>({it.sku})</span>}
                       </td>
-                      <td style={{ textAlign: 'right' }} className="mono">{formatNumber(it.quantity)}</td>
+                      <td style={{ textAlign: 'center' }}>{it.unitName || 'Cái'}</td>
+                      <td style={{ textAlign: 'right' }} className="mono">
+                        {formatNumber(it.quantity)}
+                        {it.conversionRate && Number(it.conversionRate) !== 1 && (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            (= {formatNumber(it.baseQuantity || it.quantity * it.conversionRate)})
+                          </div>
+                        )}
+                      </td>
                       <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.unitPrice)}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }} className="mono">{formatVND(it.lineTotal)}</td>
                     </tr>

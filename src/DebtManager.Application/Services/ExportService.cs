@@ -204,27 +204,38 @@ public class ExportService : IExportService
                 var product = await _uow.Products.GetByIdAsync(itemDto.ProductId, ct)
                     ?? throw new InvalidOperationException($"Không tìm thấy sản phẩm với ID {itemDto.ProductId}");
 
+                var convRate = itemDto.ConversionRate.HasValue && itemDto.ConversionRate.Value > 0
+                    ? itemDto.ConversionRate.Value
+                    : 1m;
+                var unitName = !string.IsNullOrWhiteSpace(itemDto.UnitName)
+                    ? itemDto.UnitName.Trim()
+                    : (!string.IsNullOrWhiteSpace(product.Uom) ? product.Uom : "Cái");
+                var baseQuantity = itemDto.Quantity * convRate;
+
                 var salePrice = itemDto.SalePrice ?? product.RetailPrice;
                 var unitCost = product.UnitCost;
                 var lineTotal = itemDto.Quantity * salePrice;
 
                 subtotalSale += lineTotal;
-                totalCost += itemDto.Quantity * unitCost;
+                totalCost += baseQuantity * unitCost;
 
                 var voucherItem = new ExportVoucherItem
                 {
                     ExportVoucher = voucher,
                     ProductId = product.Id,
                     Quantity = itemDto.Quantity,
+                    UnitName = unitName,
+                    ConversionRate = convRate,
+                    BaseQuantity = baseQuantity,
                     UnitCost = unitCost,
                     SalePrice = salePrice,
                     LineTotal = lineTotal
                 };
                 voucher.Items.Add(voucherItem);
 
-                // Deduct stock
+                // Deduct stock in Base Units
                 decimal beforeWhStock = product.GetWarehouseStock(warehouse);
-                var delta = -itemDto.Quantity;
+                var delta = -baseQuantity;
                 var afterWhStock = beforeWhStock + delta;
                 var beforeTotal = product.TotalStock;
 
@@ -234,6 +245,10 @@ public class ExportService : IExportService
                 _uow.Products.Update(product);
 
                 // Log StockHistory
+                var reasonDetails = convRate != 1
+                    ? $"Xuất bán hàng {voucherNumber} ({itemDto.Quantity} {unitName} = {baseQuantity} {product.Uom ?? "ĐVT"})"
+                    : $"Xuất bán hàng {voucherNumber}";
+
                 var stockHistory = new StockHistory
                 {
                     ProductId = product.Id,
@@ -241,7 +256,7 @@ public class ExportService : IExportService
                     SourceType = DomainConstants.SourceTypes.Export,
                     ReferenceType = DomainConstants.ReferenceTypes.ExportVoucher,
                     ReferenceId = voucherNumber,
-                    Reason = $"Xuất bán hàng {voucherNumber}",
+                    Reason = reasonDetails,
                     BeforeWarehouseStock = beforeWhStock,
                     Delta = delta,
                     AfterWarehouseStock = afterWhStock,
@@ -339,8 +354,12 @@ public class ExportService : IExportService
                     var product = await _uow.Products.GetByIdAsync(item.ProductId, ct);
                     if (product == null) continue;
 
+                    var baseQty = item.BaseQuantity > 0
+                        ? item.BaseQuantity
+                        : (item.Quantity * (item.ConversionRate > 0 ? item.ConversionRate : 1m));
+
                     decimal beforeWhStock = product.GetWarehouseStock(voucher.Warehouse);
-                    var delta = item.Quantity; // Restore stock
+                    var delta = baseQty; // Restore stock in base units
                     var afterWhStock = beforeWhStock + delta;
                     var beforeTotal = product.TotalStock;
 
@@ -356,7 +375,7 @@ public class ExportService : IExportService
                         SourceType = "export_cancelled",
                         ReferenceType = DomainConstants.ReferenceTypes.ExportVoucher,
                         ReferenceId = voucher.VoucherNumber,
-                        Reason = $"Hoàn kho do hủy phiếu {voucher.VoucherNumber}",
+                        Reason = $"Hoàn kho do hủy phiếu {voucher.VoucherNumber} (+{baseQty} {product.Uom ?? "ĐVT"})",
                         BeforeWarehouseStock = beforeWhStock,
                         Delta = delta,
                         AfterWarehouseStock = afterWhStock,
@@ -404,8 +423,12 @@ public class ExportService : IExportService
                     var product = await _uow.Products.GetByIdAsync(item.ProductId, ct);
                     if (product == null) continue;
 
+                    var baseQty = item.BaseQuantity > 0
+                        ? item.BaseQuantity
+                        : (item.Quantity * (item.ConversionRate > 0 ? item.ConversionRate : 1m));
+
                     decimal beforeWhStock = product.GetWarehouseStock(voucher.Warehouse);
-                    var delta = -item.Quantity;
+                    var delta = -baseQty; // Re-deduct in base units
                     var afterWhStock = beforeWhStock + delta;
                     var beforeTotal = product.TotalStock;
 
@@ -421,7 +444,7 @@ public class ExportService : IExportService
                         SourceType = "export_restored",
                         ReferenceType = DomainConstants.ReferenceTypes.ExportVoucher,
                         ReferenceId = voucher.VoucherNumber,
-                        Reason = $"Trừ kho do khôi phục phiếu {voucher.VoucherNumber}",
+                        Reason = $"Trừ kho do khôi phục phiếu {voucher.VoucherNumber} (-{baseQty} {product.Uom ?? "ĐVT"})",
                         BeforeWarehouseStock = beforeWhStock,
                         Delta = delta,
                         AfterWarehouseStock = afterWhStock,
@@ -527,6 +550,9 @@ public class ExportService : IExportService
             ProductName = i.Product?.Name ?? string.Empty,
             Sku = i.Product?.Sku ?? string.Empty,
             Quantity = i.Quantity,
+            UnitName = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product?.Uom ?? "Cái"),
+            ConversionRate = i.ConversionRate > 0 ? i.ConversionRate : 1,
+            BaseQuantity = i.BaseQuantity > 0 ? i.BaseQuantity : (i.Quantity * (i.ConversionRate > 0 ? i.ConversionRate : 1)),
             UnitCost = i.UnitCost,
             SalePrice = i.SalePrice,
             LineTotal = i.LineTotal

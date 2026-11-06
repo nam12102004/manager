@@ -201,6 +201,14 @@ public class ImportService : IImportService
                 var product = await _uow.Products.GetByIdAsync(itemDto.ProductId, ct)
                     ?? throw new InvalidOperationException($"Không tìm thấy sản phẩm với ID {itemDto.ProductId}");
 
+                var convRate = itemDto.ConversionRate.HasValue && itemDto.ConversionRate.Value > 0
+                    ? itemDto.ConversionRate.Value
+                    : 1m;
+                var unitName = !string.IsNullOrWhiteSpace(itemDto.UnitName)
+                    ? itemDto.UnitName.Trim()
+                    : (!string.IsNullOrWhiteSpace(product.Uom) ? product.Uom : "Cái");
+                var baseQuantity = itemDto.Quantity * convRate;
+
                 var lineTotal = itemDto.Quantity * itemDto.UnitPrice;
                 subtotal += lineTotal;
 
@@ -211,16 +219,25 @@ public class ImportService : IImportService
                     ProductName = product.Name,
                     Sku = product.Sku,
                     Quantity = itemDto.Quantity,
+                    UnitName = unitName,
+                    ConversionRate = convRate,
+                    BaseQuantity = baseQuantity,
                     UnitPrice = itemDto.UnitPrice,
                     LineTotal = lineTotal
                 };
                 voucher.Items.Add(voucherItem);
 
-                // Add stock
+                // Add stock in Base Unit
                 decimal beforeWhStock = product.GetWarehouseStock(warehouse);
-                var delta = itemDto.Quantity; // Positive for import
+                var delta = baseQuantity; // Positive for import
                 var afterWhStock = beforeWhStock + delta;
                 var beforeTotal = product.TotalStock;
+
+                // Update base unit cost if not set yet
+                if (product.UnitCost <= 0 && baseQuantity > 0 && itemDto.UnitPrice > 0)
+                {
+                    product.UnitCost = Math.Round(itemDto.UnitPrice / convRate, 2);
+                }
 
                 product.SetWarehouseStock(warehouse, afterWhStock);
                 var afterTotal = product.TotalStock;
@@ -228,6 +245,10 @@ public class ImportService : IImportService
                 _uow.Products.Update(product);
 
                 // Stock history
+                var reasonDetails = convRate != 1
+                    ? $"Nhập hàng theo phiếu {voucherNumber} ({itemDto.Quantity} {unitName} = {baseQuantity} {product.Uom ?? "ĐVT"})"
+                    : $"Nhập hàng theo phiếu {voucherNumber}";
+
                 await _uow.StockHistories.AddAsync(new StockHistory
                 {
                     ProductId = product.Id,
@@ -235,7 +256,7 @@ public class ImportService : IImportService
                     SourceType = DomainConstants.SourceTypes.Import,
                     ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
                     ReferenceId = voucherNumber,
-                    Reason = $"Nhập hàng theo phiếu {voucherNumber}",
+                    Reason = reasonDetails,
                     BeforeWarehouseStock = beforeWhStock,
                     Delta = delta,
                     AfterWarehouseStock = afterWhStock,
@@ -314,14 +335,18 @@ public class ImportService : IImportService
             {
                 if (voucher.Status == DomainConstants.VoucherStatuses.Cancelled) return true;
 
-                // Deduct stock
+                // Deduct stock in base units
                 foreach (var item in voucher.Items)
                 {
                     var product = await _uow.Products.GetByIdAsync(item.ProductId, ct);
                     if (product == null) continue;
 
+                    var baseQty = item.BaseQuantity > 0
+                        ? item.BaseQuantity
+                        : (item.Quantity * (item.ConversionRate > 0 ? item.ConversionRate : 1m));
+
                     decimal beforeWhStock = product.GetWarehouseStock(voucher.Warehouse);
-                    var delta = -item.Quantity;
+                    var delta = -baseQty;
                     var afterWhStock = beforeWhStock + delta;
                     var beforeTotal = product.TotalStock;
 
@@ -337,7 +362,7 @@ public class ImportService : IImportService
                         SourceType = "import_cancelled",
                         ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
                         ReferenceId = voucher.VoucherNumber,
-                        Reason = $"Trừ kho do hủy phiếu nhập {voucher.VoucherNumber}",
+                        Reason = $"Trừ kho do hủy phiếu nhập {voucher.VoucherNumber} (-{baseQty} {product.Uom ?? "ĐVT"})",
                         BeforeWarehouseStock = beforeWhStock,
                         Delta = delta,
                         AfterWarehouseStock = afterWhStock,
@@ -379,14 +404,18 @@ public class ImportService : IImportService
             {
                 if (voucher.Status == DomainConstants.VoucherStatuses.Confirmed) return true;
 
-                // Re-add stock
+                // Re-add stock in base units
                 foreach (var item in voucher.Items)
                 {
                     var product = await _uow.Products.GetByIdAsync(item.ProductId, ct);
                     if (product == null) continue;
 
+                    var baseQty = item.BaseQuantity > 0
+                        ? item.BaseQuantity
+                        : (item.Quantity * (item.ConversionRate > 0 ? item.ConversionRate : 1m));
+
                     decimal beforeWhStock = product.GetWarehouseStock(voucher.Warehouse);
-                    var delta = item.Quantity;
+                    var delta = baseQty;
                     var afterWhStock = beforeWhStock + delta;
                     var beforeTotal = product.TotalStock;
 
@@ -402,7 +431,7 @@ public class ImportService : IImportService
                         SourceType = "import_restored",
                         ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
                         ReferenceId = voucher.VoucherNumber,
-                        Reason = $"Cộng lại kho do khôi phục phiếu nhập {voucher.VoucherNumber}",
+                        Reason = $"Cộng lại kho do khôi phục phiếu nhập {voucher.VoucherNumber} (+{baseQty} {product.Uom ?? "ĐVT"})",
                         BeforeWarehouseStock = beforeWhStock,
                         Delta = delta,
                         AfterWarehouseStock = afterWhStock,
@@ -506,6 +535,9 @@ public class ImportService : IImportService
             ProductName = i.ProductName,
             Sku = i.Sku,
             Quantity = i.Quantity,
+            UnitName = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product?.Uom ?? "Cái"),
+            ConversionRate = i.ConversionRate > 0 ? i.ConversionRate : 1,
+            BaseQuantity = i.BaseQuantity > 0 ? i.BaseQuantity : (i.Quantity * (i.ConversionRate > 0 ? i.ConversionRate : 1)),
             UnitPrice = i.UnitPrice,
             LineTotal = i.LineTotal
         }).ToList()

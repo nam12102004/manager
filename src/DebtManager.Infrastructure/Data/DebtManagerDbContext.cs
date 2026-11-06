@@ -13,6 +13,7 @@ public class DebtManagerDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductUnit> ProductUnits => Set<ProductUnit>();
     public DbSet<StockHistory> StockHistories => Set<StockHistory>();
     public DbSet<CustomerDebtHistory> CustomerDebtHistories => Set<CustomerDebtHistory>();
     public DbSet<SupplierDebtHistory> SupplierDebtHistories => Set<SupplierDebtHistory>();
@@ -102,6 +103,25 @@ public class DebtManagerDbContext : DbContext
                 .WithMany(s => s.Products)
                 .HasForeignKey(e => e.SupplierId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 4b. ProductUnits
+        modelBuilder.Entity<ProductUnit>(entity =>
+        {
+            entity.ToTable("ProductUnits");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UnitName).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ConversionRate).HasPrecision(18, 4).HasDefaultValue(1);
+            entity.Property(e => e.RetailPrice).HasPrecision(18, 2).HasDefaultValue(0);
+            entity.Property(e => e.WholesalePrice).HasPrecision(18, 2).HasDefaultValue(0);
+            entity.Property(e => e.Barcode).HasMaxLength(100);
+
+            entity.HasIndex(e => new { e.ProductId, e.UnitName }).IsUnique();
+
+            entity.HasOne(e => e.Product)
+                .WithMany(p => p.Units)
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // 5. StockHistories
@@ -208,6 +228,9 @@ public class DebtManagerDbContext : DbContext
             entity.ToTable("ExportVoucherItems");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Quantity).HasPrecision(18, 3);
+            entity.Property(e => e.UnitName).HasMaxLength(50);
+            entity.Property(e => e.ConversionRate).HasPrecision(18, 4).HasDefaultValue(1);
+            entity.Property(e => e.BaseQuantity).HasPrecision(18, 3).HasDefaultValue(0);
             entity.Property(e => e.UnitCost).HasPrecision(18, 2);
             entity.Property(e => e.SalePrice).HasPrecision(18, 2);
             entity.Property(e => e.LineTotal).HasPrecision(18, 2);
@@ -255,6 +278,9 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.ProductName).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Sku).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Quantity).HasPrecision(18, 3);
+            entity.Property(e => e.UnitName).HasMaxLength(50);
+            entity.Property(e => e.ConversionRate).HasPrecision(18, 4).HasDefaultValue(1);
+            entity.Property(e => e.BaseQuantity).HasPrecision(18, 3).HasDefaultValue(0);
             entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
             entity.Property(e => e.LineTotal).HasPrecision(18, 2);
 

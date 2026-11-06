@@ -1,5 +1,30 @@
 namespace DebtManager.Application.DTOs.Products;
 
+public class ProductUnitDto
+{
+    public int Id { get; set; }
+    public int ProductId { get; set; }
+    public string UnitName { get; set; } = string.Empty;
+    public decimal ConversionRate { get; set; } = 1;
+    public bool IsBaseUnit { get; set; }
+    public string? Barcode { get; set; }
+    public decimal RetailPrice { get; set; }
+    public decimal WholesalePrice { get; set; }
+    public bool CanSell { get; set; } = true;
+}
+
+public class UpsertProductUnitDto
+{
+    public int? Id { get; set; }
+    public string UnitName { get; set; } = string.Empty;
+    public decimal ConversionRate { get; set; } = 1;
+    public bool IsBaseUnit { get; set; }
+    public string? Barcode { get; set; }
+    public decimal RetailPrice { get; set; }
+    public decimal WholesalePrice { get; set; }
+    public bool CanSell { get; set; } = true;
+}
+
 public class ProductDto
 {
     public int Id { get; set; }
@@ -18,9 +43,11 @@ public class ProductDto
     public decimal StockWarehouse3 { get; set; }
     public Dictionary<string, decimal> WarehouseStocks { get; set; } = new();
     public decimal TotalStock { get; set; }
+    public string? FormattedStock { get; set; }
     public decimal ReorderPoint { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public List<ProductUnitDto> Units { get; set; } = new();
 }
 
 public class CreateProductDto
@@ -39,6 +66,7 @@ public class CreateProductDto
     public decimal StockWarehouse3 { get; set; } = 0;
     public Dictionary<string, decimal>? WarehouseStocks { get; set; }
     public decimal ReorderPoint { get; set; } = 0;
+    public List<UpsertProductUnitDto>? Units { get; set; }
 }
 
 public class UpdateProductDto
@@ -52,6 +80,7 @@ public class UpdateProductDto
     public decimal WholesalePrice { get; set; }
     public decimal RetailPrice { get; set; }
     public decimal ReorderPoint { get; set; }
+    public List<UpsertProductUnitDto>? Units { get; set; }
 }
 
 public class StockAdjustDto

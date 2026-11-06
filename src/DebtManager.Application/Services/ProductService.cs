@@ -22,6 +22,7 @@ public class ProductService : IProductService
     {
         var query = _uow.Products.Query()
             .Include(p => p.Supplier)
+            .Include(p => p.Units)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -59,6 +60,7 @@ public class ProductService : IProductService
 
         var query = _uow.Products.Query()
             .Include(p => p.Supplier)
+            .Include(p => p.Units)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -186,6 +188,7 @@ public class ProductService : IProductService
     {
         var product = await _uow.Products.Query()
             .Include(p => p.Supplier)
+            .Include(p => p.Units)
             .FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy sản phẩm với ID {id}");
 
@@ -214,12 +217,22 @@ public class ProductService : IProductService
 
         var totalStock = dto.StockWarehouse1 + dto.StockWarehouse2 + dto.StockWarehouse3;
 
+        var baseUom = !string.IsNullOrWhiteSpace(dto.Uom) ? dto.Uom.Trim() : "Cái";
+        if (dto.Units != null && dto.Units.Count > 0)
+        {
+            var specifiedBase = dto.Units.FirstOrDefault(u => u.IsBaseUnit) ?? dto.Units.FirstOrDefault(u => u.ConversionRate == 1);
+            if (specifiedBase != null && !string.IsNullOrWhiteSpace(specifiedBase.UnitName))
+            {
+                baseUom = specifiedBase.UnitName.Trim();
+            }
+        }
+
         var product = new Product
         {
             Sku = sku,
             Name = dto.Name.Trim(),
             Category = dto.Category?.Trim(),
-            Uom = dto.Uom?.Trim(),
+            Uom = baseUom,
             Barcode = dto.Barcode?.Trim(),
             SupplierId = dto.SupplierId,
             UnitCost = dto.UnitCost,
@@ -245,6 +258,63 @@ public class ProductService : IProductService
         await _uow.Products.AddAsync(product, ct);
         await _uow.SaveChangesAsync(ct);
 
+        // Save Units
+        if (dto.Units != null && dto.Units.Count > 0)
+        {
+            bool hasBase = false;
+            foreach (var u in dto.Units)
+            {
+                if (string.IsNullOrWhiteSpace(u.UnitName)) continue;
+                var isBase = u.IsBaseUnit || (!hasBase && u.ConversionRate == 1);
+                if (isBase) hasBase = true;
+
+                await _uow.ProductUnits.AddAsync(new ProductUnit
+                {
+                    ProductId = product.Id,
+                    UnitName = u.UnitName.Trim(),
+                    ConversionRate = u.ConversionRate > 0 ? u.ConversionRate : 1,
+                    IsBaseUnit = isBase,
+                    Barcode = u.Barcode?.Trim(),
+                    RetailPrice = u.RetailPrice > 0 ? u.RetailPrice : (u.ConversionRate * product.RetailPrice),
+                    WholesalePrice = u.WholesalePrice > 0 ? u.WholesalePrice : (u.ConversionRate * product.WholesalePrice),
+                    CanSell = u.CanSell,
+                    CreatedAt = DateTime.UtcNow
+                }, ct);
+            }
+
+            if (!hasBase)
+            {
+                // Ensure at least one base unit exists
+                await _uow.ProductUnits.AddAsync(new ProductUnit
+                {
+                    ProductId = product.Id,
+                    UnitName = baseUom,
+                    ConversionRate = 1,
+                    IsBaseUnit = true,
+                    RetailPrice = product.RetailPrice,
+                    WholesalePrice = product.WholesalePrice,
+                    CanSell = true,
+                    CreatedAt = DateTime.UtcNow
+                }, ct);
+            }
+        }
+        else
+        {
+            // Default base unit
+            await _uow.ProductUnits.AddAsync(new ProductUnit
+            {
+                ProductId = product.Id,
+                UnitName = baseUom,
+                ConversionRate = 1,
+                IsBaseUnit = true,
+                RetailPrice = product.RetailPrice,
+                WholesalePrice = product.WholesalePrice,
+                CanSell = true,
+                CreatedAt = DateTime.UtcNow
+            }, ct);
+        }
+        await _uow.SaveChangesAsync(ct);
+
         // Record initial stock if any
         var allStocks = product.GetAllWarehouseStocks();
         bool hasInitialStock = false;
@@ -262,7 +332,7 @@ public class ProductService : IProductService
             await _uow.SaveChangesAsync(ct);
         }
 
-        // Reload with supplier details
+        // Reload with supplier & units
         return await GetByIdAsync(product.Id, ct);
     }
 
@@ -273,7 +343,9 @@ public class ProductService : IProductService
             throw new ValidationException("Tên sản phẩm không được để trống");
         }
 
-        var product = await _uow.Products.GetByIdAsync(id, ct)
+        var product = await _uow.Products.Query()
+            .Include(p => p.Units)
+            .FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy sản phẩm với ID {id}");
 
         if (dto.SupplierId.HasValue)
@@ -287,7 +359,10 @@ public class ProductService : IProductService
 
         product.Name = dto.Name.Trim();
         product.Category = dto.Category?.Trim();
-        product.Uom = dto.Uom?.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Uom))
+        {
+            product.Uom = dto.Uom.Trim();
+        }
         product.Barcode = dto.Barcode?.Trim();
         product.SupplierId = dto.SupplierId;
         product.UnitCost = dto.UnitCost;
@@ -295,6 +370,65 @@ public class ProductService : IProductService
         product.RetailPrice = dto.RetailPrice;
         product.ReorderPoint = dto.ReorderPoint;
         product.UpdatedAt = DateTime.UtcNow;
+
+        // Synchronize units if provided
+        if (dto.Units != null && dto.Units.Count > 0)
+        {
+            var existingUnits = await _uow.ProductUnits.Query().Where(u => u.ProductId == id).ToListAsync(ct);
+            var updatedUnitNames = dto.Units.Where(u => !string.IsNullOrWhiteSpace(u.UnitName))
+                                            .Select(u => u.UnitName.Trim().ToLower())
+                                            .ToHashSet();
+
+            // Delete units that are not in the new list (except base unit if it's the only one left)
+            foreach (var eu in existingUnits)
+            {
+                if (!updatedUnitNames.Contains(eu.UnitName.Trim().ToLower()))
+                {
+                    _uow.ProductUnits.Remove(eu);
+                }
+            }
+
+            bool hasBase = false;
+            foreach (var u in dto.Units)
+            {
+                if (string.IsNullOrWhiteSpace(u.UnitName)) continue;
+                var isBase = u.IsBaseUnit || (!hasBase && u.ConversionRate == 1);
+                if (isBase) hasBase = true;
+
+                var existing = existingUnits.FirstOrDefault(eu => eu.UnitName.Trim().Equals(u.UnitName.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.ConversionRate = u.ConversionRate > 0 ? u.ConversionRate : 1;
+                    existing.IsBaseUnit = isBase;
+                    existing.Barcode = u.Barcode?.Trim();
+                    existing.RetailPrice = u.RetailPrice > 0 ? u.RetailPrice : (u.ConversionRate * product.RetailPrice);
+                    existing.WholesalePrice = u.WholesalePrice > 0 ? u.WholesalePrice : (u.ConversionRate * product.WholesalePrice);
+                    existing.CanSell = u.CanSell;
+                    _uow.ProductUnits.Update(existing);
+                }
+                else
+                {
+                    await _uow.ProductUnits.AddAsync(new ProductUnit
+                    {
+                        ProductId = id,
+                        UnitName = u.UnitName.Trim(),
+                        ConversionRate = u.ConversionRate > 0 ? u.ConversionRate : 1,
+                        IsBaseUnit = isBase,
+                        Barcode = u.Barcode?.Trim(),
+                        RetailPrice = u.RetailPrice > 0 ? u.RetailPrice : (u.ConversionRate * product.RetailPrice),
+                        WholesalePrice = u.WholesalePrice > 0 ? u.WholesalePrice : (u.ConversionRate * product.WholesalePrice),
+                        CanSell = u.CanSell,
+                        CreatedAt = DateTime.UtcNow
+                    }, ct);
+                }
+            }
+
+            var baseUnit = dto.Units.FirstOrDefault(u => u.IsBaseUnit) ?? dto.Units.FirstOrDefault(u => u.ConversionRate == 1);
+            if (baseUnit != null && !string.IsNullOrWhiteSpace(baseUnit.UnitName))
+            {
+                product.Uom = baseUnit.UnitName.Trim();
+            }
+        }
 
         _uow.Products.Update(product);
         await _uow.SaveChangesAsync(ct);
@@ -441,10 +575,66 @@ public class ProductService : IProductService
         StockWarehouse3 = p.StockWarehouse3,
         WarehouseStocks = p.GetAllWarehouseStocks(),
         TotalStock = p.TotalStock,
+        FormattedStock = FormatStockDisplay(p.TotalStock, p.Units, p.Uom),
         ReorderPoint = p.ReorderPoint,
         CreatedAt = p.CreatedAt,
-        UpdatedAt = p.UpdatedAt
+        UpdatedAt = p.UpdatedAt,
+        Units = p.Units != null && p.Units.Count > 0
+            ? p.Units.OrderBy(u => u.ConversionRate).Select(u => new ProductUnitDto
+            {
+                Id = u.Id,
+                ProductId = u.ProductId,
+                UnitName = u.UnitName,
+                ConversionRate = u.ConversionRate,
+                IsBaseUnit = u.IsBaseUnit,
+                Barcode = u.Barcode,
+                RetailPrice = u.RetailPrice > 0 ? u.RetailPrice : (u.ConversionRate * p.RetailPrice),
+                WholesalePrice = u.WholesalePrice > 0 ? u.WholesalePrice : (u.ConversionRate * p.WholesalePrice),
+                CanSell = u.CanSell
+            }).ToList()
+            : new List<ProductUnitDto>
+            {
+                new()
+                {
+                    ProductId = p.Id,
+                    UnitName = !string.IsNullOrWhiteSpace(p.Uom) ? p.Uom : "Cái",
+                    ConversionRate = 1,
+                    IsBaseUnit = true,
+                    RetailPrice = p.RetailPrice,
+                    WholesalePrice = p.WholesalePrice,
+                    CanSell = true
+                }
+            }
     };
+
+    private static string FormatStockDisplay(decimal totalStock, ICollection<ProductUnit>? units, string? baseUom)
+    {
+        var baseName = !string.IsNullOrWhiteSpace(baseUom) ? baseUom : "Cái";
+        if (units == null || units.Count <= 1)
+        {
+            return $"{totalStock:G29} {baseName}";
+        }
+
+        var packUnit = units.Where(u => !u.IsBaseUnit && u.ConversionRate > 1).OrderByDescending(u => u.ConversionRate).FirstOrDefault();
+        if (packUnit == null)
+        {
+            return $"{totalStock:G29} {baseName}";
+        }
+
+        var rate = packUnit.ConversionRate;
+        long wholePacks = (long)Math.Floor(totalStock / rate);
+        decimal remainder = totalStock % rate;
+
+        if (wholePacks > 0 && remainder > 0)
+        {
+            return $"{wholePacks} {packUnit.UnitName}, {remainder:G29} {baseName} (Tổng: {totalStock:G29} {baseName})";
+        }
+        if (wholePacks > 0 && remainder == 0)
+        {
+            return $"{wholePacks} {packUnit.UnitName} ({totalStock:G29} {baseName})";
+        }
+        return $"{totalStock:G29} {baseName}";
+    }
 
     public async Task<List<string>> GetCategoriesAsync(CancellationToken ct = default)
     {

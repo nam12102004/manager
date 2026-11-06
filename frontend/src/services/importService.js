@@ -103,6 +103,8 @@ export const importService = {
         productId: Number(it.productId),
         quantity: Number(it.quantity),
         unitPrice: Number(it.unitCost || it.unitPrice || 0),
+        unitName: it.unitName || undefined,
+        conversionRate: it.conversionRate ? Number(it.conversionRate) : 1,
       })),
     };
   },

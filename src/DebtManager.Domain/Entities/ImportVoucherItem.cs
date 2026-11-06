@@ -12,6 +12,9 @@ public class ImportVoucherItem
     public string ProductName { get; set; } = string.Empty;
     public string Sku { get; set; } = string.Empty;
     public decimal Quantity { get; set; } = 0;
+    public string? UnitName { get; set; }
+    public decimal ConversionRate { get; set; } = 1;
+    public decimal BaseQuantity { get; set; } = 0;
     public decimal UnitPrice { get; set; } = 0;
     public decimal LineTotal { get; set; } = 0;
 }

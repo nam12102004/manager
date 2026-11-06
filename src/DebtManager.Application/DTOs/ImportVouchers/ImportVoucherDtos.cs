@@ -5,6 +5,8 @@ public class CreateImportItemDto
     public int ProductId { get; set; }
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public string? UnitName { get; set; }
+    public decimal? ConversionRate { get; set; }
 }
 
 public class CreateImportDto
@@ -25,6 +27,9 @@ public class ImportVoucherItemDto
     public string ProductName { get; set; } = string.Empty;
     public string Sku { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
+    public string? UnitName { get; set; }
+    public decimal ConversionRate { get; set; } = 1;
+    public decimal BaseQuantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal LineTotal { get; set; }
 }

@@ -124,4 +124,5 @@ public class Product
     public ICollection<StockHistory> StockHistories { get; set; } = new List<StockHistory>();
     public ICollection<ExportVoucherItem> ExportVoucherItems { get; set; } = new List<ExportVoucherItem>();
     public ICollection<ImportVoucherItem> ImportVoucherItems { get; set; } = new List<ImportVoucherItem>();
+    public ICollection<ProductUnit> Units { get; set; } = new List<ProductUnit>();
 }

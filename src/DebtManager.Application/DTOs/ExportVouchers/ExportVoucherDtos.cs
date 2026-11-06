@@ -5,6 +5,8 @@ public class CreateExportItemDto
     public int ProductId { get; set; }
     public decimal Quantity { get; set; }
     public decimal? SalePrice { get; set; }
+    public string? UnitName { get; set; }
+    public decimal? ConversionRate { get; set; }
 }
 
 public class CreateExportDto
@@ -26,6 +28,9 @@ public class ExportVoucherItemDto
     public string ProductName { get; set; } = string.Empty;
     public string Sku { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
+    public string? UnitName { get; set; }
+    public decimal ConversionRate { get; set; } = 1;
+    public decimal BaseQuantity { get; set; }
     public decimal UnitCost { get; set; }
     public decimal SalePrice { get; set; }
     public decimal LineTotal { get; set; }

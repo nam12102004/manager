@@ -101,6 +101,8 @@ export const exportService = {
         productId: Number(it.productId),
         quantity: Number(it.quantity),
         salePrice: Number(it.salePrice || 0),
+        unitName: it.unitName || undefined,
+        conversionRate: it.conversionRate ? Number(it.conversionRate) : 1,
       })),
     };
   },

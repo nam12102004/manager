@@ -257,10 +257,11 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
       <thead>
         <tr>
           <th class="col-stt">STT</th>
-          <th class="col-name">Tên sản phẩm</th>
-          <th class="col-qty">SL (${items[0]?.uom || 'ĐVT'})</th>
-          <th class="col-price">Đơn giá</th>
-          <th class="col-total">Thành tiền</th>
+          <th class="col-name" style="width: 38%;">Tên sản phẩm</th>
+          <th style="width: 10%; text-align: center;">ĐVT</th>
+          <th class="col-qty" style="width: 12%;">Số lượng</th>
+          <th class="col-price" style="width: 18%;">Đơn giá</th>
+          <th class="col-total" style="width: 18%;">Thành tiền</th>
         </tr>
       </thead>
       <tbody>
@@ -271,6 +272,7 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
               <strong>${it.productName || it.sku || 'Sản phẩm'}</strong>
               ${it.sku ? `<div style="font-size: 9.5pt; color: #444;">Mã SKU: ${it.sku}</div>` : ''}
             </td>
+            <td style="text-align: center;">${it.unitName || it.uom || 'Cái'}</td>
             <td class="col-qty">${formatNumber(it.quantity)}</td>
             <td class="col-price">${formatVND(it.salePrice || it.unitPrice || 0)}</td>
             <td class="col-total"><strong>${formatVND(it.lineTotal || (Number(it.quantity) * Number(it.salePrice || 0)))}</strong></td>
@@ -512,10 +514,11 @@ export function generateImportHtml({ importData, ownerInfo = null, supplier = nu
       <thead>
         <tr>
           <th class="col-stt">STT</th>
-          <th class="col-name">Tên sản phẩm</th>
-          <th class="col-qty">SL (${items[0]?.uom || 'ĐVT'})</th>
-          <th class="col-price">Đơn giá nhập</th>
-          <th class="col-total">Thành tiền</th>
+          <th class="col-name" style="width: 38%;">Tên sản phẩm</th>
+          <th style="width: 10%; text-align: center;">ĐVT</th>
+          <th class="col-qty" style="width: 12%;">Số lượng</th>
+          <th class="col-price" style="width: 18%;">Đơn giá nhập</th>
+          <th class="col-total" style="width: 18%;">Thành tiền</th>
         </tr>
       </thead>
       <tbody>
@@ -526,6 +529,7 @@ export function generateImportHtml({ importData, ownerInfo = null, supplier = nu
               <strong>${it.productName || it.sku || 'Sản phẩm'}</strong>
               ${it.sku ? `<div style="font-size: 9.5pt; color: #444;">Mã SKU: ${it.sku}</div>` : ''}
             </td>
+            <td style="text-align: center;">${it.unitName || it.uom || 'Cái'}</td>
             <td class="col-qty">${formatNumber(it.quantity)}</td>
             <td class="col-price">${formatVND(it.unitPrice || 0)}</td>
             <td class="col-total"><strong>${formatVND(it.lineTotal || (Number(it.quantity) * Number(it.unitPrice || 0)))}</strong></td>

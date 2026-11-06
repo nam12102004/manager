@@ -23,16 +23,15 @@ import {
   ChevronLeft,
   Menu,
   Info,
-  Coins,
   DollarSign,
   X,
   Trash2,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
+import { formatStockDisplay } from '../utils/uomHelper';
 import { STOCK_ADJUST_REASONS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import SearchBar from '../components/common/SearchBar';
-import StatCard from '../components/common/StatCard';
 import TimeFilter from '../components/common/TimeFilter';
 import Modal from '../components/common/Modal';
 import Drawer from '../components/common/Drawer';
@@ -139,7 +138,45 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     stockWarehouse2: 0,
     stockWarehouse3: 0,
     reorderPoint: 5,
+    units: [],
   });
+
+  const handleAddSubUnit = () => {
+    setFormData((prev) => ({
+      ...prev,
+      units: [
+        ...(prev.units || []),
+        {
+          unitName: '',
+          conversionRate: 6,
+          retailPrice: 0,
+          wholesalePrice: 0,
+          barcode: '',
+          canSell: true,
+        },
+      ],
+    }));
+  };
+
+  const handleUpdateSubUnit = (index, field, value) => {
+    setFormData((prev) => {
+      const nextUnits = [...(prev.units || [])];
+      nextUnits[index] = {
+        ...nextUnits[index],
+        [field]: field === 'conversionRate' || field === 'retailPrice' || field === 'wholesalePrice'
+          ? (value === '' ? '' : Number(value))
+          : value,
+      };
+      return { ...prev, units: nextUnits };
+    });
+  };
+
+  const handleRemoveSubUnit = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      units: (prev.units || []).filter((_, i) => i !== index),
+    }));
+  };
 
   const [adjustData, setAdjustData] = useState({
     warehouse: 'warehouse1',
@@ -316,6 +353,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       stockWarehouse2: 0,
       stockWarehouse3: 0,
       reorderPoint: 5,
+      units: [],
     });
     setIsCreateOpen(true);
   };
@@ -323,6 +361,18 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   // Open Edit Modal
   const handleOpenEdit = (product) => {
     setSelectedProduct(product);
+    const subUnits = (product.units || [])
+      .filter((u) => !u.isBaseUnit && Number(u.conversionRate) !== 1)
+      .map((u) => ({
+        id: u.id,
+        unitName: u.unitName,
+        conversionRate: u.conversionRate,
+        retailPrice: u.retailPrice || 0,
+        wholesalePrice: u.wholesalePrice || 0,
+        barcode: u.barcode || '',
+        canSell: u.canSell ?? true,
+      }));
+
     setFormData({
       sku: product.sku,
       name: product.name,
@@ -334,6 +384,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       wholesalePrice: product.wholesalePrice,
       retailPrice: product.retailPrice,
       reorderPoint: product.reorderPoint,
+      units: subUnits,
     });
     setIsEditOpen(true);
   };
@@ -493,6 +544,29 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         });
       }
 
+      const allUnits = [
+        {
+          unitName: formData.uom || 'Cái',
+          conversionRate: 1,
+          isBaseUnit: true,
+          retailPrice: Number(formData.retailPrice || 0),
+          wholesalePrice: Number(formData.wholesalePrice || 0),
+          barcode: formData.barcode || '',
+          canSell: true,
+        },
+        ...(formData.units || [])
+          .filter((u) => u.unitName && u.unitName.trim())
+          .map((u) => ({
+            unitName: u.unitName.trim(),
+            conversionRate: Number(u.conversionRate || 1),
+            isBaseUnit: false,
+            retailPrice: Number(u.retailPrice || (Number(u.conversionRate || 1) * Number(formData.retailPrice || 0))),
+            wholesalePrice: Number(u.wholesalePrice || (Number(u.conversionRate || 1) * Number(formData.wholesalePrice || 0))),
+            barcode: u.barcode || '',
+            canSell: u.canSell ?? true,
+          })),
+      ];
+
       await productService.create({
         ...formData,
         supplierId: formData.supplierId ? Number(formData.supplierId) : null,
@@ -504,6 +578,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         stockWarehouse3: stocks.warehouse3 || 0,
         warehouseStocks: stocks,
         reorderPoint: Number(formData.reorderPoint || 0),
+        units: allUnits,
       });
 
       notify.success(
@@ -525,6 +600,30 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     e.preventDefault();
     setSubmitting(true);
     try {
+      const allUnits = [
+        {
+          unitName: formData.uom || 'Cái',
+          conversionRate: 1,
+          isBaseUnit: true,
+          retailPrice: Number(formData.retailPrice || 0),
+          wholesalePrice: Number(formData.wholesalePrice || 0),
+          barcode: formData.barcode || '',
+          canSell: true,
+        },
+        ...(formData.units || [])
+          .filter((u) => u.unitName && u.unitName.trim())
+          .map((u) => ({
+            id: u.id,
+            unitName: u.unitName.trim(),
+            conversionRate: Number(u.conversionRate || 1),
+            isBaseUnit: false,
+            retailPrice: Number(u.retailPrice || (Number(u.conversionRate || 1) * Number(formData.retailPrice || 0))),
+            wholesalePrice: Number(u.wholesalePrice || (Number(u.conversionRate || 1) * Number(formData.wholesalePrice || 0))),
+            barcode: u.barcode || '',
+            canSell: u.canSell ?? true,
+          })),
+      ];
+
       await productService.update(selectedProduct.id, {
         name: formData.name,
         category: formData.category,
@@ -535,6 +634,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         wholesalePrice: Number(formData.wholesalePrice || 0),
         retailPrice: Number(formData.retailPrice || 0),
         reorderPoint: Number(formData.reorderPoint || 0),
+        units: allUnits,
       });
       notify.success('Cập nhật sản phẩm thành công!');
       setIsEditOpen(false);
@@ -738,42 +838,6 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
           </div>
         </div>
       )}
-
-      {/* Dynamic Summary Stat Cards (Updates continuously on search / filter) */}
-      <div className="stats-grid" style={{ marginBottom: '1.25rem' }}>
-        <StatCard
-          title="TỔNG GIÁ TRỊ VỐN"
-          value={formatVND(summary.totalCostVal)}
-          subtitle={
-            isOverview
-              ? `∑ (Tồn kho × Giá vốn) ${searchQuery || selectedSupplierId ? 'theo kết quả lọc' : 'toàn bộ kho'}`
-              : `Giá trị vốn tại ${currentWarehouseObj?.shortName || currentWarehouseObj?.name || 'kho'}`
-          }
-          icon={Layers}
-          color="primary"
-        />
-        <StatCard
-          title="TỔNG GIÁ TRỊ BÁN SỈ"
-          value={formatVND(summary.totalWholesaleVal)}
-          subtitle="Doanh thu dự kiến theo giá sỉ"
-          icon={Building}
-          color="warning"
-        />
-        <StatCard
-          title="TỔNG GIÁ TRỊ BÁN LẺ"
-          value={formatVND(summary.totalRetailVal)}
-          subtitle="Doanh thu dự kiến theo giá bán lẻ"
-          icon={Coins}
-          color="success"
-        />
-        <StatCard
-          title="TỔNG LƯỢNG TỒN KHO"
-          value={formatNumber(summary.totalStockQty)}
-          subtitle={`${summary.totalItems} mặt hàng ${searchQuery || selectedSupplierId ? 'phù hợp tìm kiếm' : 'trong danh sách'}`}
-          icon={Boxes}
-          color="info"
-        />
-      </div>
 
       {/* Filter Bar */}
       <div className="filter-bar">
@@ -1007,13 +1071,30 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                         </span>
                       )}
                     </td>
-                    <td>{p.uom || 'Cái'}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{p.uom || 'Cái'}</div>
+                      {p.units && p.units.filter((u) => !u.isBaseUnit && Number(u.conversionRate) !== 1).map((u) => (
+                        <span
+                          key={u.id || u.unitName}
+                          className="badge badge-neutral"
+                          style={{ fontSize: '0.65rem', marginTop: '2px', display: 'inline-block', marginRight: '3px' }}
+                          title={`1 ${u.unitName} = ${u.conversionRate} ${p.uom || 'ĐVT'}`}
+                        >
+                          {u.unitName} (x{u.conversionRate})
+                        </span>
+                      ))}
+                    </td>
 
                     {isOverview ? (
                       <td style={{ textAlign: 'right' }}>
                         <span className={`badge badge-${Number(p.totalStock) <= 0 ? 'danger' : 'success'} mono`} style={{ fontWeight: 700 }}>
                           {formatNumber(p.totalStock)}
                         </span>
+                        {p.formattedStock && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {p.formattedStock}
+                          </div>
+                        )}
                       </td>
                     ) : (
                       <>
@@ -1024,6 +1105,11 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                           >
                             {formatNumber(whStock)}
                           </span>
+                          {p.units && p.units.some((u) => !u.isBaseUnit && Number(u.conversionRate) > 1) && (
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                              {formatStockDisplay(whStock, p.units, p.uom)}
+                            </div>
+                          )}
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {whStock < 0 ? (
@@ -1258,6 +1344,120 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             </div>
           </div>
 
+          {/* Multi-UoM Sub-Units Section */}
+          <div
+            style={{
+              padding: '1rem',
+              background: 'var(--bg-tertiary)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-color)',
+              marginBottom: '1.25rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.625rem' }}>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Layers size={15} color="var(--primary)" />
+                  Quy Đổi Đơn Vị Tính (Multi-UoM)
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                  (Đơn vị chuẩn kho: <strong>{formData.uom || 'Cái'}</strong>)
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleAddSubUnit}
+              >
+                + Thêm đơn vị quy đổi
+              </button>
+            </div>
+
+            {formData.units && formData.units.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                {formData.units.map((u, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.2fr 1.4fr 1.1fr 1.1fr auto',
+                      gap: '0.5rem',
+                      alignItems: 'end',
+                      background: 'var(--bg-secondary)',
+                      padding: '0.625rem',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Tên đơn vị</label>
+                      <input
+                        type="text"
+                        className="form-input form-input-sm"
+                        placeholder="VD: Hộp, Thùng"
+                        value={u.unitName}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'unitName', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        1 {u.unitName || 'đơn vị'} = ? {formData.uom || 'Cái'}
+                      </label>
+                      <input
+                        type="number"
+                        className="form-input form-input-sm mono"
+                        min="0.0001"
+                        step="any"
+                        placeholder="Hệ số quy đổi"
+                        value={u.conversionRate}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'conversionRate', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Giá sỉ / {u.unitName || 'ĐV'}</label>
+                      <input
+                        type="number"
+                        className="form-input form-input-sm mono"
+                        min="0"
+                        placeholder="Giá sỉ"
+                        value={u.wholesalePrice}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'wholesalePrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Giá lẻ / {u.unitName || 'ĐV'}</label>
+                      <input
+                        type="number"
+                        className="form-input form-input-sm mono"
+                        min="0"
+                        placeholder="Giá bán lẻ"
+                        value={u.retailPrice}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'retailPrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-icon"
+                        style={{ color: 'var(--danger)', height: '28px', width: '28px' }}
+                        onClick={() => handleRemoveSubUnit(idx)}
+                        title="Xóa đơn vị này"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.25rem 0' }}>
+                Chưa thêm đơn vị quy đổi phụ (VD: 1 Hộp = 6 {formData.uom || 'Viên'}). Bấm nút trên để thêm nếu có.
+              </div>
+            )}
+          </div>
+
           <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.875rem' }}>
             {isOverview ? 'Tồn Kho Ban Đầu Cho Từng Kho' : `Tồn Kho Ban Đầu Tại ${currentWarehouseObj?.name}`}
           </h4>
@@ -1445,6 +1645,120 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
               />
             </div>
+          </div>
+
+          {/* Multi-UoM Sub-Units Section */}
+          <div
+            style={{
+              padding: '1rem',
+              background: 'var(--bg-tertiary)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-color)',
+              marginTop: '1.25rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.625rem' }}>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Layers size={15} color="var(--primary)" />
+                  Quy Đổi Đơn Vị Tính (Multi-UoM)
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                  (Đơn vị chuẩn kho: <strong>{formData.uom || 'Cái'}</strong>)
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleAddSubUnit}
+              >
+                + Thêm đơn vị quy đổi
+              </button>
+            </div>
+
+            {formData.units && formData.units.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                {formData.units.map((u, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.2fr 1.4fr 1.1fr 1.1fr auto',
+                      gap: '0.5rem',
+                      alignItems: 'end',
+                      background: 'var(--bg-secondary)',
+                      padding: '0.625rem',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Tên đơn vị</label>
+                      <input
+                        type="text"
+                        className="form-input form-input-sm"
+                        placeholder="VD: Hộp, Thùng"
+                        value={u.unitName}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'unitName', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        1 {u.unitName || 'đơn vị'} = ? {formData.uom || 'Cái'}
+                      </label>
+                      <input
+                        type="number"
+                        className="form-input form-input-sm mono"
+                        min="0.0001"
+                        step="any"
+                        placeholder="Hệ số quy đổi"
+                        value={u.conversionRate}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'conversionRate', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Giá sỉ / {u.unitName || 'ĐV'}</label>
+                      <input
+                        type="number"
+                        className="form-input form-input-sm mono"
+                        min="0"
+                        placeholder="Giá sỉ"
+                        value={u.wholesalePrice}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'wholesalePrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Giá lẻ / {u.unitName || 'ĐV'}</label>
+                      <input
+                        type="number"
+                        className="form-input form-input-sm mono"
+                        min="0"
+                        placeholder="Giá bán lẻ"
+                        value={u.retailPrice}
+                        onChange={(e) => handleUpdateSubUnit(idx, 'retailPrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-icon"
+                        style={{ color: 'var(--danger)', height: '28px', width: '28px' }}
+                        onClick={() => handleRemoveSubUnit(idx)}
+                        title="Xóa đơn vị này"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.25rem 0' }}>
+                Chưa thêm đơn vị quy đổi phụ (VD: 1 Hộp = 6 {formData.uom || 'Viên'}). Bấm nút trên để thêm nếu có.
+              </div>
+            )}
           </div>
         </form>
       </Modal>
