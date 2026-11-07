@@ -30,3 +30,17 @@ bld/
 
 ## User-specific files
 appsettings.Production.json
+.env
+.env.local
+.env.staging
+.env.production
+!.env.example
+
+## Backup files & credentials
+backup/credentials/*.json
+!backup/credentials/.gitkeep
+backup/local_backups/*.sql.gz
+backup/local_backups/*.sql
+backup/local_backups/*.dump
+backup/local_backups/last_backup_status.json
+!backup/local_backups/.gitkeep

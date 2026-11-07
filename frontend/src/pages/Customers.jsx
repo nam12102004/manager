@@ -133,7 +133,7 @@ export default function Customers() {
     email: '',
     address: '',
     region: '',
-    initialDebt: 0,
+    initialDebt: '',
     initialDebtWarehouse: 'warehouse1',
     notes: '',
   });
@@ -148,7 +148,7 @@ export default function Customers() {
 
   const [adjustData, setAdjustData] = useState({
     mode: 'delta', // 'delta' or 'newDebt'
-    delta: 0,
+    delta: '',
     newDebt: 0,
     reason: DEBT_ADJUST_REASONS[0],
     note: '',
@@ -250,7 +250,7 @@ export default function Customers() {
       email: '',
       address: '',
       region: '',
-      initialDebt: 0,
+      initialDebt: '',
       initialDebtWarehouse: 'warehouse1',
       notes: '',
     });
@@ -278,13 +278,29 @@ export default function Customers() {
     const targetWh = selectedDebtWarehouse !== 'all' ? selectedDebtWarehouse : 'warehouse1';
     setAdjustData({
       mode: 'delta',
-      delta: 0,
+      delta: '',
       warehouse: targetWh,
       newDebt: customer.warehouseDebts?.[targetWh] ?? 0,
       reason: DEBT_ADJUST_REASONS[0],
       note: '',
     });
     setIsAdjustOpen(true);
+  };
+
+  // Load Debt History via customerService
+  const loadDebtHistory = async (customerId, period, warehouseOverride) => {
+    setHistoryLoading(true);
+    try {
+      const params = typeof period === 'object' ? { ...period } : { month: period || undefined };
+      const targetWh = warehouseOverride !== undefined ? warehouseOverride : historyWarehouse;
+      if (targetWh && targetWh !== 'all') params.warehouse = targetWh;
+      const records = await customerService.getDebtHistory(customerId, params);
+      setDebtHistoryRecords(records || []);
+    } catch (err) {
+      notify.error(err.message || 'Không thể tải lịch sử sổ nợ khách hàng');
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   // Open Debt History via customerService
@@ -1117,7 +1133,8 @@ export default function Customers() {
               <input
                 type="number"
                 className="form-input mono"
-                value={formData.initialDebt}
+                placeholder="0"
+                value={formData.initialDebt ?? ''}
                 onChange={(e) => setFormData({ ...formData, initialDebt: e.target.value })}
               />
             </div>
@@ -1334,7 +1351,7 @@ export default function Customers() {
                 step="any"
                 className="form-input mono"
                 placeholder="VD: 500000 hoặc -200000"
-                value={adjustData.delta}
+                value={adjustData.delta ?? ''}
                 onChange={(e) => setAdjustData({ ...adjustData, delta: e.target.value })}
                 required
               />
@@ -1390,6 +1407,26 @@ export default function Customers() {
         width="680px"
       >
         <div style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <select
+            className="form-control"
+            style={{ width: 'auto', minWidth: '130px', fontSize: '0.8125rem', padding: '0.35rem 0.65rem' }}
+            value={historyWarehouse}
+            onChange={(e) => {
+              const wh = e.target.value;
+              setHistoryWarehouse(wh);
+              if (selectedCustomer) {
+                const p = historyTimeMode === 'all'
+                  ? undefined
+                  : (historyTimeMode === 'day' ? historyDate : (historyTimeMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
+                loadDebtHistory(selectedCustomer.id, p, wh);
+              }
+            }}
+          >
+            <option value="all">Tất cả kho</option>
+            {warehouses.map((w) => (
+              <option key={w.id} value={w.id}>{w.name || w.shortName}</option>
+            ))}
+          </select>
           <TimeFilter
             mode={historyTimeMode}
             onModeChange={(newMode) => {
@@ -1511,6 +1548,8 @@ export default function Customers() {
                             ? 'badge badge-success'
                             : r.sourceType === 'payment'
                             ? 'badge badge-danger'
+                            : (r.sourceType === 'opening_balance' || r.sourceType === 'init')
+                            ? 'badge badge-info'
                             : 'badge badge-secondary'
                         }>
                           {r.sourceType === 'export'
@@ -1519,6 +1558,8 @@ export default function Customers() {
                             ? 'Thu tiền'
                             : r.sourceType === 'payment'
                             ? 'Chi tiền'
+                            : (r.sourceType === 'opening_balance' || r.sourceType === 'init')
+                            ? 'Số dư đầu'
                             : 'Điều chỉnh'}
                         </span>
                       </td>

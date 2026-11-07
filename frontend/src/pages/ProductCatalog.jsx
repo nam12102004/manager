@@ -119,10 +119,10 @@ export default function ProductCatalog() {
     uom: 'Cái',
     barcode: '',
     supplierId: '',
-    unitCost: 0,
-    wholesalePrice: 0,
-    retailPrice: 0,
-    reorderPoint: 5,
+    unitCost: '',
+    wholesalePrice: '',
+    retailPrice: '',
+    reorderPoint: '',
   });
 
   // Load suppliers, categories & warehouses
@@ -286,10 +286,10 @@ export default function ProductCatalog() {
       uom: 'Cái',
       barcode: '',
       supplierId: suppliers[0]?.id ? String(suppliers[0].id) : '',
-      unitCost: 0,
-      wholesalePrice: 0,
-      retailPrice: 0,
-      reorderPoint: 5,
+      unitCost: '',
+      wholesalePrice: '',
+      retailPrice: '',
+      reorderPoint: '',
     });
     setProductUnits([{ unitName: 'Cái', conversionRate: 1, isBaseUnit: true }]);
     setIsCreateOpen(true);
@@ -1543,7 +1543,8 @@ export default function ProductCatalog() {
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.unitCost}
+                placeholder="0"
+                value={formData.unitCost ?? ''}
                 onChange={(e) => setFormData({ ...formData, unitCost: e.target.value })}
               />
             </div>
@@ -1553,7 +1554,8 @@ export default function ProductCatalog() {
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.wholesalePrice}
+                placeholder="0"
+                value={formData.wholesalePrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
               />
             </div>
@@ -1563,7 +1565,8 @@ export default function ProductCatalog() {
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.retailPrice}
+                placeholder="0"
+                value={formData.retailPrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
               />
             </div>
@@ -1574,7 +1577,7 @@ export default function ProductCatalog() {
                 className="form-input mono"
                 min="0"
                 placeholder="Cảnh báo khi dưới mức này"
-                value={formData.reorderPoint}
+                value={formData.reorderPoint ?? ''}
                 onChange={(e) => setFormData({ ...formData, reorderPoint: e.target.value })}
               />
             </div>
@@ -1699,7 +1702,8 @@ export default function ProductCatalog() {
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.unitCost}
+                placeholder="0"
+                value={formData.unitCost ?? ''}
                 onChange={(e) => setFormData({ ...formData, unitCost: e.target.value })}
               />
             </div>
@@ -1709,7 +1713,8 @@ export default function ProductCatalog() {
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.wholesalePrice}
+                placeholder="0"
+                value={formData.wholesalePrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
               />
             </div>
@@ -1719,7 +1724,8 @@ export default function ProductCatalog() {
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.retailPrice}
+                placeholder="0"
+                value={formData.retailPrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
               />
             </div>
@@ -1730,7 +1736,7 @@ export default function ProductCatalog() {
                 className="form-input mono"
                 min="0"
                 placeholder="Cảnh báo khi dưới mức này"
-                value={formData.reorderPoint}
+                value={formData.reorderPoint ?? ''}
                 onChange={(e) => setFormData({ ...formData, reorderPoint: e.target.value })}
               />
             </div>

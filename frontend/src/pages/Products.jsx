@@ -177,7 +177,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const [adjustData, setAdjustData] = useState({
     warehouse: 'warehouse1',
     mode: 'delta', // 'delta' or 'quantity'
-    delta: 0,
+    delta: '',
     quantity: 0,
     reason: STOCK_ADJUST_REASONS[0],
     note: '',
@@ -404,13 +404,13 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       uom: 'Cái',
       barcode: '',
       supplierId: '',
-      unitCost: 0,
-      wholesalePrice: 0,
-      retailPrice: 0,
-      warehouseStocks: initialStocks,
-      stockWarehouse1: 0,
-      stockWarehouse2: 0,
-      stockWarehouse3: 0,
+      unitCost: '',
+      wholesalePrice: '',
+      retailPrice: '',
+      warehouseStocks: {},
+      stockWarehouse1: '',
+      stockWarehouse2: '',
+      stockWarehouse3: '',
       reorderPoint: 5,
     });
     setProductUnits([{ unitName: 'Cái', conversionRate: 1, isBaseUnit: true }]);
@@ -526,7 +526,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
     setAdjustData({
       warehouse: targetWhId,
       mode: 'delta',
-      delta: 0,
+      delta: '',
       quantity: currentWhStock,
       reason: STOCK_ADJUST_REASONS[0],
       note: '',
@@ -2148,7 +2148,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.unitCost}
+                placeholder="0"
+                value={formData.unitCost ?? ''}
                 onChange={(e) => setFormData({ ...formData, unitCost: e.target.value })}
               />
             </div>
@@ -2159,7 +2160,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.wholesalePrice}
+                placeholder="0"
+                value={formData.wholesalePrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
               />
             </div>
@@ -2170,7 +2172,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.retailPrice}
+                placeholder="0"
+                value={formData.retailPrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
               />
             </div>
@@ -2361,7 +2364,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.unitCost}
+                placeholder="0"
+                value={formData.unitCost ?? ''}
                 onChange={(e) => setFormData({ ...formData, unitCost: e.target.value })}
               />
             </div>
@@ -2372,7 +2376,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.wholesalePrice}
+                placeholder="0"
+                value={formData.wholesalePrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
               />
             </div>
@@ -2383,7 +2388,8 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 type="number"
                 className="form-input mono"
                 min="0"
-                value={formData.retailPrice}
+                placeholder="0"
+                value={formData.retailPrice ?? ''}
                 onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
               />
             </div>
@@ -2539,7 +2545,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                 step="any"
                 className="form-input mono"
                 placeholder="VD: 5 hoặc -3"
-                value={adjustData.delta}
+                value={adjustData.delta ?? ''}
                 onChange={(e) => setAdjustData({ ...adjustData, delta: e.target.value })}
                 required
               />

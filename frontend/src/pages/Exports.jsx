@@ -84,8 +84,8 @@ export default function Exports({ initialOpenCreate = false }) {
     warehouse: 'warehouse1',
     date: new Date().toISOString().slice(0, 10),
     discountType: 'amount', // 'percent' | 'amount'
-    discountValue: 0,
-    paidAmount: 0,
+    discountValue: '',
+    paidAmount: '',
     notes: '',
     items: [],
   });
@@ -178,20 +178,30 @@ export default function Exports({ initialOpenCreate = false }) {
   const handleOpenCreate = () => {
     loadDependencies();
     const currentWhs = warehouseService.getWarehousesSync();
+    const firstP = products.length > 0 ? products[0] : null;
+    const units = firstP ? getProductUnits(firstP) : [];
+    const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
+    const conv = Number(defUnit?.conversionRate || 1);
+    const initialPrice = conv > 1
+      ? (defUnit?.retailPrice || (firstP?.retailPrice || 0) * conv)
+      : (firstP?.retailPrice || firstP?.salePrice || '');
+
     setCreateForm({
       customerId: customers.length > 0 ? String(customers[0].id) : '',
       employeeId: '',
       warehouse: currentWhs[0]?.id || 'warehouse1',
       date: new Date().toISOString().slice(0, 10),
       discountType: 'amount',
-      discountValue: 0,
-      paidAmount: 0,
+      discountValue: '',
+      paidAmount: '',
       notes: '',
       items: [
         {
-          productId: products.length > 0 ? products[0].id : '',
-          quantity: 1,
-          salePrice: products.length > 0 ? (products[0].retailPrice || products[0].salePrice || 0) : 0,
+          productId: firstP ? firstP.id : '',
+          quantity: '',
+          unitName: defUnit?.unitName || firstP?.uom || 'Cái',
+          conversionRate: conv,
+          salePrice: initialPrice || '',
         },
       ],
     });
@@ -201,14 +211,24 @@ export default function Exports({ initialOpenCreate = false }) {
   // Add Item Row
   const handleAddItem = () => {
     if (products.length === 0) return;
+    const firstP = products[0];
+    const units = getProductUnits(firstP);
+    const defUnit = getPrimaryDisplayUnit(firstP) || units.find((u) => u.isBaseUnit) || units[0];
+    const conv = Number(defUnit?.conversionRate || 1);
+    const initialPrice = conv > 1
+      ? (defUnit?.retailPrice || (firstP?.retailPrice || 0) * conv)
+      : (firstP?.retailPrice || firstP?.salePrice || '');
+
     setCreateForm((prev) => ({
       ...prev,
       items: [
         ...prev.items,
         {
-          productId: products[0].id,
-          quantity: 1,
-          salePrice: products[0].retailPrice,
+          productId: firstP.id,
+          quantity: '',
+          unitName: defUnit?.unitName || firstP.uom || 'Cái',
+          conversionRate: conv,
+          salePrice: initialPrice || '',
         },
       ],
     }));
@@ -237,12 +257,15 @@ export default function Exports({ initialOpenCreate = false }) {
           const conv = Number(defUnit?.conversionRate || 1);
           item.unitName = defUnit?.unitName || prod.uom || 'Cái';
           item.conversionRate = conv;
-          item.salePrice = conv > 1
+          const price = conv > 1
             ? (defUnit.retailPrice || (prod.retailPrice || 0) * conv)
             : (prod.retailPrice || prod.salePrice || 0);
+          item.salePrice = price || '';
         }
+      } else if (field === 'quantity' || field === 'salePrice') {
+        item[field] = value === '' ? '' : (isNaN(value) ? value : Number(value));
       } else {
-        item[field] = Number(value);
+        item[field] = value;
       }
 
       newItems[index] = item;
@@ -253,10 +276,10 @@ export default function Exports({ initialOpenCreate = false }) {
   // Financial calculations for creation
   // Calculate Totals via exportService
   const { subtotal, discountAmount, totalSale, unpaidAmount } = exportService.calculateExportTotals({
-    items: createForm.items,
+    items: createForm.items.map((it) => ({ ...it, quantity: Number(it.quantity || 0), salePrice: Number(it.salePrice || 0) })),
     discountType: createForm.discountType,
-    discountValue: createForm.discountValue,
-    paidAmount: createForm.paidAmount,
+    discountValue: Number(createForm.discountValue || 0),
+    paidAmount: Number(createForm.paidAmount || 0),
   });
 
   const selectedCustomerObj = customers.find((c) => c.id === Number(createForm.customerId));
@@ -801,11 +824,12 @@ export default function Exports({ initialOpenCreate = false }) {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '40%' }}>Sản Phẩm</th>
-                    <th style={{ width: '15%', textAlign: 'center' }}>Tồn Tại Kho</th>
-                    <th style={{ width: '15%', textAlign: 'right' }}>Số Lượng</th>
-                    <th style={{ width: '20%', textAlign: 'right' }}>Đơn Giá Bán</th>
-                    <th style={{ width: '15%', textAlign: 'right' }}>Thành Tiền</th>
+                    <th style={{ width: '30%' }}>Sản Phẩm</th>
+                    <th style={{ width: '12%' }}>ĐVT Xuất</th>
+                    <th style={{ width: '14%', textAlign: 'center' }}>Tồn Tại Kho</th>
+                    <th style={{ width: '12%', textAlign: 'right' }}>Số Lượng</th>
+                    <th style={{ width: '15%', textAlign: 'right' }}>Đơn Giá Bán</th>
+                    <th style={{ width: '12%', textAlign: 'right' }}>Thành Tiền</th>
                     <th style={{ width: '5%', textAlign: 'center' }}>Xóa</th>
                   </tr>
                 </thead>
@@ -891,7 +915,8 @@ export default function Exports({ initialOpenCreate = false }) {
                             step="any"
                             className="form-input mono"
                             style={{ textAlign: 'right' }}
-                            value={item.quantity}
+                            placeholder="0"
+                            value={item.quantity ?? ''}
                             onChange={(e) => handleUpdateItem(idx, 'quantity', e.target.value)}
                             required
                           />
@@ -903,7 +928,8 @@ export default function Exports({ initialOpenCreate = false }) {
                             step="any"
                             className="form-input mono"
                             style={{ textAlign: 'right' }}
-                            value={item.salePrice}
+                            placeholder="0"
+                            value={item.salePrice ?? ''}
                             onChange={(e) => handleUpdateItem(idx, 'salePrice', e.target.value)}
                             required
                           />
@@ -960,7 +986,8 @@ export default function Exports({ initialOpenCreate = false }) {
                     min="0"
                     step="any"
                     className="form-input mono"
-                    value={createForm.discountValue}
+                    placeholder="0"
+                    value={createForm.discountValue ?? ''}
                     onChange={(e) => setCreateForm({ ...createForm, discountValue: e.target.value })}
                   />
                 </div>
@@ -1017,7 +1044,8 @@ export default function Exports({ initialOpenCreate = false }) {
                   step="any"
                   className="form-input mono"
                   style={{ textAlign: 'right', fontWeight: 700, fontSize: '1.0625rem' }}
-                  value={createForm.paidAmount}
+                  placeholder="0"
+                  value={createForm.paidAmount ?? ''}
                   onChange={(e) => setCreateForm({ ...createForm, paidAmount: e.target.value })}
                 />
               </div>

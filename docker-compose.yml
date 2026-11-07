@@ -47,6 +47,34 @@ services:
       - "${FRONTEND_PORT:-3000}:80"
     restart: always
 
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: debtmanager_backup
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=debtmanager_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - TZ=${TZ:-Asia/Ho_Chi_Minh}
+      - BACKUP_TIME=${BACKUP_TIME:-00:00}
+      - RETENTION_DAYS=${RETENTION_DAYS:-30}
+      - GDRIVE_FOLDER_ID=${GDRIVE_FOLDER_ID:-}
+      - GDRIVE_SERVICE_ACCOUNT_FILE=/app/credentials/service_account.json
+      - GDRIVE_CLIENT_ID=${GDRIVE_CLIENT_ID:-}
+      - GDRIVE_CLIENT_SECRET=${GDRIVE_CLIENT_SECRET:-}
+      - GDRIVE_REFRESH_TOKEN=${GDRIVE_REFRESH_TOKEN:-}
+      - RUN_ON_STARTUP=${BACKUP_RUN_ON_STARTUP:-false}
+    volumes:
+      - ./backup/credentials:/app/credentials:ro
+      - ./backup/local_backups:/backups
+
   # Optional SQL Server profile (Run with: docker compose --profile mssql up)
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest

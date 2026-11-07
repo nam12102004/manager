@@ -83,16 +83,11 @@ export default function EntityTransactionLedger({
     if (!entityId) return;
     setLoading(true);
     try {
-      const monthParam =
-        timeMode === 'all'
-          ? undefined
-          : timeMode === 'day'
-          ? selectedDate
-          : selectedMonth;
-
       const params = {
         warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : undefined,
-        month: monthParam,
+        month: timeMode === 'month' ? selectedMonth : (timeMode === 'day' ? selectedDate : undefined),
+        fromDate: timeMode === 'range' ? fromDate : undefined,
+        toDate: timeMode === 'range' ? toDate : undefined,
       };
 
       let res = null;

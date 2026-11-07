@@ -137,7 +137,7 @@ export default function Suppliers() {
     region: '',
     bankAccount: '',
     taxNumber: '',
-    initialDebt: 0,
+    initialDebt: '',
     initialDebtWarehouse: 'warehouse1',
     notes: '',
   });
@@ -152,7 +152,7 @@ export default function Suppliers() {
 
   const [adjustData, setAdjustData] = useState({
     mode: 'delta',
-    delta: 0,
+    delta: '',
     newDebt: 0,
     reason: DEBT_ADJUST_REASONS[0],
     note: '',
@@ -256,7 +256,7 @@ export default function Suppliers() {
       region: '',
       bankAccount: '',
       taxNumber: '',
-      initialDebt: 0,
+      initialDebt: '',
       initialDebtWarehouse: 'warehouse1',
       notes: '',
     });
@@ -286,7 +286,7 @@ export default function Suppliers() {
     const targetWh = selectedDebtWarehouse !== 'all' ? selectedDebtWarehouse : 'warehouse1';
     setAdjustData({
       mode: 'delta',
-      delta: 0,
+      delta: '',
       warehouse: targetWh,
       newDebt: supplier.warehouseDebts?.[targetWh] ?? 0,
       reason: DEBT_ADJUST_REASONS[0],
@@ -295,11 +295,12 @@ export default function Suppliers() {
     setIsAdjustOpen(true);
   };
 
-  const loadDebtHistory = async (supplierId, period) => {
+  const loadDebtHistory = async (supplierId, period, warehouseOverride) => {
     setHistoryLoading(true);
     try {
       const params = typeof period === 'object' ? { ...period } : { month: period || undefined };
-      if (historyWarehouse && historyWarehouse !== 'all') params.warehouse = historyWarehouse;
+      const targetWh = warehouseOverride !== undefined ? warehouseOverride : historyWarehouse;
+      if (targetWh && targetWh !== 'all') params.warehouse = targetWh;
       const records = await supplierService.getDebtHistory(supplierId, params);
       setDebtHistoryRecords(records || []);
     } catch (err) {
@@ -313,6 +314,7 @@ export default function Suppliers() {
   const handleOpenHistory = async (supplier) => {
     setSelectedSupplier(supplier);
     setIsHistoryOpen(true);
+    setSelectedVoucherDetail(null);
     const targetPeriod = historyTimeMode === 'all' ? undefined : (historyTimeMode === 'day' ? historyDate : (historyTimeMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
     loadDebtHistory(supplier.id, targetPeriod);
   };
@@ -1146,7 +1148,8 @@ export default function Suppliers() {
             <input
               type="number"
               className="form-input mono"
-              value={formData.initialDebt}
+              placeholder="0"
+              value={formData.initialDebt ?? ''}
               onChange={(e) => setFormData({ ...formData, initialDebt: e.target.value })}
             />
           </div>
@@ -1361,7 +1364,8 @@ export default function Suppliers() {
                 type="number"
                 step="any"
                 className="form-input mono"
-                value={adjustData.delta}
+                placeholder="VD: 500000 hoặc -200000"
+                value={adjustData.delta ?? ''}
                 onChange={(e) => setAdjustData({ ...adjustData, delta: e.target.value })}
                 required
               />
@@ -1416,6 +1420,26 @@ export default function Suppliers() {
         width="680px"
       >
         <div style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <select
+            className="form-control"
+            style={{ width: 'auto', minWidth: '130px', fontSize: '0.8125rem', padding: '0.35rem 0.65rem' }}
+            value={historyWarehouse}
+            onChange={(e) => {
+              const wh = e.target.value;
+              setHistoryWarehouse(wh);
+              if (selectedSupplier) {
+                const p = historyTimeMode === 'all'
+                  ? undefined
+                  : (historyTimeMode === 'day' ? historyDate : (historyTimeMode === 'range' ? { fromDate: historyFromDate, toDate: historyToDate } : historyMonth));
+                loadDebtHistory(selectedSupplier.id, p, wh);
+              }
+            }}
+          >
+            <option value="all">Tất cả kho</option>
+            {warehouses.map((w) => (
+              <option key={w.id} value={w.id}>{w.name || w.shortName}</option>
+            ))}
+          </select>
           <TimeFilter
             mode={historyTimeMode}
             onModeChange={(newMode) => {
@@ -1536,6 +1560,8 @@ export default function Suppliers() {
                             ? 'badge badge-danger'
                             : r.sourceType === 'receipt'
                             ? 'badge badge-success'
+                            : (r.sourceType === 'opening_balance' || r.sourceType === 'init')
+                            ? 'badge badge-info'
                             : 'badge badge-secondary'
                         }>
                           {r.sourceType === 'import'
@@ -1544,6 +1570,8 @@ export default function Suppliers() {
                             ? 'Chi tiền'
                             : r.sourceType === 'receipt'
                             ? 'Thu tiền'
+                            : (r.sourceType === 'opening_balance' || r.sourceType === 'init')
+                            ? 'Số dư đầu'
                             : 'Điều chỉnh'}
                         </span>
                       </td>
