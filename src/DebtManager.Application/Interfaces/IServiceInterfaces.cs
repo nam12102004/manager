@@ -37,12 +37,12 @@ public interface IProductService
 public interface ICustomerService
 {
     Task<List<CustomerDto>> GetCustomersAsync(string? search = null, CancellationToken ct = default);
-    Task<CustomerPagedResult> GetPagedCustomersAsync(string? search = null, string? region = null, string? sortBy = null, int page = 1, int pageSize = 15, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
+    Task<CustomerPagedResult> GetPagedCustomersAsync(string? search = null, string? region = null, string? sortBy = null, int page = 1, int pageSize = 15, string? fromDate = null, string? toDate = null, string? priorityMetrics = null, CancellationToken ct = default);
     Task<List<string>> GetRegionsAsync(CancellationToken ct = default);
     Task<CustomerDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<CustomerDto> CreateCustomerAsync(CreateCustomerDto dto, CancellationToken ct = default);
     Task<CustomerDto> UpdateCustomerAsync(int id, UpdateCustomerDto dto, CancellationToken ct = default);
-    Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
+    Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default);
     Task<bool> AdjustDebtAsync(int customerId, CustomerDebtAdjustDto dto, CancellationToken ct = default);
     Task<EntityLedgerResponseDto> GetLedgerAsync(int customerId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
 }
@@ -50,12 +50,12 @@ public interface ICustomerService
 public interface ISupplierService
 {
     Task<List<SupplierDto>> GetSuppliersAsync(string? search = null, CancellationToken ct = default);
-    Task<SupplierPagedResult> GetPagedSuppliersAsync(string? search = null, string? region = null, string? sortBy = null, int page = 1, int pageSize = 15, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
+    Task<SupplierPagedResult> GetPagedSuppliersAsync(string? search = null, string? region = null, string? sortBy = null, int page = 1, int pageSize = 15, string? fromDate = null, string? toDate = null, string? priorityMetrics = null, CancellationToken ct = default);
     Task<List<string>> GetRegionsAsync(CancellationToken ct = default);
     Task<SupplierDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<SupplierDto> CreateSupplierAsync(CreateSupplierDto dto, CancellationToken ct = default);
     Task<SupplierDto> UpdateSupplierAsync(int id, UpdateSupplierDto dto, CancellationToken ct = default);
-    Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
+    Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default);
     Task<bool> AdjustDebtAsync(int supplierId, SupplierDebtAdjustDto dto, CancellationToken ct = default);
     Task<EntityLedgerResponseDto> GetLedgerAsync(int supplierId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
 }
@@ -91,8 +91,8 @@ public interface IImportService
 
 public interface IReceiptService
 {
-    Task<List<ReceiptDto>> GetReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
-    Task<ReceiptPagedResult> GetPagedReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
+    Task<List<ReceiptDto>> GetReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default);
+    Task<ReceiptPagedResult> GetPagedReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? warehouse = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
     Task<ReceiptDto> GetByIdAsync(long id, CancellationToken ct = default);
     Task<ReceiptDto> CreateReceiptAsync(CreateReceiptDto dto, CancellationToken ct = default);
     Task<bool> DeleteReceiptAsync(long id, CancellationToken ct = default);
@@ -100,8 +100,8 @@ public interface IReceiptService
 
 public interface IPaymentService
 {
-    Task<List<PaymentDto>> GetPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default);
-    Task<PaymentPagedResult> GetPagedPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
+    Task<List<PaymentDto>> GetPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default);
+    Task<PaymentPagedResult> GetPagedPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? warehouse = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
     Task<PaymentDto> GetByIdAsync(long id, CancellationToken ct = default);
     Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto dto, CancellationToken ct = default);
     Task<bool> UpdateStatusAsync(long id, string action, CancellationToken ct = default);
@@ -111,7 +111,7 @@ public interface IPaymentService
 public interface IReportService
 {
     Task<StockReportResponseDto> GetStockReportAsync(string? month = null, CancellationToken ct = default);
-    Task<DebtReportResponseDto> GetDebtReportAsync(string? month = null, CancellationToken ct = default);
+    Task<DebtReportResponseDto> GetDebtReportAsync(string? month = null, string? warehouse = null, CancellationToken ct = default);
     Task<WarehouseSalesResponseDto> GetWarehouseSalesAsync(string? warehouse = null, string? month = null, string? type = null, string? sortBy = null, CancellationToken ct = default);
 }
 

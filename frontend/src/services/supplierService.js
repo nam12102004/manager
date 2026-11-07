@@ -74,6 +74,7 @@ export const supplierService = {
       bankAccount: formData.bankAccount?.trim() || undefined,
       bankName: formData.bankName?.trim() || undefined,
       initialDebt: formData.initialDebt ? Number(formData.initialDebt) : 0,
+      initialDebtWarehouse: formData.initialDebtWarehouse || "warehouse1",
       notes: formData.notes?.trim() || undefined,
     };
   },

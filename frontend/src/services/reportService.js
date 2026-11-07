@@ -96,37 +96,79 @@ export const reportService = {
   /**
    * Export debt report to CSV file
    */
-  exportDebtReportCSV(debtReport, month) {
+  exportDebtReportCSV(debtReport, month, warehouseId = 'all', warehouses = []) {
     if (!debtReport || !Array.isArray(debtReport.items) || debtReport.items.length === 0) {
       throw new Error('Không có dữ liệu công nợ để xuất');
     }
 
-    const headers = [
-      'Mã',
-      'Tên đối tác',
-      'Phân loại',
-      'Nợ đầu kỳ',
-      'Phát sinh tăng',
-      'Phát sinh giảm',
-      'Dư nợ cuối kỳ',
-      'Phải thu (Khách nợ / Nộp trước NCC)',
-      'Phải trả (Nợ NCC / KH gửi trước)',
-    ];
+    const isAll = !warehouseId || warehouseId === 'all';
+    const whObj = !isAll ? warehouses.find((w) => w.id === warehouseId) : null;
+    const whName = whObj ? (whObj.shortName || whObj.name) : 'Tất cả kho';
 
-    const rows = debtReport.items.map((it) => [
-      `"${it.code || ''}"`,
-      `"${it.name || ''}"`,
-      `"${it.partnerType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp'}"`,
-      Number(it.openingDebt || 0),
-      Number(it.increaseDebt || 0),
-      Number(it.decreaseDebt || 0),
-      Number(it.closingDebt || 0),
-      Number(it.receivable || 0),
-      Number(it.payable || 0),
-    ]);
+    let headers;
+    let rows;
+
+    if (isAll) {
+      headers = [
+        'Mã',
+        'Tên đối tác',
+        'Phân loại',
+        'Nợ đầu kỳ',
+        'Phát sinh tăng',
+        'Phát sinh giảm',
+        'Nợ Kho 1',
+        'Nợ Kho 2',
+        'Nợ Kho 3',
+        'Dư nợ cuối kỳ (Tổng)',
+        'Phải thu (Khách nợ / Nộp trước NCC)',
+        'Phải trả (Nợ NCC / KH gửi trước)',
+      ];
+
+      rows = debtReport.items.map((it) => [
+        `"${it.code || ''}"`,
+        `"${it.name || ''}"`,
+        `"${it.partnerType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp'}"`,
+        Number(it.openingDebt || 0),
+        Number(it.increaseDebt || 0),
+        Number(it.decreaseDebt || 0),
+        Number(it.debtWarehouse1 || 0),
+        Number(it.debtWarehouse2 || 0),
+        Number(it.debtWarehouse3 || 0),
+        Number(it.closingDebt || 0),
+        Number(it.receivable || 0),
+        Number(it.payable || 0),
+      ]);
+    } else {
+      headers = [
+        'Mã',
+        'Tên đối tác',
+        'Phân loại',
+        'Kho',
+        'Nợ đầu kỳ',
+        'Phát sinh tăng',
+        'Phát sinh giảm',
+        'Dư nợ cuối kỳ',
+        'Phải thu (Khách nợ / Nộp trước NCC)',
+        'Phải trả (Nợ NCC / KH gửi trước)',
+      ];
+
+      rows = debtReport.items.map((it) => [
+        `"${it.code || ''}"`,
+        `"${it.name || ''}"`,
+        `"${it.partnerType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp'}"`,
+        `"${whName}"`,
+        Number(it.openingDebt || 0),
+        Number(it.increaseDebt || 0),
+        Number(it.decreaseDebt || 0),
+        Number(it.closingDebt || 0),
+        Number(it.receivable || 0),
+        Number(it.payable || 0),
+      ]);
+    }
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    this.downloadCSV(`Bao_Cao_Cong_No_${month}.csv`, csvContent);
+    const fileSuffix = isAll ? 'Tat_Ca_Kho' : (warehouseId || 'Kho');
+    this.downloadCSV(`Bao_Cao_Cong_No_${fileSuffix}_${month}.csv`, csvContent);
   },
 
   // ================= API Wrappers =================
@@ -134,8 +176,8 @@ export const reportService = {
     return await reportsApi.getStockReport(month);
   },
 
-  async getDebtReport(month) {
-    return await reportsApi.getDebtReport(month);
+  async getDebtReport(month, warehouse) {
+    return await reportsApi.getDebtReport(month, warehouse);
   },
 
   async getDashboardSummary() {

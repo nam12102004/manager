@@ -21,7 +21,9 @@ public class CustomerService : ICustomerService
 
     public async Task<List<CustomerDto>> GetCustomersAsync(string? search = null, CancellationToken ct = default)
     {
-        var query = _uow.Customers.Query().AsQueryable();
+        var query = _uow.Customers.Query()
+            .Include(c => c.WarehouseDebts)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -47,12 +49,15 @@ public class CustomerService : ICustomerService
         int pageSize = 15,
         string? fromDate = null,
         string? toDate = null,
+        string? priorityMetrics = null,
         CancellationToken ct = default)
     {
         page = Math.Max(1, page);
         pageSize = pageSize > 0 ? pageSize : 15;
 
-        var query = _uow.Customers.Query().AsQueryable();
+        var query = _uow.Customers.Query()
+            .Include(c => c.WarehouseDebts)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -85,12 +90,23 @@ public class CustomerService : ICustomerService
         var totalReceivables = await query.Where(c => c.Debt > 0).SumAsync(c => (decimal?)c.Debt, ct) ?? 0;
         var totalPayables = await query.Where(c => c.Debt < 0).SumAsync(c => (decimal?)Math.Abs(c.Debt), ct) ?? 0;
 
-        // Sorting
+        // Sorting (customers having data for the ticked metrics come first)
+        var priorityIds = BuildPriorityCustomerIds(query, priorityMetrics, fromDate, toDate);
+        IOrderedQueryable<Customer> OrderFirst<TKey>(System.Linq.Expressions.Expression<Func<Customer, TKey>> key, bool desc)
+        {
+            if (priorityIds == null)
+            {
+                return desc ? query.OrderByDescending(key) : query.OrderBy(key);
+            }
+            var prioritized = query.OrderByDescending(c => priorityIds.Contains(c.Id));
+            return desc ? prioritized.ThenByDescending(key) : prioritized.ThenBy(key);
+        }
+
         query = sortBy switch
         {
-            "debt_desc" => query.OrderByDescending(c => c.Debt).ThenByDescending(c => c.Id),
-            "debt_asc" => query.OrderBy(c => c.Debt).ThenByDescending(c => c.Id),
-            _ => query.OrderByDescending(c => c.Id)
+            "debt_desc" => OrderFirst(c => c.Debt, true).ThenByDescending(c => c.Id),
+            "debt_asc" => OrderFirst(c => c.Debt, false).ThenByDescending(c => c.Id),
+            _ => OrderFirst(c => c.Id, true)
         };
 
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -118,65 +134,55 @@ public class CustomerService : ICustomerService
             customerExportsQuery = customerExportsQuery.Where(v => v.Date <= endDate.Value);
         }
 
-        var customerExportsGroup = await customerExportsQuery
-            .GroupBy(v => new { v.CustomerId, Warehouse = v.Warehouse.ToLower() })
-            .Select(g => new { g.Key.CustomerId, g.Key.Warehouse, Total = g.Sum(x => x.TotalSale) })
+        var customerExports = await customerExportsQuery
+            .Select(v => new { v.CustomerId, v.TotalSale, v.Warehouse })
             .ToListAsync(ct);
 
-        var exportsByCustomer = customerExportsGroup
-            .GroupBy(x => x.CustomerId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.ToDictionary(x => x.Warehouse, x => x.Total, StringComparer.OrdinalIgnoreCase)
-            );
-
-        var receiptsQuery = _uow.Receipts.Query()
-            .Where(r => r.CustomerId != null && customerIds.Contains(r.CustomerId.Value));
+        var customerReceiptsQuery = _uow.Receipts.Query()
+            .Where(r => r.CustomerId.HasValue && customerIds.Contains(r.CustomerId.Value));
         if (startDate.HasValue)
         {
-            receiptsQuery = receiptsQuery.Where(r => r.Date >= startDate.Value);
+            customerReceiptsQuery = customerReceiptsQuery.Where(r => r.Date >= startDate.Value);
         }
         if (endDate.HasValue)
         {
-            receiptsQuery = receiptsQuery.Where(r => r.Date <= endDate.Value);
+            customerReceiptsQuery = customerReceiptsQuery.Where(r => r.Date <= endDate.Value);
         }
 
-        var receiptsMap = await receiptsQuery
-            .GroupBy(r => r.CustomerId!.Value)
-            .Select(g => new { CustomerId = g.Key, Total = g.Sum(x => x.Amount) })
-            .ToDictionaryAsync(x => x.CustomerId, x => x.Total, ct);
+        var customerReceipts = await customerReceiptsQuery
+            .Select(r => new { CustomerId = r.CustomerId!.Value, r.Amount })
+            .ToListAsync(ct);
 
-        var paymentsQuery = _uow.Payments.Query()
-            .Where(p => p.CustomerId != null && customerIds.Contains(p.CustomerId.Value) && p.Status != "cancelled");
+        var customerPaymentsQuery = _uow.Payments.Query()
+            .Where(p => p.CustomerId.HasValue && customerIds.Contains(p.CustomerId.Value) && p.Status != "cancelled");
         if (startDate.HasValue)
         {
-            paymentsQuery = paymentsQuery.Where(p => p.Date >= startDate.Value);
+            customerPaymentsQuery = customerPaymentsQuery.Where(p => p.Date >= startDate.Value);
         }
         if (endDate.HasValue)
         {
-            paymentsQuery = paymentsQuery.Where(p => p.Date <= endDate.Value);
+            customerPaymentsQuery = customerPaymentsQuery.Where(p => p.Date <= endDate.Value);
         }
 
-        var paymentsMap = await paymentsQuery
-            .GroupBy(p => p.CustomerId!.Value)
-            .Select(g => new { CustomerId = g.Key, Total = g.Sum(x => x.Amount) })
-            .ToDictionaryAsync(x => x.CustomerId, x => x.Total, ct);
+        var customerPayments = await customerPaymentsQuery
+            .Select(p => new { CustomerId = p.CustomerId!.Value, p.Amount })
+            .ToListAsync(ct);
 
         var dtos = items.Select(c =>
         {
             var dto = MapToDto(c);
-            if (exportsByCustomer.TryGetValue(c.Id, out var whDict))
+            var myExports = customerExports.Where(e => e.CustomerId == c.Id).ToList();
+            dto.TotalExportAmount = myExports.Sum(e => e.TotalSale);
+            dto.TotalReceiptAmount = customerReceipts.Where(r => r.CustomerId == c.Id).Sum(r => r.Amount);
+            dto.TotalPaymentAmount = customerPayments.Where(p => p.CustomerId == c.Id).Sum(p => p.Amount);
+            dto.TotalImportAmount = 0;
+
+            foreach (var exp in myExports)
             {
-                dto.WarehouseExports = whDict;
-                dto.TotalExportAmount = whDict.Values.Sum();
+                var wh = exp.Warehouse;
+                dto.WarehouseExports[wh] = dto.WarehouseExports.GetValueOrDefault(wh) + exp.TotalSale;
             }
-            else
-            {
-                dto.WarehouseExports = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-                dto.TotalExportAmount = 0;
-            }
-            dto.TotalReceiptAmount = receiptsMap.GetValueOrDefault(c.Id, 0);
-            dto.TotalPaymentAmount = paymentsMap.GetValueOrDefault(c.Id, 0);
+
             return dto;
         }).ToList();
 
@@ -191,19 +197,83 @@ public class CustomerService : ICustomerService
         };
     }
 
+    /// <summary>
+    /// Builds a DB-side query of customer ids that have data for any of the ticked metrics
+    /// (export / receipt / payment within the time range, or non-zero debt). Returns null when nothing is ticked.
+    /// </summary>
+    private IQueryable<int>? BuildPriorityCustomerIds(IQueryable<Customer> filtered, string? priorityMetrics, string? fromDate, string? toDate)
+    {
+        var metrics = PriorityMetrics.Parse(priorityMetrics);
+        if (metrics.IsEmpty) return null;
+
+        var (start, end) = PriorityMetrics.ParseDateRange(fromDate, toDate);
+        IQueryable<int>? ids = null;
+        void Add(IQueryable<int> part) => ids = ids == null ? part : ids.Union(part);
+
+        var exportWhs = metrics.Get("export");
+        if (exportWhs.Count > 0)
+        {
+            var exports = _uow.ExportVouchers.Query().Where(v => v.Status != "cancelled");
+            if (start.HasValue) exports = exports.Where(v => v.Date >= start.Value);
+            if (end.HasValue) exports = exports.Where(v => v.Date <= end.Value);
+            if (!exportWhs.Contains(PriorityMetrics.AllWarehouses))
+            {
+                var whs = exportWhs.ToList();
+                exports = exports.Where(v => whs.Contains(v.Warehouse.ToLower()));
+            }
+            Add(exports.Select(v => v.CustomerId));
+        }
+
+        if (metrics.Has("receipt"))
+        {
+            var receipts = _uow.Receipts.Query().Where(r => r.CustomerId.HasValue);
+            if (start.HasValue) receipts = receipts.Where(r => r.Date >= start.Value);
+            if (end.HasValue) receipts = receipts.Where(r => r.Date <= end.Value);
+            Add(receipts.Select(r => r.CustomerId!.Value));
+        }
+
+        if (metrics.Has("payment"))
+        {
+            var payments = _uow.Payments.Query().Where(p => p.CustomerId.HasValue && p.Status != "cancelled");
+            if (start.HasValue) payments = payments.Where(p => p.Date >= start.Value);
+            if (end.HasValue) payments = payments.Where(p => p.Date <= end.Value);
+            Add(payments.Select(p => p.CustomerId!.Value));
+        }
+
+        var debtWhs = metrics.Get("debt");
+        if (debtWhs.Count > 0)
+        {
+            if (debtWhs.Contains(PriorityMetrics.AllWarehouses))
+            {
+                Add(filtered.Where(c => c.Debt != 0).Select(c => c.Id));
+            }
+            var whs = debtWhs.Where(w => w != PriorityMetrics.AllWarehouses).ToList();
+            if (whs.Count > 0)
+            {
+                Add(filtered.Where(c => c.WarehouseDebts.Any(d => d.Debt != 0 && whs.Contains(d.Warehouse.ToLower()))).Select(c => c.Id));
+            }
+        }
+
+        return ids;
+    }
+
     public async Task<List<string>> GetRegionsAsync(CancellationToken ct = default)
     {
-        return await _uow.Customers.Query()
+        var regions = await _uow.Customers.Query()
             .Where(c => c.Region != null && c.Region != "")
             .Select(c => c.Region!)
             .Distinct()
             .OrderBy(r => r)
             .ToListAsync(ct);
+
+        return regions;
     }
 
     public async Task<CustomerDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        var customer = await _uow.Customers.GetByIdAsync(id, ct)
+        var customer = await _uow.Customers.Query()
+            .Include(c => c.WarehouseDebts)
+            .FirstOrDefaultAsync(c => c.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {id}");
 
         return MapToDto(customer);
@@ -216,9 +286,12 @@ public class CustomerService : ICustomerService
             throw new ValidationException("Tên khách hàng không được để trống");
         }
 
-        var code = string.IsNullOrWhiteSpace(dto.Code)
-            ? $"KH{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}"
-            : dto.Code.Trim();
+        var code = dto.Code?.Trim();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            var maxId = await _uow.Customers.Query().MaxAsync(c => (int?)c.Id, ct) ?? 0;
+            code = $"KH{(maxId + 1):D5}";
+        }
 
         var customer = new Customer
         {
@@ -230,7 +303,7 @@ public class CustomerService : ICustomerService
             AddressesJson = dto.AddressesJson?.Trim(),
             Region = dto.Region?.Trim(),
             CreditLimit = dto.CreditLimit,
-            Debt = dto.InitialDebt,
+            Debt = 0,
             Notes = dto.Notes?.Trim(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -241,9 +314,13 @@ public class CustomerService : ICustomerService
 
         if (dto.InitialDebt != 0)
         {
+            var wh = DebtHelper.NormalizeWarehouse(dto.InitialDebtWarehouse);
+            await DebtHelper.SetCustomerDebtAsync(_uow, customer.Id, wh, dto.InitialDebt, ct);
+
             var history = new CustomerDebtHistory
             {
                 CustomerId = customer.Id,
+                Warehouse = wh,
                 SourceType = "init",
                 Reason = "Khởi tạo công nợ ban đầu",
                 BeforeDebt = 0,
@@ -255,7 +332,7 @@ public class CustomerService : ICustomerService
             await _uow.SaveChangesAsync(ct);
         }
 
-        return MapToDto(customer);
+        return await GetByIdAsync(customer.Id, ct);
     }
 
     public async Task<CustomerDto> UpdateCustomerAsync(int id, UpdateCustomerDto dto, CancellationToken ct = default)
@@ -281,10 +358,10 @@ public class CustomerService : ICustomerService
         _uow.Customers.Update(customer);
         await _uow.SaveChangesAsync(ct);
 
-        return MapToDto(customer);
+        return await GetByIdAsync(customer.Id, ct);
     }
 
-    public async Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
+    public async Task<List<CustomerDebtHistoryDto>> GetDebtHistoryAsync(int customerId, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
     {
         var customerExists = await _uow.Customers.Query().AnyAsync(c => c.Id == customerId, ct);
         if (!customerExists)
@@ -293,6 +370,11 @@ public class CustomerService : ICustomerService
         }
 
         var query = _uow.CustomerDebtHistories.Query().Where(h => h.CustomerId == customerId);
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(h => h.Warehouse == warehouse.Trim());
+        }
 
         DateTime? startDate = null;
         DateTime? endDate = null;
@@ -338,6 +420,7 @@ public class CustomerService : ICustomerService
         {
             Id = h.Id,
             CustomerId = h.CustomerId,
+            Warehouse = h.Warehouse,
             SourceType = h.SourceType,
             ReferenceType = h.ReferenceType,
             ReferenceId = h.ReferenceId,
@@ -355,34 +438,39 @@ public class CustomerService : ICustomerService
         var customer = await _uow.Customers.GetByIdAsync(customerId, ct)
             ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {customerId}");
 
-        var beforeDebt = customer.Debt;
+        var wh = DebtHelper.NormalizeWarehouse(dto.Warehouse);
+
         decimal delta;
+        decimal beforeTotalDebt, afterTotalDebt;
+
         if (dto.NewDebt.HasValue)
         {
-            delta = dto.NewDebt.Value - beforeDebt;
+            var res = await DebtHelper.SetCustomerDebtAsync(_uow, customerId, wh, dto.NewDebt.Value, ct);
+            delta = res.Delta;
+            beforeTotalDebt = res.BeforeTotalDebt;
+            afterTotalDebt = res.AfterTotalDebt;
         }
         else
         {
             delta = dto.Delta.GetValueOrDefault();
+            var res = await DebtHelper.ApplyCustomerDebtAsync(_uow, customerId, wh, delta, ct);
+            beforeTotalDebt = res.BeforeTotalDebt;
+            afterTotalDebt = res.AfterTotalDebt;
         }
-
-        var afterDebt = beforeDebt + delta;
-        customer.Debt = afterDebt;
-        customer.UpdatedAt = DateTime.UtcNow;
 
         var history = new CustomerDebtHistory
         {
             CustomerId = customer.Id,
+            Warehouse = wh,
             SourceType = DomainConstants.SourceTypes.ManualAdjustment,
-            Reason = dto.Reason ?? "Điều chỉnh công nợ khách hàng",
+            Reason = dto.Reason ?? $"Điều chỉnh công nợ khách hàng ({wh})",
             Note = dto.Note,
-            BeforeDebt = beforeDebt,
+            BeforeDebt = beforeTotalDebt,
             Delta = delta,
-            AfterDebt = afterDebt,
+            AfterDebt = afterTotalDebt,
             CreatedAt = DateTime.UtcNow
         };
 
-        _uow.Customers.Update(customer);
         await _uow.CustomerDebtHistories.AddAsync(history, ct);
         await _uow.SaveChangesAsync(ct);
 
@@ -425,71 +513,56 @@ public class CustomerService : ICustomerService
 
         var ledgerItems = new List<EntityLedgerItemDto>();
 
-        // 1. Export vouchers (Xuất hàng)
+        // 1. Phiếu xuất (Bán hàng)
         var exportQuery = _uow.ExportVouchers.Query()
             .Where(v => v.CustomerId == customerId && v.Status != "cancelled");
-        if (!isAllWh)
-        {
-            exportQuery = exportQuery.Where(v => v.Warehouse.ToLower() == wh);
-        }
-        if (startDate.HasValue)
-        {
-            exportQuery = exportQuery.Where(v => v.Date >= startDate.Value);
-        }
-        if (endDate.HasValue)
-        {
-            exportQuery = exportQuery.Where(v => v.Date < endDate.Value);
-        }
+        if (!isAllWh) exportQuery = exportQuery.Where(v => v.Warehouse == wh);
+        if (startDate.HasValue) exportQuery = exportQuery.Where(v => v.Date >= startDate.Value);
+        if (endDate.HasValue) exportQuery = exportQuery.Where(v => v.Date < endDate.Value);
+
         var exports = await exportQuery.ToListAsync(ct);
-        foreach (var ex in exports)
+        foreach (var exp in exports)
         {
             ledgerItems.Add(new EntityLedgerItemDto
             {
-                Id = ex.Id,
-                Date = ex.Date,
-                VoucherNumber = ex.VoucherNumber,
+                Id = exp.Id,
+                Date = exp.Date,
+                VoucherNumber = exp.VoucherNumber,
                 VoucherType = "export",
-                VoucherTypeLabel = "Phiếu xuất",
-                Warehouse = ex.Warehouse,
-                Description = string.IsNullOrWhiteSpace(ex.Notes) ? $"Xuất bán hàng {ex.VoucherNumber}" : ex.Notes,
+                VoucherTypeLabel = "Xuất bán",
+                Warehouse = exp.Warehouse,
+                Description = string.IsNullOrWhiteSpace(exp.Notes) ? $"Xuất bán nợ theo phiếu {exp.VoucherNumber}" : exp.Notes,
                 ImportAmount = 0,
-                ExportAmount = ex.TotalSale,
-                ReceiptAmount = 0,
+                ExportAmount = exp.TotalSale,
+                ReceiptAmount = exp.PaidAmount,
                 PaymentAmount = 0
             });
         }
 
-        // 2. Receipts (Thu tiền)
-        var receiptQuery = _uow.Receipts.Query().Where(r => r.CustomerId == customerId);
-        if (startDate.HasValue)
-        {
-            receiptQuery = receiptQuery.Where(r => r.Date >= startDate.Value);
-        }
-        if (endDate.HasValue)
-        {
-            receiptQuery = receiptQuery.Where(r => r.Date < endDate.Value);
-        }
+        // 2. Phiếu thu (Khách thanh toán nợ)
+        var receiptQuery = _uow.Receipts.Query()
+            .Where(r => r.CustomerId == customerId);
+        if (!isAllWh) receiptQuery = receiptQuery.Where(r => r.Warehouse == wh);
+        if (startDate.HasValue) receiptQuery = receiptQuery.Where(r => r.Date >= startDate.Value);
+        if (endDate.HasValue) receiptQuery = receiptQuery.Where(r => r.Date < endDate.Value);
+
         var receipts = await receiptQuery.ToListAsync(ct);
         foreach (var rc in receipts)
         {
-            if (!isAllWh && rc.RelatedVoucherType == "export" && !string.IsNullOrWhiteSpace(rc.RelatedVoucherId))
+            if (rc.RelatedVoucherType == "export_voucher" && exports.Any(e => e.VoucherNumber == rc.RelatedVoucherId))
             {
-                var relatedExport = exports.FirstOrDefault(e => e.VoucherNumber == rc.RelatedVoucherId);
-                if (relatedExport == null)
-                {
-                    var existsInWh = await _uow.ExportVouchers.Query().AnyAsync(e => e.VoucherNumber == rc.RelatedVoucherId && e.Warehouse.ToLower() == wh, ct);
-                    if (!existsInWh) continue;
-                }
+                continue;
             }
+
             ledgerItems.Add(new EntityLedgerItemDto
             {
                 Id = rc.Id,
                 Date = rc.Date,
                 VoucherNumber = rc.ReceiptNumber,
                 VoucherType = "receipt",
-                VoucherTypeLabel = "Phiếu thu",
-                Warehouse = isAllWh ? null : wh,
-                Description = string.IsNullOrWhiteSpace(rc.Notes) ? $"Thu tiền ({rc.Method})" : rc.Notes,
+                VoucherTypeLabel = "Thu tiền",
+                Warehouse = rc.Warehouse,
+                Description = string.IsNullOrWhiteSpace(rc.Notes) ? $"Thu tiền công nợ theo phiếu {rc.ReceiptNumber}" : rc.Notes,
                 ImportAmount = 0,
                 ExportAmount = 0,
                 ReceiptAmount = rc.Amount,
@@ -497,38 +570,13 @@ public class CustomerService : ICustomerService
             });
         }
 
-        // Backward compatibility: tự động bổ sung dòng thu nếu có phiếu xuất trả ngay nhưng chưa có phiếu thu
-        foreach (var ex in exports)
-        {
-            if (ex.PaidAmount > 0 && !receipts.Any(r => r.RelatedVoucherId == ex.VoucherNumber))
-            {
-                ledgerItems.Add(new EntityLedgerItemDto
-                {
-                    Id = ex.Id,
-                    Date = ex.Date,
-                    VoucherNumber = $"PT-{ex.VoucherNumber}",
-                    VoucherType = "receipt",
-                    VoucherTypeLabel = "Phiếu thu",
-                    Warehouse = isAllWh ? null : wh,
-                    Description = $"Thu tiền bán hàng ngay theo phiếu xuất {ex.VoucherNumber}",
-                    ImportAmount = 0,
-                    ExportAmount = 0,
-                    ReceiptAmount = ex.PaidAmount,
-                    PaymentAmount = 0
-                });
-            }
-        }
+        // 3. Phiếu chi (Hoàn tiền hoặc chi trả lại cho khách)
+        var paymentQuery = _uow.Payments.Query()
+            .Where(p => p.CustomerId == customerId && p.Status != "cancelled");
+        if (!isAllWh) paymentQuery = paymentQuery.Where(p => p.Warehouse == wh);
+        if (startDate.HasValue) paymentQuery = paymentQuery.Where(p => p.Date >= startDate.Value);
+        if (endDate.HasValue) paymentQuery = paymentQuery.Where(p => p.Date < endDate.Value);
 
-        // 3. Payments (Chi tiền hoàn lại/trả khách)
-        var paymentQuery = _uow.Payments.Query().Where(p => p.CustomerId == customerId && p.Status != "cancelled");
-        if (startDate.HasValue)
-        {
-            paymentQuery = paymentQuery.Where(p => p.Date >= startDate.Value);
-        }
-        if (endDate.HasValue)
-        {
-            paymentQuery = paymentQuery.Where(p => p.Date < endDate.Value);
-        }
         var payments = await paymentQuery.ToListAsync(ct);
         foreach (var pm in payments)
         {
@@ -538,9 +586,9 @@ public class CustomerService : ICustomerService
                 Date = pm.Date,
                 VoucherNumber = pm.PaymentNumber,
                 VoucherType = "payment",
-                VoucherTypeLabel = "Phiếu chi",
-                Warehouse = isAllWh ? null : wh,
-                Description = string.IsNullOrWhiteSpace(pm.Notes) ? $"Chi tiền ({pm.Method})" : pm.Notes,
+                VoucherTypeLabel = "Chi tiền",
+                Warehouse = pm.Warehouse,
+                Description = string.IsNullOrWhiteSpace(pm.Notes) ? $"Chi tiền trả lại cho khách theo phiếu {pm.PaymentNumber}" : pm.Notes,
                 ImportAmount = 0,
                 ExportAmount = 0,
                 ReceiptAmount = 0,
@@ -548,17 +596,13 @@ public class CustomerService : ICustomerService
             });
         }
 
-        // 4. Manual Debt Adjustments (Điều chỉnh công nợ thủ công)
+        // 4. Các điều chỉnh công nợ thủ công
         var historyQuery = _uow.CustomerDebtHistories.Query()
             .Where(h => h.CustomerId == customerId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment);
-        if (startDate.HasValue)
-        {
-            historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value);
-        }
-        if (endDate.HasValue)
-        {
-            historyQuery = historyQuery.Where(h => h.CreatedAt < endDate.Value);
-        }
+        if (!isAllWh) historyQuery = historyQuery.Where(h => h.Warehouse == wh);
+        if (startDate.HasValue) historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value);
+        if (endDate.HasValue) historyQuery = historyQuery.Where(h => h.CreatedAt < endDate.Value);
+
         var histories = await historyQuery.ToListAsync(ct);
         foreach (var h in histories)
         {
@@ -569,7 +613,7 @@ public class CustomerService : ICustomerService
                 VoucherNumber = h.ReferenceId ?? $"DC{h.Id:D5}",
                 VoucherType = "adjust",
                 VoucherTypeLabel = "Điều chỉnh",
-                Warehouse = isAllWh ? null : wh,
+                Warehouse = h.Warehouse,
                 Description = string.IsNullOrWhiteSpace(h.Note) ? (h.Reason ?? "Điều chỉnh công nợ") : $"{h.Reason} - {h.Note}",
                 ImportAmount = 0,
                 ExportAmount = h.Delta > 0 ? h.Delta : 0,
@@ -582,22 +626,44 @@ public class CustomerService : ICustomerService
         decimal netChangeAfterEnd = 0;
         if (endDate.HasValue)
         {
-            var expAfter = await _uow.ExportVouchers.Query()
-                .Where(v => v.CustomerId == customerId && v.Status != "cancelled" && v.Date >= endDate.Value)
-                .SumAsync(v => (decimal?)v.TotalSale, ct) ?? 0;
-            var rcAfter = await _uow.Receipts.Query()
-                .Where(r => r.CustomerId == customerId && r.Date >= endDate.Value)
-                .SumAsync(r => (decimal?)r.Amount, ct) ?? 0;
-            var pmAfter = await _uow.Payments.Query()
-                .Where(p => p.CustomerId == customerId && p.Status != "cancelled" && p.Date >= endDate.Value)
-                .SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
-            var adjAfter = await _uow.CustomerDebtHistories.Query()
-                .Where(h => h.CustomerId == customerId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment && h.CreatedAt >= endDate.Value)
-                .SumAsync(h => (decimal?)h.Delta, ct) ?? 0;
+            var expAfterQuery = _uow.ExportVouchers.Query()
+                .Where(v => v.CustomerId == customerId && v.Status != "cancelled" && v.Date >= endDate.Value);
+            var rcAfterQuery = _uow.Receipts.Query()
+                .Where(r => r.CustomerId == customerId && r.Date >= endDate.Value);
+            var pmAfterQuery = _uow.Payments.Query()
+                .Where(p => p.CustomerId == customerId && p.Status != "cancelled" && p.Date >= endDate.Value);
+            var adjAfterQuery = _uow.CustomerDebtHistories.Query()
+                .Where(h => h.CustomerId == customerId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment && h.CreatedAt >= endDate.Value);
+
+            if (!isAllWh)
+            {
+                expAfterQuery = expAfterQuery.Where(v => v.Warehouse == wh);
+                rcAfterQuery = rcAfterQuery.Where(r => r.Warehouse == wh);
+                pmAfterQuery = pmAfterQuery.Where(p => p.Warehouse == wh);
+                adjAfterQuery = adjAfterQuery.Where(h => h.Warehouse == wh);
+            }
+
+            var expAfter = await expAfterQuery.SumAsync(v => (decimal?)v.TotalSale, ct) ?? 0;
+            var rcAfter = await rcAfterQuery.SumAsync(r => (decimal?)r.Amount, ct) ?? 0;
+            var pmAfter = await pmAfterQuery.SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
+            var adjAfter = await adjAfterQuery.SumAsync(h => (decimal?)h.Delta, ct) ?? 0;
+
             netChangeAfterEnd = expAfter + pmAfter - rcAfter + adjAfter;
         }
 
-        var closingBalance = customer.Debt - netChangeAfterEnd;
+        decimal currentBalance;
+        if (!isAllWh)
+        {
+            var whDebtRecord = await _uow.CustomerWarehouseDebts.Query()
+                .FirstOrDefaultAsync(w => w.CustomerId == customerId && w.Warehouse == wh, ct);
+            currentBalance = whDebtRecord?.Debt ?? 0;
+        }
+        else
+        {
+            currentBalance = customer.Debt;
+        }
+
+        var closingBalance = currentBalance - netChangeAfterEnd;
         var periodNetChange = ledgerItems.Sum(i => (i.ExportAmount + i.PaymentAmount) - (i.ReceiptAmount + i.ImportAmount));
         var openingBalance = closingBalance - periodNetChange;
 
@@ -625,7 +691,6 @@ public class CustomerService : ICustomerService
         }
 
         decimal runningBalance = openingBalance;
-        // Bắt đầu tính lũy kế cho các dòng phát sinh trong kỳ (bỏ qua dòng index 0 nếu là dòng đầu kỳ vừa chèn)
         int startIndex = openingBalance != 0 ? 1 : 0;
         for (int i = startIndex; i < sorted.Count; i++)
         {
@@ -646,7 +711,7 @@ public class CustomerService : ICustomerService
             TotalExport = resultList.Sum(i => i.ExportAmount),
             TotalReceipt = resultList.Sum(i => i.ReceiptAmount),
             TotalPayment = resultList.Sum(i => i.PaymentAmount),
-            CurrentBalance = customer.Debt,
+            CurrentBalance = currentBalance,
             Items = resultList
         };
     }
@@ -662,6 +727,9 @@ public class CustomerService : ICustomerService
         AddressesJson = c.AddressesJson,
         Region = c.Region,
         Debt = c.Debt,
+        WarehouseDebts = c.WarehouseDebts != null && c.WarehouseDebts.Count > 0
+            ? c.WarehouseDebts.ToDictionary(w => w.Warehouse, w => w.Debt, StringComparer.OrdinalIgnoreCase)
+            : new(StringComparer.OrdinalIgnoreCase),
         CreditLimit = c.CreditLimit,
         Notes = c.Notes,
         CreatedAt = c.CreatedAt,

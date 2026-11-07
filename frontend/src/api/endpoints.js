@@ -261,9 +261,10 @@ export const reportsApi = {
     const res = await api.get('/reports/stock', { params });
     return res.data; // StockReportResponseDto
   },
-  getDebtReport: async (month = '') => {
+  getDebtReport: async (month = '', warehouse = '') => {
     const params = {};
     if (month) params.month = month;
+    if (warehouse && warehouse !== 'all') params.warehouse = warehouse;
     const res = await api.get('/reports/debts', { params });
     return res.data; // DebtReportResponseDto
   },

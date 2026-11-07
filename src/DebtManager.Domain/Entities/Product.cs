@@ -121,6 +121,7 @@ public class Product
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    public ICollection<ProductUnit> Units { get; set; } = new List<ProductUnit>();
     public ICollection<StockHistory> StockHistories { get; set; } = new List<StockHistory>();
     public ICollection<ExportVoucherItem> ExportVoucherItems { get; set; } = new List<ExportVoucherItem>();
     public ICollection<ImportVoucherItem> ImportVoucherItems { get; set; } = new List<ImportVoucherItem>();

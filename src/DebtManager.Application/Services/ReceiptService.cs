@@ -18,7 +18,7 @@ public class ReceiptService : IReceiptService
         _uow = uow;
     }
 
-    public async Task<List<ReceiptDto>> GetReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
+    public async Task<List<ReceiptDto>> GetReceiptsAsync(int? customerId = null, int? supplierId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
     {
         var query = _uow.Receipts.Query()
             .Include(r => r.Customer)
@@ -27,6 +27,11 @@ public class ReceiptService : IReceiptService
 
         if (customerId.HasValue) query = query.Where(r => r.CustomerId == customerId.Value);
         if (supplierId.HasValue) query = query.Where(r => r.SupplierId == supplierId.Value);
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(r => r.Warehouse == warehouse.Trim());
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -82,6 +87,7 @@ public class ReceiptService : IReceiptService
         string? date = null,
         string? fromDate = null,
         string? toDate = null,
+        string? warehouse = null,
         int page = 1,
         int pageSize = 15,
         CancellationToken ct = default)
@@ -96,6 +102,11 @@ public class ReceiptService : IReceiptService
 
         if (customerId.HasValue) query = query.Where(r => r.CustomerId == customerId.Value);
         if (supplierId.HasValue) query = query.Where(r => r.SupplierId == supplierId.Value);
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(r => r.Warehouse == warehouse.Trim());
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -140,10 +151,10 @@ public class ReceiptService : IReceiptService
         var totalAmount = await query.SumAsync(r => (decimal?)r.Amount, ct) ?? 0;
 
         var items = await query.OrderByDescending(r => r.Date)
-                               .ThenByDescending(r => r.Id)
-                               .Skip((page - 1) * pageSize)
-                               .Take(pageSize)
-                               .ToListAsync(ct);
+                              .ThenByDescending(r => r.Id)
+                              .Skip((page - 1) * pageSize)
+                              .Take(pageSize)
+                              .ToListAsync(ct);
 
         return new ReceiptPagedResult
         {
@@ -177,12 +188,15 @@ public class ReceiptService : IReceiptService
         try
         {
             var receiptNumber = $"PT{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 100000000):D8}";
+            var warehouse = DebtHelper.NormalizeWarehouse(dto.Warehouse);
+
             var receipt = new Receipt
             {
                 ReceiptNumber = receiptNumber,
                 Date = dto.Date.HasValue
                     ? (dto.Date.Value.TimeOfDay == TimeSpan.Zero ? dto.Date.Value.Date.Add(DateTime.UtcNow.TimeOfDay) : dto.Date.Value)
                     : DateTime.UtcNow,
+                Warehouse = warehouse,
                 CustomerId = dto.CustomerId,
                 SupplierId = dto.SupplierId,
                 Amount = dto.Amount,
@@ -199,23 +213,21 @@ public class ReceiptService : IReceiptService
                     ?? throw new InvalidOperationException("Không tìm thấy khách hàng");
                 receipt.Customer = customer;
 
-                var beforeDebt = customer.Debt;
-                var delta = -dto.Amount; // Thu tiền làm giảm nợ khách hàng
-                var afterDebt = beforeDebt + delta;
-                customer.Debt = afterDebt;
-                customer.UpdatedAt = DateTime.UtcNow;
-                _uow.Customers.Update(customer);
+                // Khấu trừ nợ tại kho tương ứng
+                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                    await DebtHelper.ApplyCustomerDebtAsync(_uow, customer.Id, warehouse, -dto.Amount, ct);
 
                 await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
                 {
                     CustomerId = customer.Id,
+                    Warehouse = warehouse,
                     SourceType = DomainConstants.SourceTypes.Receipt,
                     ReferenceType = DomainConstants.ReferenceTypes.Receipt,
                     ReferenceId = receiptNumber,
                     Reason = $"Thu tiền khách theo phiếu {receiptNumber}",
-                    BeforeDebt = beforeDebt,
-                    Delta = delta,
-                    AfterDebt = afterDebt,
+                    BeforeDebt = beforeTotalDebt,
+                    Delta = -dto.Amount,
+                    AfterDebt = afterTotalDebt,
                     CreatedAt = receipt.Date
                 }, ct);
             }
@@ -225,23 +237,21 @@ public class ReceiptService : IReceiptService
                     ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {dto.SupplierId.Value}");
                 receipt.Supplier = supplier;
 
-                var beforeDebt = supplier.Debt;
-                var delta = -dto.Amount; // Thu tiền từ NCC: giảm phải thu / tăng phải trả (delta = -Amount)
-                var afterDebt = beforeDebt + delta;
-                supplier.Debt = afterDebt;
-                supplier.UpdatedAt = DateTime.UtcNow;
-                _uow.Suppliers.Update(supplier);
+                // Thu tiền từ NCC: giảm phải thu / tăng phải trả (delta = -Amount)
+                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                    await DebtHelper.ApplySupplierDebtAsync(_uow, supplier.Id, warehouse, -dto.Amount, ct);
 
                 await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                 {
                     SupplierId = supplier.Id,
+                    Warehouse = warehouse,
                     SourceType = DomainConstants.SourceTypes.Receipt,
                     ReferenceType = DomainConstants.ReferenceTypes.Receipt,
                     ReferenceId = receiptNumber,
                     Reason = $"Thu hoàn tiền từ NCC theo phiếu {receiptNumber}",
-                    BeforeDebt = beforeDebt,
-                    Delta = delta,
-                    AfterDebt = afterDebt,
+                    BeforeDebt = beforeTotalDebt,
+                    Delta = -dto.Amount,
+                    AfterDebt = afterTotalDebt,
                     CreatedAt = receipt.Date
                 }, ct);
             }
@@ -272,57 +282,46 @@ public class ReceiptService : IReceiptService
         await _uow.BeginTransactionAsync(ct);
         try
         {
+            var warehouse = DebtHelper.NormalizeWarehouse(receipt.Warehouse);
+
             if (receipt.CustomerId.HasValue)
             {
-                var customer = await _uow.Customers.GetByIdAsync(receipt.CustomerId.Value, ct);
-                if (customer != null)
-                {
-                    var beforeDebt = customer.Debt;
-                    var delta = receipt.Amount; // Trả lại số nợ chưa thu
-                    var afterDebt = beforeDebt + delta;
-                    customer.Debt = afterDebt;
-                    customer.UpdatedAt = DateTime.UtcNow;
-                    _uow.Customers.Update(customer);
+                // Hoàn lại nợ tại kho của phiếu thu
+                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                    await DebtHelper.ApplyCustomerDebtAsync(_uow, receipt.CustomerId.Value, warehouse, receipt.Amount, ct);
 
-                    await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
-                    {
-                        CustomerId = customer.Id,
-                        SourceType = "receipt_deleted",
-                        ReferenceType = DomainConstants.ReferenceTypes.Receipt,
-                        ReferenceId = receipt.ReceiptNumber,
-                        Reason = $"Khôi phục nợ do xóa phiếu thu {receipt.ReceiptNumber}",
-                        BeforeDebt = beforeDebt,
-                        Delta = delta,
-                        AfterDebt = afterDebt,
-                        CreatedAt = receipt.Date
-                    }, ct);
-                }
+                await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                {
+                    CustomerId = receipt.CustomerId.Value,
+                    Warehouse = warehouse,
+                    SourceType = "receipt_deleted",
+                    ReferenceType = DomainConstants.ReferenceTypes.Receipt,
+                    ReferenceId = receipt.ReceiptNumber,
+                    Reason = $"Khôi phục nợ do xóa phiếu thu {receipt.ReceiptNumber}",
+                    BeforeDebt = beforeTotalDebt,
+                    Delta = receipt.Amount,
+                    AfterDebt = afterTotalDebt,
+                    CreatedAt = receipt.Date
+                }, ct);
             }
             else if (receipt.SupplierId.HasValue)
             {
-                var supplier = await _uow.Suppliers.GetByIdAsync(receipt.SupplierId.Value, ct);
-                if (supplier != null)
-                {
-                    var beforeDebt = supplier.Debt;
-                    var delta = receipt.Amount;
-                    var afterDebt = beforeDebt + delta;
-                    supplier.Debt = afterDebt;
-                    supplier.UpdatedAt = DateTime.UtcNow;
-                    _uow.Suppliers.Update(supplier);
+                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                    await DebtHelper.ApplySupplierDebtAsync(_uow, receipt.SupplierId.Value, warehouse, receipt.Amount, ct);
 
-                    await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
-                    {
-                        SupplierId = supplier.Id,
-                        SourceType = "receipt_deleted",
-                        ReferenceType = DomainConstants.ReferenceTypes.Receipt,
-                        ReferenceId = receipt.ReceiptNumber,
-                        Reason = $"Hoàn tác thu tiền NCC do xóa phiếu thu {receipt.ReceiptNumber}",
-                        BeforeDebt = beforeDebt,
-                        Delta = delta,
-                        AfterDebt = afterDebt,
-                        CreatedAt = receipt.Date
-                    }, ct);
-                }
+                await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
+                {
+                    SupplierId = receipt.SupplierId.Value,
+                    Warehouse = warehouse,
+                    SourceType = "receipt_deleted",
+                    ReferenceType = DomainConstants.ReferenceTypes.Receipt,
+                    ReferenceId = receipt.ReceiptNumber,
+                    Reason = $"Hoàn tác thu tiền NCC do xóa phiếu thu {receipt.ReceiptNumber}",
+                    BeforeDebt = beforeTotalDebt,
+                    Delta = receipt.Amount,
+                    AfterDebt = afterTotalDebt,
+                    CreatedAt = receipt.Date
+                }, ct);
             }
 
             _uow.Receipts.Remove(receipt);
@@ -342,6 +341,7 @@ public class ReceiptService : IReceiptService
         Id = r.Id,
         ReceiptNumber = r.ReceiptNumber,
         Date = r.Date,
+        Warehouse = r.Warehouse ?? "warehouse1",
         CustomerId = r.CustomerId,
         CustomerName = r.Customer?.Name,
         CustomerCode = r.Customer?.Code,

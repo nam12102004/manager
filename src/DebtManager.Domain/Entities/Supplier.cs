@@ -18,6 +18,7 @@ public class Supplier
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    public ICollection<SupplierWarehouseDebt> WarehouseDebts { get; set; } = new List<SupplierWarehouseDebt>();
     public ICollection<SupplierDebtHistory> DebtHistories { get; set; } = new List<SupplierDebtHistory>();
     public ICollection<ImportVoucher> ImportVouchers { get; set; } = new List<ImportVoucher>();
     public ICollection<Product> Products { get; set; } = new List<Product>();

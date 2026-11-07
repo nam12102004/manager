@@ -20,9 +20,15 @@ public class StockReportItemDto
     public decimal RetailPrice { get; set; }
 
     public decimal OpeningStock { get; set; }
+    public decimal OpeningValue { get; set; }
+    public decimal ImportQty { get; set; }
     public decimal ImportStock { get; set; }
+    public decimal ImportValue { get; set; }
+    public decimal ExportQty { get; set; }
     public decimal ExportStock { get; set; }
+    public decimal ExportValue { get; set; }
     public decimal ClosingStock { get; set; }
+    public decimal ClosingValue { get; set; }
 
     public StockReportWarehouseDetailDto Warehouse1 { get; set; } = new();
     public StockReportWarehouseDetailDto Warehouse2 { get; set; } = new();
@@ -42,6 +48,10 @@ public class StockReportResponseDto
     public decimal TotalCostValue { get; set; }
     public decimal TotalWholesaleValue { get; set; }
     public decimal TotalRetailValue { get; set; }
+    public decimal TotalOpeningValue { get; set; }
+    public decimal TotalImportValue { get; set; }
+    public decimal TotalExportValue { get; set; }
+    public decimal TotalClosingValue { get; set; }
 }
 
 public class DebtReportItemDto
@@ -56,6 +66,10 @@ public class DebtReportItemDto
     public decimal ClosingDebt { get; set; }
     public decimal Receivable => ClosingDebt > 0 ? ClosingDebt : 0;
     public decimal Payable => ClosingDebt < 0 ? -ClosingDebt : 0;
+
+    public decimal DebtWarehouse1 { get; set; }
+    public decimal DebtWarehouse2 { get; set; }
+    public decimal DebtWarehouse3 { get; set; }
 }
 
 public class DebtReportResponseDto
@@ -63,6 +77,7 @@ public class DebtReportResponseDto
     public string Month { get; set; } = string.Empty;
     public DateTime FromDate { get; set; }
     public DateTime ToDate { get; set; }
+    public string? SelectedWarehouse { get; set; }
     public List<DebtReportItemDto> Items { get; set; } = new();
     public decimal TotalOpeningReceivable { get; set; }
     public decimal TotalOpeningPayable { get; set; }

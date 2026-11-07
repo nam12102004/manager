@@ -5,6 +5,7 @@ public class SupplierDebtHistory
     public long Id { get; set; }
     public int SupplierId { get; set; }
     public Supplier Supplier { get; set; } = null!;
+    public string Warehouse { get; set; } = "warehouse1";
 
     public string SourceType { get; set; } = string.Empty;
     public string? ReferenceType { get; set; }

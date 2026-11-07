@@ -1,0 +1,779 @@
+Loaded 748 shared strings.
+
+Found 16 sheets:
+  1. đổ dữ liệu (state: visible, path: xl/worksheets/sheet1.xml)
+  2. T11,2026 (state: visible, path: xl/worksheets/sheet2.xml)
+  3. THop (state: visible, path: xl/worksheets/sheet3.xml)
+  4. T10-2026 (state: visible, path: xl/worksheets/sheet4.xml)
+  5. T9-2026 (state: visible, path: xl/worksheets/sheet5.xml)
+  6. T8-2026 (state: visible, path: xl/worksheets/sheet6.xml)
+  7. T7-2026 (state: visible, path: xl/worksheets/sheet7.xml)
+  8. T6-2026 (state: visible, path: xl/worksheets/sheet8.xml)
+  9. T5-2026 (state: visible, path: xl/worksheets/sheet9.xml)
+  10. T4-2026 (state: visible, path: xl/worksheets/sheet10.xml)
+  11. T3-2026 (state: visible, path: xl/worksheets/sheet11.xml)
+  12. T2-2026 (state: visible, path: xl/worksheets/sheet12.xml)
+  13. làm tên (state: visible, path: xl/worksheets/sheet13.xml)
+  14. T1-2026 (state: visible, path: xl/worksheets/sheet14.xml)
+  15. tổng hợp công nợ tháng (state: visible, path: xl/worksheets/sheet15.xml)
+  16. Sheet1 (state: visible, path: xl/worksheets/sheet16.xml)
+
+=======================================================
+SHEET: 'đổ dữ liệu' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=14.85546875, hidden=0
+  Cols B (2) to B (2): width=64.42578125, hidden=0
+  Cols C (3) to D (4): width=16.85546875, hidden=1 [HIDDEN]
+  Cols E (5) to E (5): width=17.140625, hidden=1 [HIDDEN]
+  Cols F (6) to F (6): width=5, hidden=1 [HIDDEN]
+  Cols G (7) to H (8): width=18.85546875, hidden=0
+  Cols I (9) to J (10): width=18.85546875, hidden=0
+  Cols K (11) to K (11): width=16.28515625, hidden=0
+  Cols L (12) to L (12): width=14.5703125, hidden=0
+  Cols M (13) to M (13): width=16.42578125, hidden=0
+  Cols N (14) to N (14): width=12.140625, hidden=0
+  Cols O (15) to AA (27): width=9, hidden=0
+HIDDEN COLUMNS: ['C', 'D', 'E', 'F']
+Total rows in sheetData: 569
+Columns present in data: from 1 (A) to 27 (AA)
+Hidden columns in sheet active range: ['C', 'D', 'E', 'F']
+
+Sample rows (first 20 rows):
+Row   1: A: 'MÃ KHÁCH' | B: 'TÊN KH' | C [HIDDEN]: 'SĐT' | D [HIDDEN]: '' | E [HIDDEN]: 'Số dư nợ /đ kỳ' | F [HIDDEN]: 'Số dư có đầu kỳ' | G: 'PS NỢ TRONG KỲ' | H: 'PS có TRONG KỲ' | I: 'nợ CK' | J: 'có  CK'
+Row   2: B: 'TỔNG CÔNG NỢ' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '188006738' | H: '95180500' | I: '221797548' | J: '116966762'
+Row   3 [HIDDEN ROW]: C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: ''
+Row   4 [HIDDEN ROW]: C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: ''
+Row   5 [HIDDEN ROW]: C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: ''
+Row   6 [HIDDEN ROW]: C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: ''
+Row   7 [HIDDEN ROW]: C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: ''
+Row   8 [HIDDEN ROW]: C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: ''
+Row   9: A: 'KH.140723322' | B: 'CH Việt Hưng(2): Thịnh long-hải hậu 0966239828' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '20789200' | F [HIDDEN]: '' | G: '720000' | I: '21509200'
+Row  10: A: 'KH.140723320' | B: 'CH Thịnh Kế (2) -tt cồn -hh-nđ-0989432618' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '5076480' | F [HIDDEN]: '' | G: '1296000' | I: '6372480'
+Row  11: A: 'KH.140723277' | B: 'CH Huy Linh(2) - Xóm 2 Hải Lộc - Hải Hậu ĐT: 0948 523 108' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '7200000' | H: '7200000'
+Row  12: A: 'KH.140723186' | B: 'Ch Quốc Hà ( 2 )-cống khâm-nam trực-0949719334' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '7668000' | H: '7668000'
+Row  13: A: 'KH.140723185' | B: 'CH Trần Vũ (2) - gần cầu an duyên Đại An - Vụ Bản- ĐT: 0989987368' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '21657860' | F [HIDDEN]: '' | G: '3268200' | I: '24926060'
+Row  14: A: 'KH.140723178' | B: 'CH Cúc Hậu(2)- Ngã 4 chợ cống-tân thịnh-nam trực-NĐ - ĐT: 0911 004 694-0946.637.804' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '4320000' | F [HIDDEN]: '' | G: '35575200' | I: '39895200'
+Row  15: A: 'KH.140723177' | B: 'CH Duy Trực(2) - Chợ Trâu - Hải Hậu 0944206519' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '4458240' | F [HIDDEN]: '' | G: '448000' | I: '4906240'
+Row  16: A: 'KH.140723153' | B: 'CH cô Lai  Đặng Xá (2) - ĐT: 0812672543' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '3600000' | H: '3600000'
+Row  17: A: 'KH.140723152' | B: 'CH Công Định (2)- ngã 3 ngặt kéo - Trực Ninh (TP) ĐT: 0844 889 111-0974 724 682-0' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '2332800' | I: '2332800'
+Row  18: A: 'KH.140723147' | B: 'CH Ngọc Biên (2) - Nghĩa Hưng - ĐT: 0985510426' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '14364000' | H: '10000000' | I: '4364000'
+Row  19: A: 'KH.140723134' | B: 'CH Ánh Tuyết (2) - Chợ hầu  - Vụ Bản - ĐT: 0916 509 676' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '12780000' | H: '5000000' | I: '7780000'
+Row  20: A: 'KH.140723133' | B: 'CH Thủy Vượng (2) - Đò Quan - TP Nam Định ĐT: 3 859 671 - 0948 598 993' | C [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F [HIDDEN]: '' | G: '88000' | I: '88000'
+
+=======================================================
+SHEET: 'T11,2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=7.5703125, hidden=0
+  Cols B (2) to B (2): width=19, hidden=1 [HIDDEN]
+  Cols C (3) to C (3): width=119.140625, hidden=0
+  Cols D (4) to D (4): width=29.85546875, hidden=1 [HIDDEN]
+  Cols E (5) to E (5): width=26.7109375, hidden=1 [HIDDEN]
+  Cols F (6) to F (6): width=33.85546875, hidden=0
+  Cols G (7) to G (7): width=31.5703125, hidden=0
+  Cols H (8) to H (8): width=45, hidden=0
+  Cols I (9) to I (9): width=3.7109375, hidden=1 [HIDDEN]
+  Cols J (10) to J (10): width=29.7109375, hidden=0
+  Cols K (11) to K (11): width=28.5703125, hidden=0
+  Cols L (12) to L (12): width=17.7109375, hidden=1 [HIDDEN]
+  Cols M (13) to M (13): width=28.5703125, hidden=1 [HIDDEN]
+  Cols N (14) to N (14): width=37.28515625, hidden=1 [HIDDEN]
+  Cols O (15) to O (15): width=28.5703125, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to Q (17): width=9.140625, hidden=0
+  Cols R (18) to W (23): width=9.140625, hidden=0
+  Cols X (24) to X (24): width=14.85546875, hidden=0
+  Cols Y (25) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['B', 'D', 'E', 'I', 'L', 'M', 'N', 'O', 'P']
+Merged cells count: 15
+Top rows merged cells: ['B6:C6', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:K1', 'A2:K2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:H4', 'J4:J5', 'K4:K5', 'L4:M4']
+Total rows in sheetData: 330
+Columns present in data: from 1 (A) to 17 (Q)
+Hidden columns in sheet active range: ['B', 'D', 'E', 'I', 'L', 'M', 'N', 'O', 'P']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | B [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   2: A: 'THÁNG 11' | B [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   3: B [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   4: A: 'STT' | B [HIDDEN]: 'MÃ KHÁCH' | C: 'TÊN KH' | D [HIDDEN]: 'NỢ ĐK' | E [HIDDEN]: 'CÓ ĐK' | F: 'Phát sinh trong tháng' | I [HIDDEN]: '' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: 'Bảng tính ngoài' | M [HIDDEN]: '' | N [HIDDEN]: 'Ghi chú' | O [HIDDEN]: 'Thu' | P [HIDDEN]: 'Ghi chú'
+Row   5: B [HIDDEN]: '' | D [HIDDEN]: '' | E [HIDDEN]: '' | F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I [HIDDEN]: 'kiểm tra' | L [HIDDEN]: 'Trả lại , trừ giắ' | M [HIDDEN]: 'Tổng doanh số' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   6: A: '1' | B [HIDDEN]: 'THÀNH PHỐ' | D [HIDDEN]: '' | E [HIDDEN]: '' | F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I [HIDDEN]: '' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   7: B [HIDDEN]: 'KH.140723099' | C: 'CH Bích Hường(2)' | D [HIDDEN]: '140378200' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '140378200' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   8: B [HIDDEN]: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D [HIDDEN]: '61076260' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '61076260' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   9: B [HIDDEN]: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - ĐT:' | D [HIDDEN]: '25146800' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '25146800' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  10: B [HIDDEN]: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D [HIDDEN]: '24916600' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '24916600' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  11: B [HIDDEN]: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D [HIDDEN]: '22507900' | E [HIDDEN]: '' | I [HIDDEN]: '8898820' | J: '22507900' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  12: B [HIDDEN]: 'KH.140723113' | C: 'CH Hoà an (2)- 474 Trường Chinh  ĐT: 0912 715 919 - 3 600 565' | D [HIDDEN]: '18227000' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '18227000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  13: B [HIDDEN]: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D [HIDDEN]: '16699200' | E [HIDDEN]: '' | I [HIDDEN]: '34600' | J: '16699200' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  14: B [HIDDEN]: 'KH.140723046' | C: 'CH Quân Mùi (2)- Quân Khu 3 - (TP) ĐT: 0836530350' | D [HIDDEN]: '16089900' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '16089900' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  15: B [HIDDEN]: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D [HIDDEN]: '9138000' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '9138000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  16: B [HIDDEN]: 'KH.140723201' | C: 'CH Đức Linh(2) - 725 Trường Chinh - ĐT: 0888 769 786' | D [HIDDEN]: '8322000' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '8322000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  17: B [HIDDEN]: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D [HIDDEN]: '7434000' | E [HIDDEN]: '' | F: '5689000' | I [HIDDEN]: '0' | J: '13123000' | L [HIDDEN]: '' | M [HIDDEN]: '5689000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  18: B [HIDDEN]: 'KH.140723153' | C: 'CH cô Lai  Đặng Xá (2) - ĐT: 0812672543' | D [HIDDEN]: '1956000' | E [HIDDEN]: '' | I [HIDDEN]: '' | J: '1956000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  19: B [HIDDEN]: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D [HIDDEN]: '1622080' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '1622080' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  20: B [HIDDEN]: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT 0855933170 (vợ)-  0988500259' | D [HIDDEN]: '1544010' | E [HIDDEN]: '' | I [HIDDEN]: '0' | J: '1544010' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: 'tt 15 triệu/2 kho' | O [HIDDEN]: '' | P [HIDDEN]: ''
+
+=======================================================
+SHEET: 'THop' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=4.85546875, hidden=0
+  Cols B (2) to B (2): width=40.5703125, hidden=0
+  Cols C (3) to C (3): width=21.5703125, hidden=0
+  Cols D (4) to D (4): width=22.140625, hidden=0
+  Cols E (5) to E (5): width=21, hidden=0
+  Cols F (6) to F (6): width=10.7109375, hidden=1 [HIDDEN]
+  Cols G (7) to G (7): width=20, hidden=0
+  Cols H (8) to H (8): width=10.140625, hidden=0
+  Cols I (9) to I (9): width=20.42578125, hidden=0
+  Cols J (10) to J (10): width=14, hidden=0
+HIDDEN COLUMNS: ['F']
+Merged cells count: 3
+Top rows merged cells: ['A1:G1', 'A2:G2', 'G5:G10']
+Total rows in sheetData: 16
+Columns present in data: from 1 (A) to 10 (J)
+Hidden columns in sheet active range: ['F']
+
+Sample rows (first 20 rows):
+Row   1: A: 'BẢNG TỔNG HỢP BÁN HÀNG VÀ THU TIỀN CÁC TUYẾN - KHO 2' | F [HIDDEN]: ''
+Row   2: A: 'Từ 1/10 ĐẾN 31 Tháng 10/2026' | F [HIDDEN]: ''
+Row   4: A: 'I' | B: 'CÁC TUYẾN' | C: 'Doanh số bán hàng' | D: 'Tiền thu' | E: 'Tổng công nợ\n ( từ 26/2/2026 đến 17/09/2026)' | F [HIDDEN]: '% thu theo tuyến' | G: 'Tổng tỷ lệ % DS thu/DS bán hàng toàn tuyến'
+Row   5: A: '1' | B: 'TP, Hà Nam' | C: '5689000' | D: '0' | E: '360885650' | F [HIDDEN]: '63.435691685709266' | G: '7.4410913600661431E-3' | H: 'nhật' | I: '1345886225' | J: '-7254000'
+Row   6 [HIDDEN ROW]: A: '2' | B: 'Nam Trực, Trực Ninh' | C: '0' | E: '0' | F [HIDDEN]: '#DIV/0!'
+Row   7: A: '2' | B: 'Nam Trực - Trực Ninh -  Ý Yên, Vụ Bản - Xuân trường' | C: '180000' | D: '180000' | E: '1165443400' | F [HIDDEN]: '6474.6855555555558' | J: '-37835000'
+Row   8 [HIDDEN ROW]: A: '4' | B: 'Xuân Trường ' | C: '0' | E: '0' | F [HIDDEN]: '#DIV/0!'
+Row   9: A: '3' | B: 'Giao Thủy - Nghĩa Hưng - Hải Hậu' | C: '18321000' | D: '0' | E: '661266600' | F [HIDDEN]: '36.093368265924347' | H: 'thanh' | I: '841709425' | J: '-2708800'
+Row  10: B: 'Cộng' | C: '24190000' | D: '180000' | E: '2187595650' | F [HIDDEN]: '' | I: '2187595650'
+Row  12: B: 'an nguyên' | F [HIDDEN]: ''
+Row  13: F [HIDDEN]: ''
+Row  15: D: 'ds' | E: 'cn' | F [HIDDEN]: ''
+Row  16: B: 'thanh' | C: '18321000' | D: '21165500' | E: '841709425' | F [HIDDEN]: ''
+Row  17: B: 'nhật' | C: '180000' | D: '3024500' | E: '1345886225' | F [HIDDEN]: ''
+Row  18: B: 'tp/2' | C: '5689000' | F [HIDDEN]: ''
+Row  20: C: '24190000' | D: '24190000' | E: '2187595650' | F [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T10-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=7.42578125, hidden=0
+  Cols B (2) to B (2): width=17.140625, hidden=0
+  Cols C (3) to C (3): width=41.28515625, hidden=0
+  Cols D (4) to D (4): width=19.5703125, hidden=0
+  Cols E (5) to E (5): width=29.28515625, hidden=0
+  Cols F (6) to F (6): width=16.5703125, hidden=0
+  Cols G (7) to G (7): width=16.5703125, hidden=0
+  Cols H (8) to H (8): width=16.5703125, hidden=0
+  Cols I (9) to I (9): width=16.5703125, hidden=0
+  Cols J (10) to J (10): width=25.85546875, hidden=0
+  Cols K (11) to K (11): width=28.5703125, hidden=0
+  Cols L (12) to L (12): width=17.7109375, hidden=1 [HIDDEN]
+  Cols M (13) to M (13): width=28.5703125, hidden=1 [HIDDEN]
+  Cols N (14) to N (14): width=37.28515625, hidden=1 [HIDDEN]
+  Cols O (15) to O (15): width=28.5703125, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to Q (17): width=9.140625, hidden=0
+  Cols R (18) to W (23): width=9.140625, hidden=0
+  Cols X (24) to X (24): width=14.85546875, hidden=0
+  Cols Y (25) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['L', 'M', 'N', 'O', 'P']
+Merged cells count: 14
+Top rows merged cells: ['L4:M4', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:K1', 'A2:K2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:H4', 'J4:J5', 'K4:K5']
+Total rows in sheetData: 337
+Columns present in data: from 1 (A) to 17 (Q)
+Hidden columns in sheet active range: ['L', 'M', 'N', 'O', 'P']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   2: A: 'THÁNG 10' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   3: L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'NỢ ĐK' | E: 'CÓ ĐK' | F: 'Phát sinh trong tháng' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: 'Bảng tính ngoài' | M [HIDDEN]: '' | N [HIDDEN]: 'Ghi chú' | O [HIDDEN]: 'Thu' | P [HIDDEN]: 'Ghi chú'
+Row   5: F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I: 'kiểm tra' | L [HIDDEN]: 'Trả lại , trừ giắ' | M [HIDDEN]: 'Tổng doanh số' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ' | F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   7: A: '1' | B: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '69135200' | F: '101243000' | G: '30000000' | I: '0' | J: '140378200' | L [HIDDEN]: '' | M [HIDDEN]: '101243000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   8: A: '2' | B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '56067260' | F: '43249000' | G: '37000000' | H: '1240000' | I: '0' | J: '61076260' | L [HIDDEN]: '' | M [HIDDEN]: '43249000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   9: A: '3' | B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - ĐT:' | D: '4567800' | F: '20579000' | I: '0' | J: '25146800' | L [HIDDEN]: '' | M [HIDDEN]: '20579000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  10: A: '4' | B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '27207600' | F: '27709000' | G: '30000000' | I: '0' | J: '24916600' | L [HIDDEN]: '' | M [HIDDEN]: '27709000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  11: A: '5' | B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '27027900' | F: '480000' | G: '5000000' | I: '8898820' | J: '22507900' | L [HIDDEN]: '' | M [HIDDEN]: '480000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  12: A: '6' | B: 'KH.140723113' | C: 'CH Hoà an (2)- 474 Trường Chinh  ĐT: 0912 715 919 - 3 600 565' | D: '6776000' | F: '11451000' | I: '0' | J: '18227000' | L [HIDDEN]: '' | M [HIDDEN]: '11451000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  13: A: '7' | B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '16699200' | I: '34600' | J: '16699200' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  14: A: '8' | B: 'KH.140723046' | C: 'CH Quân Mùi (2)- Quân Khu 3 - (TP) ĐT: 0836530350' | D: '13707900' | F: '18322000' | G: '15632000' | H: '308000' | I: '0' | J: '16089900' | L [HIDDEN]: '' | M [HIDDEN]: '18322000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  15: A: '9' | B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '11203000' | F: '7935000' | G: '10000000' | I: '0' | J: '9138000' | L [HIDDEN]: '' | M [HIDDEN]: '7935000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  16: A: '10' | B: 'KH.140723201' | C: 'CH Đức Linh(2) - 725 Trường Chinh - ĐT: 0888 769 786' | D: '8322000' | I: '0' | J: '8322000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  17: A: '11' | B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '13574000' | F: '22529000' | G: '28042000' | H: '627000' | I: '0' | J: '7434000' | L [HIDDEN]: '' | M [HIDDEN]: '22529000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  18: A: '12' | B: 'KH.140723153' | C: 'CH cô Lai  Đặng Xá (2) - ĐT: 0812672543' | D: '1956000' | J: '1956000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  19: A: '13' | B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '452080' | F: '1170000' | I: '0' | J: '1622080' | L [HIDDEN]: '' | M [HIDDEN]: '1170000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  20: A: '14' | B: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT 0855933170 (vợ)-  0988500259' | D: '424010' | F: '1120000' | I: '0' | J: '1544010' | L [HIDDEN]: '' | M [HIDDEN]: '1120000' | N [HIDDEN]: 'tt 15 triệu/2 kho' | O [HIDDEN]: '' | P [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T9-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=2.42578125, hidden=0
+  Cols B (2) to B (2): width=23.140625, hidden=0
+  Cols C (3) to C (3): width=61.7109375, hidden=0
+  Cols D (4) to D (4): width=15.7109375, hidden=0
+  Cols E (5) to E (5): width=15.5703125, hidden=0
+  Cols F (6) to F (6): width=16.140625, hidden=0
+  Cols G (7) to G (7): width=11.85546875, hidden=0
+  Cols H (8) to H (8): width=11.28515625, hidden=0
+  Cols I (9) to I (9): width=15.85546875, hidden=1 [HIDDEN]
+  Cols J (10) to J (10): width=14.42578125, hidden=0
+  Cols K (11) to K (11): width=13.5703125, hidden=0
+  Cols L (12) to L (12): width=19, hidden=1 [HIDDEN]
+  Cols M (13) to M (13): width=18.7109375, hidden=1 [HIDDEN]
+  Cols N (14) to N (14): width=11.42578125, hidden=1 [HIDDEN]
+  Cols O (15) to O (15): width=10.85546875, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=18.85546875, hidden=1 [HIDDEN]
+  Cols Q (17) to Q (17): width=17.140625, hidden=1 [HIDDEN]
+  Cols R (18) to XFD (16384): width=15.140625, hidden=0
+HIDDEN COLUMNS: ['I', 'L', 'M', 'N', 'O', 'P', 'Q']
+Merged cells count: 14
+Top rows merged cells: ['L4:M4', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:K1', 'A2:K2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:H4', 'J4:J5', 'K4:K5']
+Total rows in sheetData: 489
+Columns present in data: from 1 (A) to 17 (Q)
+Hidden columns in sheet active range: ['I', 'L', 'M', 'N', 'O', 'P', 'Q']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row   2: A: 'T9,2026' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row   3: I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(31/8/2026)' | E: 'Có đầu kỳ \n(31/8/2026)' | F: 'Phát sinh trong tháng' | I [HIDDEN]: '' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: 'Bảng tính ngoài' | M [HIDDEN]: '' | N [HIDDEN]: 'Ghi chú' | O [HIDDEN]: 'Thu' | P [HIDDEN]: 'Ghi chú' | Q [HIDDEN]: ''
+Row   5: F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I [HIDDEN]: 'kiểm tra' | L [HIDDEN]: 'Trả lại , trừ giắ' | M [HIDDEN]: 'Tổng doanh số' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row   7: B: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '72157200' | F: '78991000' | G: '80000000' | H: '2013000' | I [HIDDEN]: '0' | J: '69135200' | L [HIDDEN]: '' | M [HIDDEN]: '78991000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row   8: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '43677260' | F: '13246000' | H: '856000' | I [HIDDEN]: '0' | J: '56067260' | L [HIDDEN]: '' | M [HIDDEN]: '13246000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row   9: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '94149600' | F: '2149000' | G: '63898000' | H: '5193000' | I [HIDDEN]: '0' | J: '27207600' | L [HIDDEN]: '' | M [HIDDEN]: '2149000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  10: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '19415500' | F: '12612400' | G: '5000000' | I [HIDDEN]: '8898820' | J: '27027900' | L [HIDDEN]: '' | M [HIDDEN]: '12612400' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  11: B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '14706200' | F: '1993000' | I [HIDDEN]: '34600' | J: '16699200' | L [HIDDEN]: '' | M [HIDDEN]: '1993000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  12: B: 'KH.140723046' | C: 'CH Quân Mùi (2)- Quân Khu 3 - (TP) ĐT: 0836530350' | D: '16083900' | F: '2162000' | G: '2162000' | H: '2376000' | I [HIDDEN]: '0' | J: '13707900' | L [HIDDEN]: '' | M [HIDDEN]: '2162000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  13: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '9023000' | F: '7537000' | G: '2986000' | I [HIDDEN]: '0' | J: '13574000' | L [HIDDEN]: '' | M [HIDDEN]: '7537000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  14: B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '14487000' | F: '2716000' | G: '6000000' | I [HIDDEN]: '0' | J: '11203000' | L [HIDDEN]: '' | M [HIDDEN]: '2716000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  15: B: 'KH.140723201' | C: 'CH Đức Linh(2) - 725 Trường Chinh - ĐT: 0888 769 786' | D: '8322000' | I [HIDDEN]: '0' | J: '8322000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  16: B: 'KH.140723113' | C: 'CH Hòa an (2)- 474 Trường Chinh -  TP Nam Định ĐT: 0912 715 919 - 3 600 565' | D: '4004000' | F: '2772000' | I [HIDDEN]: '0' | J: '6776000' | L [HIDDEN]: '' | M [HIDDEN]: '2772000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  17: B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '4424800' | F: '34822000' | G: '32860000' | H: '1819000' | I [HIDDEN]: '0' | J: '4567800' | L [HIDDEN]: '' | M [HIDDEN]: '34822000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  18: B: 'KH.140723153' | C: 'CH cô Lai  Đặng Xá (2) - ĐT: 0812672543' | D: '1956000' | I [HIDDEN]: '' | J: '1956000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  19: B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '452080' | I [HIDDEN]: '0' | J: '452080' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+Row  20: B: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259' | D: '6717610' | F: '1110000' | G: '6717000' | H: '686600' | I [HIDDEN]: '0' | J: '424010' | L [HIDDEN]: '' | M [HIDDEN]: '1110000' | N [HIDDEN]: 'tt 15 triệu/2 kho' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T8-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=24, hidden=0
+  Cols C (3) to C (3): width=95.28515625, hidden=0
+  Cols D (4) to D (4): width=42.85546875, hidden=0
+  Cols E (5) to E (5): width=39.42578125, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=24, hidden=0
+  Cols I (9) to I (9): width=27.140625, hidden=1 [HIDDEN]
+  Cols J (10) to J (10): width=25.85546875, hidden=0
+  Cols K (11) to K (11): width=28.5703125, hidden=0
+  Cols L (12) to M (13): width=28.5703125, hidden=1 [HIDDEN]
+  Cols N (14) to N (14): width=37.28515625, hidden=0
+  Cols O (15) to O (15): width=28.5703125, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['I', 'L', 'M', 'O', 'P']
+Merged cells count: 14
+Top rows merged cells: ['L4:M4', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:K1', 'A2:K2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:H4', 'J4:J5', 'K4:K5']
+Total rows in sheetData: 338
+Columns present in data: from 1 (A) to 22 (V)
+Hidden columns in sheet active range: ['I', 'L', 'M', 'O', 'P']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   2: A: 'Thánh 8-2026' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   3: I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(31/7/2026)' | E: 'Có đầu kỳ \n(31/7/2026)' | F: 'Phát sinh trong tháng' | I [HIDDEN]: '' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: 'Bảng tính ngoài' | M [HIDDEN]: '' | N: 'Ghi chú' | O [HIDDEN]: 'Thu' | P [HIDDEN]: 'Ghi chú'
+Row   5: F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I [HIDDEN]: 'kiểm tra' | L [HIDDEN]: 'Trả lại , trừ giắ' | M [HIDDEN]: 'Tổng doanh số' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   7: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '19667500' | F: '2460000' | G: '2400000' | H: '312000' | I [HIDDEN]: '8898820' | J: '19415500' | L [HIDDEN]: '' | M [HIDDEN]: '2460000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   8: B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '10488080' | G: '10036000' | I [HIDDEN]: '0' | J: '452080' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   9: B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '13627200' | F: '7079000' | G: '5415000' | H: '585000' | I [HIDDEN]: '34600' | J: '14706200' | L [HIDDEN]: '' | M [HIDDEN]: '7079000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  10: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '14511600' | F: '97807000' | G: '18169000' | I [HIDDEN]: '0' | J: '94149600' | L [HIDDEN]: '' | M [HIDDEN]: '97807000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  11: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '46857260' | F: '16820000' | G: '20000000' | I [HIDDEN]: '0' | J: '43677260' | L [HIDDEN]: '' | M [HIDDEN]: '16820000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  12: B: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '0' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  13: B: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '41019600' | F: '112737600' | G: '80000000' | H: '1600000' | I [HIDDEN]: '0' | J: '72157200' | L [HIDDEN]: '' | M [HIDDEN]: '112737600' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  14: B: 'KH.140723209' | C: 'CH Phương Huê (2)-0942637406-248 điện biên' | D: '378500' | G: '378000' | H: '500' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  15: B: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '0' | F: '850000' | G: '850000' | I [HIDDEN]: '510' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '850000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  16: B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '13681000' | F: '806000' | I [HIDDEN]: '0' | J: '14487000' | L [HIDDEN]: '' | M [HIDDEN]: '806000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  17: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '8613000' | F: '5771000' | G: '5361000' | I [HIDDEN]: '0' | J: '9023000' | L [HIDDEN]: '' | M [HIDDEN]: '5771000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  18: B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '26178800' | F: '9701000' | G: '31455000' | I [HIDDEN]: '0' | J: '4424800' | L [HIDDEN]: '' | M [HIDDEN]: '9701000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  19: B: 'KH.140723384' | C: 'CH Danh Trung:0355903682-151 đặng xuân bảng' | D: '0' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  20: B: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259' | D: '4026610' | F: '2691000' | I [HIDDEN]: '0' | J: '6717610' | L [HIDDEN]: '' | M [HIDDEN]: '2691000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T7-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=33, hidden=0
+  Cols C (3) to C (3): width=74.28515625, hidden=0
+  Cols D (4) to D (4): width=34.7109375, hidden=0
+  Cols E (5) to E (5): width=38, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=24, hidden=0
+  Cols I (9) to I (9): width=27.140625, hidden=1 [HIDDEN]
+  Cols J (10) to J (10): width=25.85546875, hidden=0
+  Cols K (11) to K (11): width=28.5703125, hidden=0
+  Cols L (12) to M (13): width=28.5703125, hidden=1 [HIDDEN]
+  Cols N (14) to N (14): width=37.28515625, hidden=0
+  Cols O (15) to O (15): width=28.5703125, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['I', 'L', 'M', 'O', 'P']
+Merged cells count: 14
+Top rows merged cells: ['L4:M4', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:K1', 'A2:K2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:H4', 'J4:J5', 'K4:K5']
+Total rows in sheetData: 334
+Columns present in data: from 1 (A) to 16 (P)
+Hidden columns in sheet active range: ['I', 'L', 'M', 'O', 'P']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   2: A: 'Thánh 7-2026' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   3: I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(31/7/2026)' | E: 'Có đầu kỳ \n(31/7/2026)' | F: 'Phát sinh trong tháng' | I [HIDDEN]: '' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: 'Bảng tính ngoài' | M [HIDDEN]: '' | N: 'Ghi chú' | O [HIDDEN]: 'Thu' | P [HIDDEN]: 'Ghi chú'
+Row   5: F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I [HIDDEN]: 'kiểm tra' | L [HIDDEN]: 'Trả lại , trừ giắ' | M [HIDDEN]: 'Tổng doanh số' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   7: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '14735900' | F: '10931600' | G: '6000000' | I [HIDDEN]: '8898820' | J: '19667500' | L [HIDDEN]: '' | M [HIDDEN]: '10931600' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   8: B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '4284480' | F: '6203600' | I [HIDDEN]: '0' | J: '10488080' | L [HIDDEN]: '' | M [HIDDEN]: '6203600' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   9: B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '11502200' | F: '17535000' | G: '15000000' | H: '410000' | I [HIDDEN]: '34600' | J: '13627200' | L [HIDDEN]: '' | M [HIDDEN]: '17535000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  10: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '12591600' | F: '1920000' | I [HIDDEN]: '0' | J: '14511600' | L [HIDDEN]: '' | M [HIDDEN]: '1920000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  11: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '42133260' | F: '19724000' | G: '15000000' | I [HIDDEN]: '0' | J: '46857260' | L [HIDDEN]: '' | M [HIDDEN]: '19724000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  12: B: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '5568000' | F: '2688000' | G: '8239000' | H: '17000' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '2688000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  13: B: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '27462000' | F: '33557600' | G: '20000000' | I [HIDDEN]: '0' | J: '41019600' | L [HIDDEN]: '' | M [HIDDEN]: '33557600' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  14: B: 'KH.140723209' | C: 'CH Phương Huê (2)-0942637406-248 điện biên' | D: '0' | F: '378500' | I [HIDDEN]: '0' | J: '378500' | L [HIDDEN]: '' | M [HIDDEN]: '378500' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  15: B: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '340000' | F: '7439040' | G: '7779000' | H: '40' | I [HIDDEN]: '510' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '7439040' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  16: B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '13233000' | F: '448000' | I [HIDDEN]: '0' | J: '13681000' | L [HIDDEN]: '' | M [HIDDEN]: '448000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  17: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '2583000' | F: '6030000' | I [HIDDEN]: '0' | J: '8613000' | L [HIDDEN]: '' | M [HIDDEN]: '6030000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  18: B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '16651600' | F: '19959200' | G: '10432000' | I [HIDDEN]: '0' | J: '26178800' | L [HIDDEN]: '' | M [HIDDEN]: '19959200' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  19: B: 'KH.140723384' | C: 'CH Danh Trung:0355903682-151 đặng xuân bảng' | D: '0' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  20: B: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259' | E: '17420590' | F: '26344000' | H: '4896800' | I [HIDDEN]: '0' | J: '4026610' | L [HIDDEN]: '' | M [HIDDEN]: '26344000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T6-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=37.140625, hidden=0
+  Cols C (3) to C (3): width=74.28515625, hidden=0
+  Cols D (4) to D (4): width=28.140625, hidden=0
+  Cols E (5) to E (5): width=25.5703125, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=24, hidden=0
+  Cols I (9) to I (9): width=27.140625, hidden=1 [HIDDEN]
+  Cols J (10) to J (10): width=23.140625, hidden=0
+  Cols K (11) to K (11): width=28.5703125, hidden=0
+  Cols L (12) to M (13): width=28.5703125, hidden=1 [HIDDEN]
+  Cols N (14) to N (14): width=28.5703125, hidden=0
+  Cols O (15) to O (15): width=28.5703125, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['I', 'L', 'M', 'O', 'P']
+Merged cells count: 14
+Top rows merged cells: ['L4:M4', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:K1', 'A2:K2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:H4', 'J4:J5', 'K4:K5']
+Total rows in sheetData: 334
+Columns present in data: from 1 (A) to 16 (P)
+Hidden columns in sheet active range: ['I', 'L', 'M', 'O', 'P']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   2: A: 'Thánh 6-2026' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   3: I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(31/7/2026)' | E: 'Có đầu kỳ \n(31/7/2026)' | F: 'Phát sinh trong tháng' | I [HIDDEN]: '' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: 'Bảng tính ngoài' | M [HIDDEN]: '' | N: 'Ghi chú' | O [HIDDEN]: 'Thu' | P [HIDDEN]: 'Ghi chú'
+Row   5: F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I [HIDDEN]: 'kiểm tra' | L [HIDDEN]: 'Trả lại , trừ giắ' | M [HIDDEN]: 'Tổng doanh số' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ - HÀ NAM' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   7: B: 'KH.140723037' | C: 'CH Nam Huyền - Chợ Quắn - 0392388757' | D: '38982300' | F: '11005200' | G: '20000000' | I [HIDDEN]: '24815878' | J: '29987500' | L [HIDDEN]: '' | M [HIDDEN]: '11005200' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   8: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '16065900' | F: '5670000' | G: '7000000' | I [HIDDEN]: '8898820' | J: '14735900' | L [HIDDEN]: '' | M [HIDDEN]: '5670000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   9: B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '4284480' | I [HIDDEN]: '0' | J: '4284480' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  10: B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '11502200' | I [HIDDEN]: '34600' | J: '11502200' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  11: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '12591600' | I [HIDDEN]: '0' | J: '12591600' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  12: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '18206160' | F: '56416600' | G: '30000000' | H: '2489500' | I [HIDDEN]: '0' | J: '42133260' | L [HIDDEN]: '' | M [HIDDEN]: '56416600' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  13: B: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '5568000' | I [HIDDEN]: '0' | J: '5568000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  14: B: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '11885200' | F: '24936800' | H: '9360000' | I [HIDDEN]: '0' | J: '27462000' | L [HIDDEN]: '' | M [HIDDEN]: '24936800' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  15: B: 'KH.140723209' | C: 'CH Phương Huê (2)-0942637406-248 điện biên' | D: '0' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  16: B: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '340000' | I [HIDDEN]: '510' | J: '340000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  17: B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '5537000' | F: '7951000' | H: '255000' | I [HIDDEN]: '0' | J: '13233000' | L [HIDDEN]: '' | M [HIDDEN]: '7951000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  18: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '0' | F: '2583000' | I [HIDDEN]: '0' | J: '2583000' | L [HIDDEN]: '' | M [HIDDEN]: '2583000' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  19: B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '28846400' | F: '29309200' | G: '41504000' | I [HIDDEN]: '0' | J: '16651600' | L [HIDDEN]: '' | M [HIDDEN]: '29309200' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  20: B: 'KH.140723384' | C: 'CH Danh Trung:0355903682-151 đặng xuân bảng' | D: '0' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | O [HIDDEN]: '' | P [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T5-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=34.42578125, hidden=0
+  Cols C (3) to C (3): width=74.28515625, hidden=0
+  Cols D (4) to D (4): width=31.7109375, hidden=0
+  Cols E (5) to E (5): width=25.5703125, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=24, hidden=0
+  Cols I (9) to I (9): width=27.140625, hidden=1 [HIDDEN]
+  Cols J (10) to J (10): width=23.140625, hidden=0
+  Cols K (11) to K (11): width=28.5703125, hidden=0
+  Cols L (12) to M (13): width=28.5703125, hidden=1 [HIDDEN]
+  Cols N (14) to N (14): width=28.5703125, hidden=1 [HIDDEN]
+  Cols O (15) to O (15): width=28.5703125, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to Q (17): width=36.7109375, hidden=0
+  Cols R (18) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['I', 'L', 'M', 'N', 'O', 'P']
+Merged cells count: 14
+Top rows merged cells: ['L4:M4', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:K1', 'A2:K2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:H4', 'J4:J5', 'K4:K5']
+Total rows in sheetData: 335
+Columns present in data: from 1 (A) to 17 (Q)
+Hidden columns in sheet active range: ['I', 'L', 'M', 'N', 'O', 'P']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   2: A: 'Từ 1/5/2026 đến 30/5/2026' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   3: I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(31/7/2026)' | E: 'Có đầu kỳ \n(31/7/2026)' | F: 'Phát sinh trong tháng' | I [HIDDEN]: '' | J: 'NỢ CK ' | K: 'CÓ CK ' | L [HIDDEN]: 'Bảng tính ngoài' | M [HIDDEN]: '' | N [HIDDEN]: 'Ghi chú' | O [HIDDEN]: 'Thu' | P [HIDDEN]: 'Ghi chú'
+Row   5: F: 'PS nợ' | G: 'tiền thu' | H: 'PS có \n( hàng trả lại, trừ giá…)' | I [HIDDEN]: 'kiểm tra' | L [HIDDEN]: 'Trả lại , trừ giắ' | M [HIDDEN]: 'Tổng doanh số' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ - HÀ NAM' | I [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   7: B: 'KH.140723037' | C: 'CH Nam Huyền - Chợ Quắn - 0392388757' | D: '23862300' | F: '15120000' | I [HIDDEN]: '24815878' | J: '38982300' | L [HIDDEN]: '' | M [HIDDEN]: '15120000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   8: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '46741700' | G: '30000000' | H: '675800' | I [HIDDEN]: '8898820' | J: '16065900' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: 'thu 13/5' | P [HIDDEN]: ''
+Row   9: B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '16351480' | F: '8111000' | G: '20178000' | I [HIDDEN]: '0' | J: '4284480' | L [HIDDEN]: '' | M [HIDDEN]: '8111000' | N [HIDDEN]: '' | O [HIDDEN]: 'thu 11/5' | P [HIDDEN]: ''
+Row  10: B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '5870600' | F: '11467600' | G: '5836000' | I [HIDDEN]: '34600' | J: '11502200' | L [HIDDEN]: '' | M [HIDDEN]: '11467600' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  11: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '13730600' | G: '1139000' | I [HIDDEN]: '0' | J: '12591600' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  12: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '19771560' | F: '18749000' | G: '20000000' | H: '314400' | I [HIDDEN]: '0' | J: '18206160' | L [HIDDEN]: '' | M [HIDDEN]: '18749000' | N [HIDDEN]: '' | O [HIDDEN]: 'thu 5/5' | P [HIDDEN]: ''
+Row  13: B: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '5568000' | I [HIDDEN]: '0' | J: '5568000' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  14: B: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '26708600' | F: '6178000' | G: '20000000' | H: '1001400' | I [HIDDEN]: '0' | J: '11885200' | L [HIDDEN]: '' | M [HIDDEN]: '6178000' | N [HIDDEN]: '' | O [HIDDEN]: 'tk cty 30/5' | P [HIDDEN]: ''
+Row  15: B: 'KH.140723209' | C: 'CH Phương Huê (2)-0942637406-248 điện biên' | D: '3120000' | G: '3120000' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  16: B: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | F: '1240000' | G: '900000' | I [HIDDEN]: '510' | J: '340000' | L [HIDDEN]: '' | M [HIDDEN]: '1240000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  17: B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '3762000' | F: '1775000' | I [HIDDEN]: '0' | J: '5537000' | L [HIDDEN]: '' | M [HIDDEN]: '1775000' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  18: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '0' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  19: B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '-6000' | F: '44008000' | G: '14720000' | H: '435600' | I [HIDDEN]: '0' | J: '28846400' | L [HIDDEN]: '' | M [HIDDEN]: '44008000' | N [HIDDEN]: '' | O [HIDDEN]: 'thu 13/5' | P [HIDDEN]: ''
+Row  20: B: 'KH.140723384' | C: 'CH Danh Trung:0355903682-151 đặng xuân bảng' | D: '0' | I [HIDDEN]: '0' | J: '0' | L [HIDDEN]: '' | M [HIDDEN]: '0' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T4-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=24, hidden=0
+  Cols C (3) to C (3): width=73.85546875, hidden=0
+  Cols D (4) to D (4): width=28.42578125, hidden=0
+  Cols E (5) to E (5): width=25.5703125, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=27.140625, hidden=1 [HIDDEN]
+  Cols I (9) to I (9): width=23.140625, hidden=0
+  Cols J (10) to J (10): width=28.5703125, hidden=0
+  Cols K (11) to L (12): width=28.5703125, hidden=1 [HIDDEN]
+  Cols M (13) to M (13): width=28.5703125, hidden=1 [HIDDEN]
+  Cols N (14) to O (15): width=28.5703125, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['H', 'K', 'L', 'M', 'N', 'O', 'P']
+Merged cells count: 15
+Top rows merged cells: ['K4:L4', 'M4:M5', 'N4:N5', 'O4:O5', 'P4:P5', 'A1:J1', 'A2:J2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:G4', 'I4:I5', 'J4:J5']
+Total rows in sheetData: 338
+Columns present in data: from 1 (A) to 17 (Q)
+Hidden columns in sheet active range: ['H', 'K', 'L', 'M', 'N', 'O', 'P']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | H [HIDDEN]: '' | K [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   2: A: ' TỪ 01/04/2026 - 31/04/2026' | H [HIDDEN]: '' | K [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   3: H [HIDDEN]: '' | K [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(31/3/2026)' | E: 'Có đầu kỳ \n(31/03/2026)' | F: 'Phát sinh trong tháng' | H [HIDDEN]: '' | I: 'NỢ CK ' | J: 'CÓ CK ' | K [HIDDEN]: 'Bảng tính ngoài' | L [HIDDEN]: '' | M [HIDDEN]: 'Hóa đơn ngày' | N [HIDDEN]: 'Thu' | O [HIDDEN]: 'mã ' | P [HIDDEN]: 'Ghi chú'
+Row   5: F: 'PS nợ' | G: 'PS có \n( hàng trả lại, trừ giá…)' | H [HIDDEN]: 'kiểm tra' | K [HIDDEN]: 'Trả lại , trừ giắ' | L [HIDDEN]: 'Tổng doanh số' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ - HÀ NAM' | H [HIDDEN]: '' | K [HIDDEN]: '' | L [HIDDEN]: '' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   7: B: 'KH.140723037' | C: 'CH Nam Huyền - Chợ Quắn - 0392388757' | D: '25140000' | F: '420000' | G: '1697700' | H [HIDDEN]: '24815878' | I: '23862300' | K [HIDDEN]: '1697700' | L [HIDDEN]: '-1277700' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '18/4 : trả lại 18/4'
+Row   8: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '16898820' | F: '37842880' | G: '8000000' | H [HIDDEN]: '8898820' | I: '46741700' | K [HIDDEN]: '' | L [HIDDEN]: '37842880' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row   9: B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '15890480' | F: '461000' | G: '0' | H [HIDDEN]: '0' | I: '16351480' | K [HIDDEN]: '' | L [HIDDEN]: '461000' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  10: B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '11887600' | F: '5836000' | G: '11853000' | H [HIDDEN]: '34600' | I: '5870600' | K [HIDDEN]: '' | L [HIDDEN]: '5836000' | M [HIDDEN]: 'HĐ 29/4' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  11: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '11125600' | F: '2605000' | G: '0' | H [HIDDEN]: '0' | I: '13730600' | K [HIDDEN]: '' | L [HIDDEN]: '2605000' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  12: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '7214960' | F: '12556600' | G: '0' | H [HIDDEN]: '0' | I: '19771560' | K [HIDDEN]: '' | L [HIDDEN]: '12556600' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  13: B: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '5568000' | F: '0' | G: '0' | H [HIDDEN]: '0' | I: '5568000' | K [HIDDEN]: '' | L [HIDDEN]: '0' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  14: B: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '3852000' | F: '23711600' | G: '855000' | H [HIDDEN]: '0' | I: '26708600' | K [HIDDEN]: '855000' | L [HIDDEN]: '22856600' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  15: B: 'KH.140723209' | C: 'CH Phương Huê (2)-0942637406-248 điện biên' | D: '3120000' | F: '0' | G: '0' | H [HIDDEN]: '0' | I: '3120000' | K [HIDDEN]: '' | L [HIDDEN]: '0' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  16: B: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '2483510' | G: '2483000' | H [HIDDEN]: '510' | I: '510' | K [HIDDEN]: '' | L [HIDDEN]: '0' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  17: B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '1591070' | F: '2171000' | G: '0' | H [HIDDEN]: '0' | I: '3762070' | K [HIDDEN]: '' | L [HIDDEN]: '380000' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  18: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '0' | F: '0' | G: '0' | H [HIDDEN]: '0' | I: '0' | K [HIDDEN]: '' | L [HIDDEN]: '0' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  19: B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '0' | F: '15119000' | G: '15125000' | H [HIDDEN]: '0' | I: '-6000' | K [HIDDEN]: '' | L [HIDDEN]: '15119000' | M [HIDDEN]: 'HĐ 8/4+10/4' | N [HIDDEN]: 'thu 8/4+10/4+12/4' | O [HIDDEN]: '' | P [HIDDEN]: ''
+Row  20: B: 'KH.140723384' | C: 'CH Danh Trung:0355903682-151 đặng xuân bảng' | D: '0' | F: '0' | G: '0' | H [HIDDEN]: '0' | I: '0' | K [HIDDEN]: '' | L [HIDDEN]: '0' | M [HIDDEN]: '' | N [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T3-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=24, hidden=0
+  Cols C (3) to C (3): width=89.5703125, hidden=0
+  Cols D (4) to D (4): width=28.42578125, hidden=0
+  Cols E (5) to E (5): width=25.5703125, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=27.140625, hidden=1 [HIDDEN]
+  Cols I (9) to I (9): width=23.140625, hidden=0
+  Cols J (10) to J (10): width=29.5703125, hidden=0
+  Cols K (11) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['H']
+Merged cells count: 10
+Top rows merged cells: ['A1:J1', 'A2:J2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:G4', 'I4:I5', 'J4:J5']
+Total rows in sheetData: 336
+Columns present in data: from 1 (A) to 10 (J)
+Hidden columns in sheet active range: ['H']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | H [HIDDEN]: ''
+Row   2: A: ' TỪ 01/03/2026 - 31/03/2026' | H [HIDDEN]: ''
+Row   3: H [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(28/2/2026)' | E: 'Có đầu kỳ \n(28/02/2026)' | F: 'Phát sinh trong tháng' | H [HIDDEN]: '' | I: 'NỢ CK ' | J: 'CÓ CK '
+Row   5: F: 'PS nợ' | G: 'PS có \n( hàng trả lại, trừ giá…)' | H [HIDDEN]: 'kiểm tra'
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ - HÀ NAM' | H [HIDDEN]: ''
+Row   7: B: 'KH.140723037' | C: 'CH Nam Huyền - Chợ Quắn - 0392388757' | D: '0' | F: '70045000' | G: '44905000' | H [HIDDEN]: '25140000' | I: '25140000'
+Row   8: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '0' | F: '17052420' | G: '153600' | H [HIDDEN]: '16898820' | I: '16898820'
+Row   9: B: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '0' | F: '15890480' | G: '0' | H [HIDDEN]: '15890480' | I: '15890480'
+Row  10: B: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '0' | F: '12357600' | G: '470000' | H [HIDDEN]: '11887600' | I: '11887600'
+Row  11: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '0' | F: '11125600' | G: '0' | H [HIDDEN]: '11125600' | I: '11125600'
+Row  12: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '0' | F: '7214960' | G: '0' | H [HIDDEN]: '7214960' | I: '7214960'
+Row  13: B: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '0' | F: '5568000' | G: '0' | H [HIDDEN]: '5568000' | I: '5568000'
+Row  14: B: 'KH.140723099' | C: 'CH Bích Hường(2)' | F: '15120000' | G: '11268000' | H [HIDDEN]: '3852000' | I: '3852000'
+Row  15: B: 'KH.140723209' | C: 'CH Phương Huê (2)-0942637406-248 điện biên' | D: '0' | F: '3120000' | G: '0' | H [HIDDEN]: '3120000' | I: '3120000'
+Row  16: B: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '0' | F: '2483510' | G: '0' | H [HIDDEN]: '2483510' | I: '2483510'
+Row  17: B: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '0' | F: '1591070' | G: '0' | H [HIDDEN]: '1591070' | I: '1591070'
+Row  18: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '0' | F: '1693200' | G: '1693200' | H [HIDDEN]: '0' | I: '0'
+Row  19: B: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '0' | F: '4300000' | G: '4300000' | H [HIDDEN]: '0' | I: '0'
+Row  20: B: 'KH.140723384' | C: 'CH Danh Trung:0355903682-151 đặng xuân bảng' | D: '0' | F: '1450000' | G: '1450000' | H [HIDDEN]: '0' | I: '0'
+
+=======================================================
+SHEET: 'T2-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=22.85546875, hidden=0
+  Cols C (3) to C (3): width=89.5703125, hidden=0
+  Cols D (4) to D (4): width=28.42578125, hidden=0
+  Cols E (5) to E (5): width=25.5703125, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=27.140625, hidden=1 [HIDDEN]
+  Cols I (9) to I (9): width=23.140625, hidden=0
+  Cols J (10) to J (10): width=32.7109375, hidden=0
+  Cols K (11) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['H']
+Merged cells count: 10
+Top rows merged cells: ['A1:J1', 'A2:J2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:G4', 'I4:I5', 'J4:J5']
+Total rows in sheetData: 337
+Columns present in data: from 1 (A) to 26 (Z)
+Hidden columns in sheet active range: ['H']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | H [HIDDEN]: ''
+Row   2: A: ' TỪ 01/02/2026 - 28/02/2026' | H [HIDDEN]: ''
+Row   3: H [HIDDEN]: ''
+Row   4: A: 'STT' | B: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(28/2/2026)' | E: 'Có đầu kỳ \n(28/02/2026)' | F: 'Phát sinh trong tháng' | H [HIDDEN]: '' | I: 'NỢ CK ' | J: 'CÓ CK '
+Row   5: F: 'PS nợ' | G: 'PS có \n( hàng trả lại, trừ giá…)' | H [HIDDEN]: 'kiểm tra'
+Row   6: A: '1' | B: 'I' | C: 'THÀNH PHỐ - HÀ NAM' | H [HIDDEN]: ''
+Row   7: B: 'KH.140723037' | C: 'CH Nam Huyền - Chợ Quắn - 0392388757' | D: '114250950' | F: '0' | G: '114250950' | H [HIDDEN]: '0' | I: '0'
+Row   8: B: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '72958545' | F: '0' | G: '72958545' | H [HIDDEN]: '0' | I: '0'
+Row   9: B: 'KH.140723133' | C: 'CH Thủy Vượng(2) - Đò Quan - TP Nam Định ĐT: 3 859 671 - 0948 598 993' | D: '45652040' | F: '216800' | G: '45869465' | H [HIDDEN]: '0' | I: '-625'
+Row  10: B: 'KH.140723151' | C: 'CH TUẤN HOÀI (2)-0949372910-đường 52m -Tp NĐ' | D: '600' | F: '0' | G: '374400' | H [HIDDEN]: '0' | J: '374400'
+Row  11: B: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '15657950' | F: '0' | G: '15657950' | H [HIDDEN]: '0' | I: '0'
+Row  12: B: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '1920000' | F: '0' | G: '1920000' | H [HIDDEN]: '0' | I: '0'
+Row  13: B: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '12820520' | F: '0' | G: '12820520' | H [HIDDEN]: '0' | I: '0' | Z: '0'
+Row  14: B: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '15813900' | F: '0' | G: '15813900' | H [HIDDEN]: '0' | I: '0'
+Row  15: B: 'KH.140723130' | C: 'CH Quảng Mận(2) - Mỹ Hưng - Mỹ Lộc - ĐT: 0854014007' | D: '0' | F: '0' | G: '0' | H [HIDDEN]: '0' | I: '0'
+Row  16: B: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '16961250' | F: '2750' | G: '16964000' | H [HIDDEN]: '0' | I: '0'
+Row  17: B: 'KH.140723242' | C: 'showroom Tân Phong(2)-ĐT: 0943531966' | D: '14070440' | F: '0' | G: '14070440' | H [HIDDEN]: '0' | I: '0'
+Row  18: B: 'KH.140723113' | C: 'CH Hòa an (2)- 474 Trường Chinh -  TP Nam Định ĐT: 0912 715 919 - 3 600 565' | D: '3928200' | F: '0' | G: '3928200' | H [HIDDEN]: '0' | I: '0'
+Row  19: B: 'KH.140723046' | C: 'CH Quân Mùi (2)- Quân Khu 3 - (TP) ĐT: 0836530350' | D: '5113600' | F: '0' | G: '5113600' | H [HIDDEN]: '0' | I: '0'
+Row  20: B: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259' | D: '12387200' | F: '0' | G: '12387200' | H [HIDDEN]: '0' | I: '0'
+
+=======================================================
+SHEET: 'làm tên' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=4.140625, hidden=0
+  Cols B (2) to B (2): width=21.140625, hidden=0
+  Cols C (3) to C (3): width=20.140625, hidden=1 [HIDDEN]
+  Cols D (4) to D (4): width=40.42578125, hidden=0
+  Cols E (5) to E (5): width=23.42578125, hidden=0
+  Cols F (6) to F (6): width=26.28515625, hidden=0
+  Cols G (7) to G (7): width=24.5703125, hidden=0
+  Cols H (8) to H (8): width=25.85546875, hidden=0
+  Cols I (9) to I (9): width=24.85546875, hidden=0
+  Cols J (10) to J (10): width=22, hidden=0
+  Cols K (11) to K (11): width=24, hidden=1 [HIDDEN]
+  Cols L (12) to L (12): width=11.28515625, hidden=0
+HIDDEN COLUMNS: ['C', 'K']
+Merged cells count: 14
+Top rows merged cells: ['L5:L6', 'D8:D18', 'F3:I3', 'D3:E3', 'B1:K1', 'B2:K2', 'F5:F6', 'G5:I5', 'K5:K6', 'B5:B6', 'C5:C6', 'D5:D6', 'E5:E6', 'J5:J6']
+Total rows in sheetData: 20
+Columns present in data: from 1 (A) to 12 (L)
+Hidden columns in sheet active range: ['C', 'K']
+
+Sample rows (first 20 rows):
+Row   1: B: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | C [HIDDEN]: '' | K [HIDDEN]: ''
+Row   2: B: 'Năm 2026' | C [HIDDEN]: '' | K [HIDDEN]: ''
+Row   3: C [HIDDEN]: '' | D: 'Tên khách hàng:' | F: 'CH Tòng Lăng - Yên Trị - ý yên - ĐT: 0856626888 - 0828 268 999' | K [HIDDEN]: ''
+Row   4: C [HIDDEN]: '' | K [HIDDEN]: ''
+Row   5: B: 'STT' | C [HIDDEN]: 'MÃ KHÁCH' | D: 'TÊN KH' | E: 'Nợ đầu kỳ ( T2/2026)' | F: 'Có đầu kỳ (T2/2026)' | G: 'Phát sinh trong tháng' | J: 'NỢ CK ' | K [HIDDEN]: 'CÓ CK ' | L: 'Phần trăm thu công nợ tháng'
+Row   6: C [HIDDEN]: '' | G: 'PS nợ' | H: 'tiền thu' | I: 'PS có \n( hàng trả lại, trừ giá…)' | K [HIDDEN]: ''
+Row   7: B: 'II' | C [HIDDEN]: 'III' | D: ' NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG' | K [HIDDEN]: ''
+Row   8: B: 'Tháng 3/2026' | C [HIDDEN]: 'KH.140723044' | D: 'CH Tòng Lăng - Yên Trị - ý yên - ĐT: 0856626888 - 0828 268 999' | E: '0' | G: '107879520' | H: '41000000' | J: '66879520' | K [HIDDEN]: '' | L: '0.38005360053511544'
+Row   9: B: 'Tháng 4/2026' | C [HIDDEN]: 'KH.140723044' | E: '66879520' | G: '14420000' | H: '20000000' | J: '61299520' | K [HIDDEN]: ''
+Row  10: B: 'Tháng 5/2026' | C [HIDDEN]: 'KH.140723044' | E: '61299520' | G: '64108000' | H: '35000000' | I: '2199000' | J: '88208520' | K [HIDDEN]: '' | L: '0.54595370312597491'
+Row  11: B: 'Tháng 6/2026' | C [HIDDEN]: 'KH.140723044' | E: '88208520' | G: '38504000' | H: '20000000' | I: '6187200' | J: '100525320' | K [HIDDEN]: '' | L: '0.51942655308539376'
+Row  12 [HIDDEN ROW]: B: 'tháng 7/2026' | C [HIDDEN]: 'KH.140723044' | E: '100525320' | K [HIDDEN]: ''
+Row  13 [HIDDEN ROW]: B: 'Tháng 8/2026' | C [HIDDEN]: 'KH.140723044' | K [HIDDEN]: ''
+Row  14 [HIDDEN ROW]: B: 'Tháng 9/2026' | C [HIDDEN]: 'KH.140723044' | K [HIDDEN]: ''
+Row  15 [HIDDEN ROW]: B: 'tháng 10/2026' | C [HIDDEN]: 'KH.140723044' | K [HIDDEN]: ''
+Row  16 [HIDDEN ROW]: B: 'tháng 11/2026' | C [HIDDEN]: 'KH.140723044' | K [HIDDEN]: ''
+Row  17 [HIDDEN ROW]: B: 'tháng 12/2026' | C [HIDDEN]: 'KH.140723044' | K [HIDDEN]: ''
+Row  18 [HIDDEN ROW]: B: 'tháng 1/2027' | C [HIDDEN]: 'KH.140723044' | K [HIDDEN]: ''
+Row  19: C [HIDDEN]: '' | D: 'Cộng' | G: '224911520' | H: '116000000' | I: '8386200' | J: '100525320' | K [HIDDEN]: ''
+Row  20: C [HIDDEN]: '' | K [HIDDEN]: ''
+
+=======================================================
+SHEET: 'T1-2026' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=8.5703125, hidden=0
+  Cols B (2) to B (2): width=24, hidden=1 [HIDDEN]
+  Cols C (3) to C (3): width=89.5703125, hidden=0
+  Cols D (4) to D (4): width=28.42578125, hidden=0
+  Cols E (5) to E (5): width=25.5703125, hidden=0
+  Cols F (6) to F (6): width=24, hidden=0
+  Cols G (7) to G (7): width=24, hidden=0
+  Cols H (8) to H (8): width=27.140625, hidden=1 [HIDDEN]
+  Cols I (9) to I (9): width=23.140625, hidden=0
+  Cols J (10) to J (10): width=32.7109375, hidden=0
+  Cols K (11) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['B', 'H']
+Merged cells count: 10
+Top rows merged cells: ['A1:J1', 'A2:J2', 'A4:A5', 'B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:G4', 'I4:I5', 'J4:J5']
+Total rows in sheetData: 337
+Columns present in data: from 1 (A) to 26 (Z)
+Hidden columns in sheet active range: ['B', 'H']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | B [HIDDEN]: '' | H [HIDDEN]: ''
+Row   2: A: ' TỪ 01/02/2026 - 28/02/2026' | B [HIDDEN]: '' | H [HIDDEN]: ''
+Row   3: B [HIDDEN]: '' | H [HIDDEN]: ''
+Row   4: A: 'STT' | B [HIDDEN]: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Nợ đầu kỳ \n(31/12/2025)' | E: 'Có đầu kỳ \n(31/12/2025)' | F: 'Phát sinh trong tháng' | H [HIDDEN]: '' | I: 'NỢ CK ' | J: 'CÓ CK '
+Row   5: B [HIDDEN]: '' | F: 'PS nợ' | G: 'PS có \n( hàng trả lại, trừ giá…)' | H [HIDDEN]: 'kiểm tra'
+Row   6: A: '1' | B [HIDDEN]: 'I' | C: 'THÀNH PHỐ - HÀ NAM' | H [HIDDEN]: ''
+Row   7: B [HIDDEN]: 'KH.140723037' | C: 'CH Nam Huyền - Chợ Quắn - 0392388757' | D: '50194550' | F: '114056400' | G: '50000000' | H [HIDDEN]: '114250950' | I: '114250950'
+Row   8: B [HIDDEN]: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '82205840' | F: '11573505' | G: '20820800' | H [HIDDEN]: '72958545' | I: '72958545'
+Row   9: B [HIDDEN]: 'KH.140723133' | C: 'CH Thủy Vượng(2) - Đò Quan - TP Nam Định ĐT: 3 859 671 - 0948 598 993' | D: '21815100' | F: '23836940' | G: '0' | H [HIDDEN]: '45652665' | I: '45652040'
+Row  10: B [HIDDEN]: 'KH.140723151' | C: 'CH TUẤN HOÀI (2)-0949372910-đường 52m -Tp NĐ' | D: '24685600' | F: '3744000' | G: '28429000' | H [HIDDEN]: '600' | I: '600'
+Row  11: B [HIDDEN]: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '21143150' | F: '4672800' | G: '10158000' | H [HIDDEN]: '15657950' | I: '15657950'
+Row  12: B [HIDDEN]: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '11536800' | F: '7824000' | G: '17440800' | H [HIDDEN]: '1920000' | I: '1920000'
+Row  13: B [HIDDEN]: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '16820520' | F: '0' | G: '4000000' | H [HIDDEN]: '12820520' | I: '12820520'
+Row  14: B [HIDDEN]: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '1294800' | F: '14519100' | G: '0' | H [HIDDEN]: '15813900' | I: '15813900'
+Row  15: B [HIDDEN]: 'KH.140723130' | C: 'CH Quảng Mận(2) - Mỹ Hưng - Mỹ Lộc - ĐT: 0854014007' | D: '7239600' | F: '7695000' | G: '14934600' | H [HIDDEN]: '0' | I: '0'
+Row  16: B [HIDDEN]: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '15816250' | F: '24637000' | G: '23492000' | H [HIDDEN]: '16961250' | I: '16961250'
+Row  17: B [HIDDEN]: 'KH.140723242' | C: 'showroom Tân Phong(2)-ĐT: 0943531966' | D: '0' | F: '14070440' | G: '0' | H [HIDDEN]: '14070440' | I: '14070440'
+Row  18: B [HIDDEN]: 'KH.140723113' | C: 'CH Hòa an (2)- 474 Trường Chinh -  TP Nam Định ĐT: 0912 715 919 - 3 600 565' | D: '6096200' | F: '0' | G: '2168000' | H [HIDDEN]: '3928200' | I: '3928200'
+Row  19: B [HIDDEN]: 'KH.140723046' | C: 'CH Quân Mùi (2)- Quân Khu 3 - (TP) ĐT: 0836530350' | D: '0' | F: '11638600' | G: '6525000' | H [HIDDEN]: '5113600' | I: '5113600'
+Row  20: B [HIDDEN]: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259' | D: '0' | F: '12836600' | G: '449400' | H [HIDDEN]: '12387200' | I: '12387200'
+
+=======================================================
+SHEET: 'tổng hợp công nợ tháng' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=10.42578125, hidden=0
+  Cols B (2) to B (2): width=30.140625, hidden=1 [HIDDEN]
+  Cols C (3) to C (3): width=113.7109375, hidden=0
+  Cols D (4) to D (4): width=28.5703125, hidden=0
+  Cols E (5) to E (5): width=27.140625, hidden=0
+  Cols F (6) to F (6): width=28.42578125, hidden=0
+  Cols G (7) to G (7): width=25.5703125, hidden=0
+  Cols H (8) to H (8): width=29.42578125, hidden=0
+  Cols I (9) to I (9): width=31.85546875, hidden=0
+  Cols J (10) to J (10): width=28.140625, hidden=0
+  Cols K (11) to K (11): width=29.85546875, hidden=0
+  Cols L (12) to L (12): width=35.5703125, hidden=0
+  Cols M (13) to M (13): width=34.28515625, hidden=0
+  Cols N (14) to N (14): width=28.5703125, hidden=0
+  Cols O (15) to O (15): width=25.140625, hidden=1 [HIDDEN]
+  Cols P (16) to P (16): width=28.5703125, hidden=1 [HIDDEN]
+  Cols Q (17) to Q (17): width=26.42578125, hidden=1 [HIDDEN]
+  Cols R (18) to R (18): width=19.42578125, hidden=1 [HIDDEN]
+  Cols S (19) to S (19): width=25.140625, hidden=1 [HIDDEN]
+  Cols T (20) to T (20): width=46.28515625, hidden=0
+  Cols U (21) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['B', 'O', 'P', 'Q', 'R', 'S']
+Merged cells count: 10
+Top rows merged cells: ['B6:C6', 'B4:B5', 'C4:C5', 'A4:A5', 'D4:M4', 'O4:P4', 'S4:S5', 'N4:N5', 'R4:R5', 'Q4:Q5']
+Total rows in sheetData: 168
+Columns present in data: from 1 (A) to 27 (AA)
+Hidden columns in sheet active range: ['B', 'O', 'P', 'Q', 'R', 'S']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | B [HIDDEN]: '' | F: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row   2: A: 'TỪ T2/2026- 31/12/2026' | B [HIDDEN]: '' | F: 'TỪ T2/2026- 31/12/2026' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row   3: B [HIDDEN]: '' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row   4: A: 'STT' | B [HIDDEN]: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Phát sinh trong tháng' | N: 'Tổng cộng' | O [HIDDEN]: 'Bảng tính ngoài' | P [HIDDEN]: '' | Q [HIDDEN]: 'Ghi chú' | R [HIDDEN]: 'Thu' | S [HIDDEN]: 'Ghi chú'
+Row   5: B [HIDDEN]: '' | D: 'tháng 3' | E: 'tháng 4' | F: 'tháng 5' | G: 'tháng 6' | H: 'tháng 7' | I: 'tháng 8' | J: 'tháng 9' | K: 'tháng 10' | L: 'tháng 11' | M: 'tháng 12' | O [HIDDEN]: 'Trả lại , trừ giắ' | P [HIDDEN]: 'Tổng doanh số' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row   6: A: 'I' | B [HIDDEN]: 'THÀNH PHỐ - HÀ NAM' | O [HIDDEN]: '' | P [HIDDEN]: '' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row   7: A: '1' | B [HIDDEN]: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '17052420' | E: '37842880' | F: '0' | G: '5670000' | H: '10931600' | I: '2460000' | J: '12612400' | K: '480000' | N: '86569300' | O [HIDDEN]: '' | P [HIDDEN]: '17052420' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row   8: A: '2' | B [HIDDEN]: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '15890480' | E: '461000' | F: '8111000' | G: '0' | H: '6203600' | I: '0' | J: '0' | K: '1170000' | N: '30666080' | O [HIDDEN]: '' | P [HIDDEN]: '15890480' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row   9: A: '3' | B [HIDDEN]: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '12357600' | E: '5836000' | F: '11467600' | G: '0' | H: '17535000' | I: '7079000' | J: '1993000' | K: '0' | N: '56268200' | O [HIDDEN]: '' | P [HIDDEN]: '12357600' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  10: A: '4' | B [HIDDEN]: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '11125600' | E: '2605000' | F: '0' | G: '0' | H: '1920000' | I: '97807000' | J: '2149000' | K: '27709000' | N: '115606600' | O [HIDDEN]: '' | P [HIDDEN]: '11125600' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  11: A: '5' | B [HIDDEN]: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '7214960' | E: '12556600' | F: '18749000' | G: '56416600' | H: '19724000' | I: '16820000' | J: '13246000' | K: '43249000' | N: '144727160' | O [HIDDEN]: '' | P [HIDDEN]: '7214960' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  12: A: '6' | B [HIDDEN]: 'KH.140723285' | C: 'CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388' | D: '5568000' | E: '0' | F: '0' | G: '0' | H: '2688000' | I: '0' | J: '0' | K: '0' | N: '8256000' | O [HIDDEN]: '' | P [HIDDEN]: '5568000' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  13: A: '7' | B [HIDDEN]: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '15120000' | E: '23711600' | F: '6178000' | G: '24936800' | H: '33557600' | I: '112737600' | J: '78991000' | K: '101243000' | N: '295232600' | O [HIDDEN]: '' | P [HIDDEN]: '15120000' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  14: A: '8' | B [HIDDEN]: 'KH.140723209' | C: 'CH Phương Huê (2)-0942637406-248 điện biên' | D: '3120000' | E: '0' | F: '0' | G: '0' | H: '378500' | I: '0' | J: '0' | K: '0' | N: '3498500' | O [HIDDEN]: '' | P [HIDDEN]: '3120000' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  15: A: '9' | B [HIDDEN]: 'KH.140723043' | C: 'CH Hoài tuyên - TP-  ĐT: 0919744131' | D: '2483510' | E: '0' | F: '1240000' | G: '0' | H: '7439040' | I: '850000' | J: '0' | K: '0' | N: '12012550' | O [HIDDEN]: '' | P [HIDDEN]: '2483510' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  16: A: '10' | B [HIDDEN]: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '1591070' | E: '2171000' | F: '1775000' | G: '7951000' | H: '448000' | I: '806000' | J: '2716000' | K: '7935000' | N: '17458070' | O [HIDDEN]: '' | P [HIDDEN]: '1591070' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  17: A: '11' | B [HIDDEN]: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '1693200' | E: '0' | F: '0' | G: '2583000' | H: '6030000' | I: '5771000' | J: '7537000' | K: '22529000' | N: '23614200' | O [HIDDEN]: '' | P [HIDDEN]: '1693200' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  18: A: '12' | B [HIDDEN]: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '4300000' | E: '15119000' | F: '44008000' | G: '29309200' | H: '19959200' | I: '9701000' | J: '34822000' | K: '20579000' | N: '157218400' | O [HIDDEN]: '' | P [HIDDEN]: '4300000' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  19: A: '13' | B [HIDDEN]: 'KH.140723384' | C: 'CH Danh Trung:0355903682-151 đặng xuân bảng' | D: '1450000' | E: '0' | F: '0' | G: '0' | H: '0' | I: '0' | J: '0' | K: '0' | N: '1450000' | O [HIDDEN]: '' | P [HIDDEN]: '1450000' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+Row  20: A: '14' | B [HIDDEN]: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259' | D: '5085910' | E: '28232000' | F: '33560000' | G: '37152400' | H: '26344000' | I: '2691000' | J: '1110000' | K: '1120000' | N: '134175310' | O [HIDDEN]: '' | P [HIDDEN]: '5085910' | Q [HIDDEN]: '' | R [HIDDEN]: '' | S [HIDDEN]: ''
+
+=======================================================
+SHEET: 'Sheet1' (State: visible)
+=======================================================
+Column definitions in XML:
+  Cols A (1) to A (1): width=2.85546875, hidden=0
+  Cols B (2) to B (2): width=9.140625, hidden=1 [HIDDEN]
+  Cols C (3) to C (3): width=17, hidden=0
+  Cols D (4) to D (4): width=15, hidden=0
+  Cols E (5) to E (5): width=15.140625, hidden=0
+  Cols F (6) to F (6): width=16.5703125, hidden=0
+  Cols G (7) to G (7): width=15.7109375, hidden=0
+  Cols H (8) to H (8): width=15.28515625, hidden=0
+  Cols I (9) to I (9): width=14.7109375, hidden=0
+  Cols J (10) to J (10): width=13.7109375, hidden=0
+  Cols K (11) to K (11): width=17.28515625, hidden=0
+  Cols L (12) to XFD (16384): width=9.140625, hidden=0
+HIDDEN COLUMNS: ['B']
+Merged cells count: 3
+Top rows merged cells: ['A1:K1', 'A2:K2', 'D3:J3']
+Total rows in sheetData: 136
+Columns present in data: from 1 (A) to 17 (Q)
+Hidden columns in sheet active range: ['B']
+
+Sample rows (first 20 rows):
+Row   1: A: 'DOANH SỐ PHÁT SINH - KHO 2' | B [HIDDEN]: ''
+Row   2 [HIDDEN ROW]: B [HIDDEN]: ''
+Row   3: A: 'STT' | B [HIDDEN]: 'MÃ KHÁCH' | C: 'TÊN KH' | D: 'Phát sinh trong tháng' | K: 'Tổng cộng'
+Row   4: B [HIDDEN]: '' | D: 'tháng 3' | E: 'tháng 4' | F: 'tháng 5' | G: 'tháng 6' | H: 'tháng 7' | I: 'tháng 8' | J: 'tháng 9'
+Row   5: A: '1' | B [HIDDEN]: 'I' | C: 'THÀNH PHỐ - HÀ NAM'
+Row   6: B [HIDDEN]: 'KH.140723099' | C: 'CH Bích Hường(2)' | D: '15120000' | E: '23711600' | F: '6178000' | G: '24936800' | H: '33557600' | I: '112737600' | J: '78991000' | K: '295232600'
+Row   7: B [HIDDEN]: 'KH.140723218' | C: 'CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456' | D: '4300000' | E: '15119000' | F: '44008000' | G: '29309200' | H: '19959200' | I: '9701000' | J: '34822000' | K: '157218400'
+Row   8: B [HIDDEN]: 'KH.140723041' | C: 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839' | D: '7214960' | E: '12556600' | F: '18749000' | G: '56416600' | H: '19724000' | I: '16820000' | J: '13246000' | K: '144727160'
+Row   9: B [HIDDEN]: 'KH.140723062' | C: 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259' | D: '5085910' | E: '28232000' | F: '33560000' | G: '37152400' | H: '26344000' | I: '2691000' | J: '1110000' | K: '134175310'
+Row  10: B [HIDDEN]: 'KH.140723052' | C: 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882' | D: '11125600' | E: '2605000' | F: '0' | G: '0' | H: '1920000' | I: '97807000' | J: '2149000' | K: '115606600'
+Row  11: B [HIDDEN]: 'KH.140723105' | C: 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879' | D: '17052420' | E: '37842880' | F: '0' | G: '5670000' | H: '10931600' | I: '2460000' | J: '12612400' | K: '86569300'
+Row  12: B [HIDDEN]: 'KH.140723046' | C: 'CH Quân Mùi (2)- Quân Khu 3 - (TP) ĐT: 0836530350' | D: '0' | E: '1484000' | F: '5534000' | G: '1912500' | H: '30708000' | I: '31265000' | J: '2162000' | K: '73065500'
+Row  13: B [HIDDEN]: 'KH.140723069' | C: 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445' | D: '12357600' | E: '5836000' | F: '11467600' | G: '0' | H: '17535000' | I: '7079000' | J: '1993000' | K: '56268200'
+Row  14: B [HIDDEN]: 'KH.3447385' | C: 'CH Thắng Hằng - Giải Phóng - TP Nam Định' | D: '15890480' | E: '461000' | F: '8111000' | G: '0' | H: '6203600' | I: '0' | J: '0' | K: '30666080'
+Row  15: B [HIDDEN]: 'KH.13784455' | C: 'CH Vũ Hùng-192 trần thánh tông-0912.975.345' | D: '3185280' | E: '12279260' | F: '4908040' | G: '4569600' | H: '0' | I: '0' | J: '0' | K: '24942180'
+Row  16: B [HIDDEN]: 'KH.3364989' | C: 'CH Đại Việt - Mỹ Lộc - TP Nam Định' | D: '0' | E: '660000' | F: '8544500' | G: '0' | H: '6780000' | I: '1452000' | J: '7123000' | K: '24559500'
+Row  17: B [HIDDEN]: 'KH.140723087' | C: 'CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942' | D: '1693200' | E: '0' | F: '0' | G: '2583000' | H: '6030000' | I: '5771000' | J: '7537000' | K: '23614200'
+Row  18: B [HIDDEN]: 'KH.140723130' | C: 'CH Quảng Mận(2) - Mỹ Hưng - Mỹ Lộc - ĐT: 0854014007' | D: '0' | E: '7200000' | F: '0' | G: '0' | H: '10591000' | I: '1875000' | J: '1382000' | K: '21048000'
+Row  19: B [HIDDEN]: 'KH.140723078' | C: 'CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492' | D: '1591070' | E: '2171000' | F: '1775000' | G: '7951000' | H: '448000' | I: '806000' | J: '2716000' | K: '17458070'
+Row  20: B [HIDDEN]: 'KH.140723153' | C: 'CH cô Lai  Đặng Xá (2) - ĐT: 0812672543' | D: '0' | E: '3600000' | F: '0' | G: '0' | H: '11956000' | I: '0' | J: '0' | K: '15556000'

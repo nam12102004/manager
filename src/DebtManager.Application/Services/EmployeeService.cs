@@ -357,7 +357,7 @@ public class EmployeeService : IEmployeeService
                     ProductId = i.ProductId,
                     ProductName = i.Product != null ? i.Product.Name : $"SP_{i.ProductId}",
                     Sku = i.Product != null ? i.Product.Sku : $"SKU_{i.ProductId}",
-                    Uom = i.Product != null ? i.Product.Uom : ""
+                    Uom = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product != null ? i.Product.Uom : "")
                 })
                 .Select(g => new
                 {
@@ -424,7 +424,7 @@ public class EmployeeService : IEmployeeService
                         ["Khách hàng"] = v.Customer?.Name ?? "",
                         ["Mã SKU"] = i.Product != null ? i.Product.Sku : $"SKU_{i.ProductId}",
                         ["Tên sản phẩm"] = i.Product != null ? i.Product.Name : $"SP_{i.ProductId}",
-                        ["ĐVT"] = i.Product != null ? i.Product.Uom : "",
+                        ["ĐVT"] = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product != null ? i.Product.Uom : ""),
                         ["Số lượng"] = i.Quantity,
                         ["Đơn giá bán (VNĐ)"] = i.SalePrice,
                         ["Thành tiền (VNĐ)"] = i.LineTotal,
@@ -438,35 +438,34 @@ public class EmployeeService : IEmployeeService
         else
         {
             // ALL EMPLOYEES REPORT
-            fileName = $"BaoCao_DoanhSo_NhanVien_{periodLabel}.xlsx";
-
-            var allEmployees = await _uow.Employees.Query()
-                .OrderBy(e => e.Name)
-                .ToListAsync(ct);
-
-            var activeVouchers = vouchers.Where(v => v.Status != DomainConstants.VoucherStatuses.Cancelled).ToList();
+            fileName = $"BaoCao_DoanhSo_TatCaNhanVien_{periodLabel}.xlsx";
 
             // 1. Sheet: Tổng hợp doanh số từng nhân viên
+            var activeVouchers = vouchers.Where(v => v.Status != DomainConstants.VoucherStatuses.Cancelled).ToList();
+            var activeItems = activeVouchers.SelectMany(v => v.Items).ToList();
             var summaryRows = new List<Dictionary<string, object>>();
             int eStt = 1;
+
+            var allEmployees = await _uow.Employees.Query().OrderBy(e => e.Name).ToListAsync(ct);
+
             decimal gSubtotal = 0, gDiscount = 0, gTotal = 0, gPaid = 0, gUnpaid = 0;
             int gCount = 0;
 
             foreach (var emp in allEmployees)
             {
                 var empVouchers = activeVouchers.Where(v => v.EmployeeId == emp.Id).ToList();
-                var empSubtotal = empVouchers.Sum(v => v.SubtotalSale);
-                var empDiscount = empVouchers.Sum(v => v.DiscountAmount);
-                var empTotal = empVouchers.Sum(v => v.TotalSale);
-                var empPaid = empVouchers.Sum(v => v.PaidAmount);
-                var empUnpaid = empVouchers.Sum(v => v.UnpaidAmount);
+                var subtotal = empVouchers.Sum(v => v.SubtotalSale);
+                var discount = empVouchers.Sum(v => v.DiscountAmount);
+                var total = empVouchers.Sum(v => v.TotalSale);
+                var paid = empVouchers.Sum(v => v.PaidAmount);
+                var unpaid = empVouchers.Sum(v => v.UnpaidAmount);
 
+                gSubtotal += subtotal;
+                gDiscount += discount;
+                gTotal += total;
+                gPaid += paid;
+                gUnpaid += unpaid;
                 gCount += empVouchers.Count;
-                gSubtotal += empSubtotal;
-                gDiscount += empDiscount;
-                gTotal += empTotal;
-                gPaid += empPaid;
-                gUnpaid += empUnpaid;
 
                 summaryRows.Add(new Dictionary<string, object>
                 {
@@ -474,21 +473,23 @@ public class EmployeeService : IEmployeeService
                     ["Tên nhân viên"] = emp.Name,
                     ["Số điện thoại"] = emp.Phone ?? "",
                     ["Số phiếu xuất"] = empVouchers.Count,
-                    ["Tiền hàng (VNĐ)"] = empSubtotal,
-                    ["Chiết khấu (VNĐ)"] = empDiscount,
-                    ["Tổng doanh số (VNĐ)"] = empTotal,
-                    ["Đã thu (VNĐ)"] = empPaid,
-                    ["Còn nợ (VNĐ)"] = empUnpaid,
+                    ["Tiền hàng (VNĐ)"] = subtotal,
+                    ["Chiết khấu (VNĐ)"] = discount,
+                    ["Tổng doanh số (VNĐ)"] = total,
+                    ["Đã thu (VNĐ)"] = paid,
+                    ["Còn nợ (VNĐ)"] = unpaid,
                     ["Ghi chú"] = emp.Notes ?? ""
                 });
             }
 
-            // Also check vouchers that have employee name but no matching employee id
-            var unlinkedVouchers = activeVouchers.Where(v => v.EmployeeId == null && !string.IsNullOrWhiteSpace(v.EmployeeName)).ToList();
-            if (unlinkedVouchers.Count > 0)
+            // Also check unassigned / old employee names
+            var unassignedVouchers = activeVouchers.Where(v => v.EmployeeId == null).ToList();
+            if (unassignedVouchers.Count > 0)
             {
-                var unlinkedGroup = unlinkedVouchers.GroupBy(v => v.EmployeeName!.Trim());
-                foreach (var ug in unlinkedGroup)
+                var unassignedGroups = unassignedVouchers
+                    .GroupBy(v => !string.IsNullOrWhiteSpace(v.EmployeeName) ? v.EmployeeName : "Chưa phân công");
+
+                foreach (var ug in unassignedGroups)
                 {
                     var uSubtotal = ug.Sum(v => v.SubtotalSale);
                     var uDiscount = ug.Sum(v => v.DiscountAmount);
@@ -551,7 +552,7 @@ public class EmployeeService : IEmployeeService
                     ProductId = x.Item.ProductId,
                     Sku = x.Item.Product != null ? x.Item.Product.Sku : $"SKU_{x.Item.ProductId}",
                     ProductName = x.Item.Product != null ? x.Item.Product.Name : $"SP_{x.Item.ProductId}",
-                    Uom = x.Item.Product != null ? x.Item.Product.Uom : ""
+                    Uom = !string.IsNullOrWhiteSpace(x.Item.UnitName) ? x.Item.UnitName : (x.Item.Product != null ? x.Item.Product.Uom : "")
                 })
                 .Select(g => new
                 {
@@ -584,15 +585,14 @@ public class EmployeeService : IEmployeeService
 
             sheets["2.SanPham_BanRa_TheoNV"] = empProductRows;
 
-            // 3. Sheet: Top sản phẩm bán chạy toàn bộ nhân viên
-            var allProductGroups = activeVouchers
-                .SelectMany(v => v.Items)
+            // 3. Sheet: Toàn bộ sản phẩm bán chạy nhất toàn công ty
+            var allProductGroups = activeItems
                 .GroupBy(i => new
                 {
                     ProductId = i.ProductId,
-                    Sku = i.Product != null ? i.Product.Sku : $"SKU_{i.ProductId}",
                     ProductName = i.Product != null ? i.Product.Name : $"SP_{i.ProductId}",
-                    Uom = i.Product != null ? i.Product.Uom : ""
+                    Sku = i.Product != null ? i.Product.Sku : $"SKU_{i.ProductId}",
+                    Uom = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product != null ? i.Product.Uom : "")
                 })
                 .Select(g => new
                 {
@@ -638,9 +638,9 @@ public class EmployeeService : IEmployeeService
                 ["Tổng doanh số (VNĐ)"] = tpAmount
             });
 
-            sheets["3.Top_SanPham_BanChay"] = topProductRows;
+            sheets["3.SanPham_BanChay_ToanCT"] = topProductRows;
 
-            // 4. Sheet: Toàn bộ phiếu xuất
+            // 4. Sheet: Chi tiết tất cả phiếu xuất
             var allVoucherRows = new List<Dictionary<string, object>>();
             int avStt = 1;
 

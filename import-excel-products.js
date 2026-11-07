@@ -1,33 +1,61 @@
-// import-excel-products.js - Script đọc file Excel (TK T10.2026.xlsx) và thêm Nhà cung cấp + Sản phẩm
-// Cách chạy:
-//   node import-excel-products.js             (chạy thêm vào hệ thống qua API)
-//   node import-excel-products.js --dry-run   (chỉ đọc Excel và in thống kê kiểm tra, không gọi API)
+// import-excel-products.js
+// Script đọc file Excel (TK_T11.2026.xlsx) và đồng bộ Nhà cung cấp, Sản phẩm, Tồn kho theo từng kho vào Database.
+//
+// Yêu cầu:
+//   - Sheet tab làm tên Nhà cung cấp, mã để tên viết tắt chữ cái Latin không dấu (HH, NICE, TAKAO, VT, DMAX, RA, TOKO, AMY).
+//   - Cột A làm Loại sản phẩm (Category - kế thừa fill-down theo nhóm).
+//   - Cột B làm Tên sản phẩm (Name), còn Mã sản phẩm (SKU) tự động sinh theo cấu trúc: [Mã viết tắt NCC] + [STT 3 chữ số] (VD: HH001, VT001, RA001...).
+//   - Cột C làm Tồn kho hiện tại:
+//       + Hoàng Hà, Nice, Royal + Ấn Độ  -> Kho 1 (warehouse1)
+//       + Toko, Takao, Vĩnh Thắng, Dmax + Mira -> Kho 2 (warehouse2)
+//       + Á Mỹ -> Tạm thời tồn kho = 0
+//   - Tự động thêm Kho 1 và Kho 2 vào hệ thống nếu chưa có.
+//
+// Cách sử dụng:
+//   node import-excel-products.js              (Nhập dữ liệu vào database qua API)
+//   node import-excel-products.js --dry-run    (Chỉ kiểm tra và in thống kê số liệu, không ghi DB)
+//   node import-excel-products.js --sql        (Tạo file seed_excel_products.sql để import trực tiếp qua SQL)
+//   node import-excel-products.js --direct-db  (Thực thi file SQL trực tiếp vào PostgreSQL docker container)
 
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { execSync } = require('child_process');
 
 const API_BASE = process.env.API_BASE || 'http://localhost:5050/api';
-const EXCEL_FILE = path.join(__dirname, 'TK T10.2026.xlsx');
-const EXCLUDED_SHEETS = new Set(['TỔNG HỢP TK', 'TONG CK', 'TỔNG CK', 'SHEET1', 'SHEET2']);
 
-const SUPPLIER_CODES = {
-  'H.HÀ': 'NCC-HHA',
-  'NICE': 'NCC-NICE',
-  'TAKAO': 'NCC-TAKAO',
-  'VĨNH THẮNG': 'NCC-VINHTHANG',
-  'DMAX+MIRA': 'NCC-DMAXMIRA',
-  'ROYAL+ẤN': 'NCC-ROYALAN',
-  'TOKO': 'NCC-TOKO',
-  'Á Mỹ': 'NCC-AMY',
-};
+// Tìm file Excel theo các đường dẫn ưu tiên
+const POSSIBLE_EXCEL_PATHS = [
+  process.argv.find((arg) => arg.endsWith('.xlsx')),
+  path.join(__dirname, 'TK_T11.2026.xlsx'),
+  'C:/Users/Admin/.gemini/antigravity/brain/d5e2c8ab-5e72-44f6-ab70-2cf8faacb270/.user_uploaded/media_1794026804926_460a41fa.xlsx',
+  path.join(__dirname, 'TK T10.2026.xlsx'),
+].filter(Boolean);
+
+const EXCEL_FILE = POSSIBLE_EXCEL_PATHS.find((p) => fs.existsSync(p)) || POSSIBLE_EXCEL_PATHS[0];
+
+// Cấu hình Nhà cung cấp, mã viết tắt và Kho lưu trữ
+const SUPPLIER_CONFIGS = [
+  { sheet: 'H.HÀ', code: 'HH', name: 'Hoàng Hà', warehouse: 'warehouse1' },
+  { sheet: 'NICE', code: 'NICE', name: 'Nice', warehouse: 'warehouse1' },
+  { sheet: 'ROYAL+ẤN', code: 'RA', name: 'Royal + Ấn Độ', warehouse: 'warehouse1' },
+  { sheet: 'TOKO,', code: 'TOKO', name: 'Toko', warehouse: 'warehouse2' },
+  { sheet: 'TAKAO', code: 'TAKAO', name: 'Takao', warehouse: 'warehouse2' },
+  { sheet: 'VĨNH THẮNG', code: 'VT', name: 'Vĩnh Thắng', warehouse: 'warehouse2' },
+  { sheet: 'DMAX+MIRA', code: 'DMAX', name: 'Dmax + Mira', warehouse: 'warehouse2' },
+  { sheet: 'Á Mỹ', code: 'AMY', name: 'Á Mỹ', warehouse: 'none' }, // Toàn bộ tồn kho = 0
+];
+
+const CONFIG_MAP = new Map(SUPPLIER_CONFIGS.map((c) => [c.sheet.toUpperCase(), c]));
 
 // ============================================================================
-// 1. Bộ đọc file .xlsx (ZIP + XML) thuần Node.js (không cần cài thêm thư viện)
+// 1. Bộ đọc file .xlsx (ZIP + XML) thuần Node.js (không cần thêm npm library)
 // ============================================================================
 function readZipEntries(filePath) {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Không tìm thấy file Excel tại đường dẫn: ${filePath}`);
+  }
   const buf = fs.readFileSync(filePath);
-  // Tìm End of Central Directory (EOCD) signature: 0x06054b50
   let eocdOffset = -1;
   for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
     if (buf.readUInt32LE(i) === 0x06054b50) {
@@ -54,7 +82,6 @@ function readZipEntries(filePath) {
     const localHeaderOffset = buf.readUInt32LE(ptr + 42);
     const fileName = buf.toString('utf8', ptr + 46, ptr + 46 + fileNameLen);
 
-    // Đọc Local File Header
     const localFileNameLen = buf.readUInt16LE(localHeaderOffset + 26);
     const localExtraLen = buf.readUInt16LE(localHeaderOffset + 28);
     const dataStart = localHeaderOffset + 30 + localFileNameLen + localExtraLen;
@@ -99,29 +126,31 @@ function normalizeText(str) {
   return str.replace(/\s+/g, ' ').trim();
 }
 
-function normalizeSupplierName(rawSheetName) {
-  // Bỏ dấu phẩy ở cuối (ví dụ: 'TOKO,' -> 'TOKO') và chuẩn hóa khoảng trắng
-  return rawSheetName.trim().replace(/,+$/, '').trim();
+function parseCellRef(ref) {
+  const match = ref.match(/^([A-Z]+)(\d+)$/);
+  if (!match) return { col: ref, row: 0 };
+  return { col: match[1], row: parseInt(match[2], 10) };
 }
 
-function parseExcelProducts(filePath) {
+// ============================================================================
+// 2. Phân tích các sheet trong file Excel theo quy chuẩn người dùng yêu cầu
+// ============================================================================
+function parseExcelData(filePath) {
   const entries = readZipEntries(filePath);
 
-  // 1. Đọc sharedStrings.xml
+  // 1. Shared Strings
   const sharedStrings = [];
   const ssXml = entries.get('xl/sharedStrings.xml') || '';
-  const siMatches = ssXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g);
-  for (const match of siMatches) {
+  for (const match of ssXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)) {
     const siBody = match[1];
-    const tMatches = siBody.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g);
     let text = '';
-    for (const tm of tMatches) {
+    for (const tm of siBody.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)) {
       text += decodeXmlEntities(tm[1]);
     }
     sharedStrings.push(text);
   }
 
-  // 2. Đọc relaciones trong xl/_rels/workbook.xml.rels
+  // 2. Relationship Map
   const relsMap = new Map();
   const relsXml = entries.get('xl/_rels/workbook.xml.rels') || '';
   for (const match of relsXml.matchAll(/<Relationship\b([^>]*?)\/?>/g)) {
@@ -133,50 +162,35 @@ function parseExcelProducts(filePath) {
     }
   }
 
-  // 3. Đọc danh sách sheets từ xl/workbook.xml
+  // 3. Sheets trong workbook.xml
   const wbXml = entries.get('xl/workbook.xml') || '';
-  const sheets = [];
+  const parsedSheets = [];
+
   for (const match of wbXml.matchAll(/<sheet\b([^>]*?)\/?>/g)) {
     const attrs = match[1];
     const name = getAttr(attrs, 'name');
-    const state = getAttr(attrs, 'state') || '';
+    const state = getAttr(attrs, 'state') || 'visible';
     const rId = getAttr(attrs, 'r:id');
     const targetPath = relsMap.get(rId);
-    if (name && targetPath) {
-      sheets.push({ rawName: name, state, targetPath });
-    }
-  }
 
-  // 4. Lọc các sheet hợp lệ (bỏ qua sheet ẩn & các sheet TỔNG HỢP TK, Sheet1, Sheet2)
-  const result = [];
-  for (const sheet of sheets) {
-    if (sheet.state === 'hidden' || sheet.state === 'veryHidden') {
-      continue;
-    }
-    if (EXCLUDED_SHEETS.has(sheet.rawName.trim().toUpperCase())) {
+    if (state === 'hidden' || state === 'veryHidden') {
       continue;
     }
 
-    const supplierName = normalizeSupplierName(sheet.rawName);
-    const supplierCode =
-      SUPPLIER_CODES[supplierName] ||
-      'NCC-' +
-        supplierName
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/đ/gi, 'd')
-          .replace(/[^a-zA-Z0-9]/g, '')
-          .toUpperCase();
+    const config = CONFIG_MAP.get(name.toUpperCase());
+    if (!config || !targetPath) {
+      continue;
+    }
 
-    const wsXml = entries.get(sheet.targetPath) || '';
+    const wsXml = entries.get(targetPath) || '';
     const products = [];
     let currentCategory = '';
+    let totalStockC = 0;
 
     for (const rowMatch of wsXml.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/g)) {
       const rowAttrs = rowMatch[1];
       const rowNum = parseInt(getAttr(rowAttrs, 'r') || '0', 10);
-      // Dữ liệu sản phẩm bắt đầu từ dòng 5 (dòng 1-4 là tiêu đề và tổng cộng)
-      if (rowNum <= 4) continue;
+      if (rowNum <= 4) continue; // Dòng 1-4 là tiêu đề và tổng cộng
 
       const rowBody = rowMatch[2];
       const cells = {};
@@ -185,8 +199,9 @@ function parseExcelProducts(filePath) {
         const cAttrs = cellMatch[1];
         const cBody = cellMatch[2] || '';
         const ref = getAttr(cAttrs, 'r') || '';
-        const col = ref.replace(/\d+/g, '');
-        if (col !== 'A' && col !== 'B') continue;
+        const { col } = parseCellRef(ref);
+
+        if (col !== 'A' && col !== 'B' && col !== 'C') continue;
 
         const cellType = getAttr(cAttrs, 't') || '';
         let val = '';
@@ -212,51 +227,195 @@ function parseExcelProducts(filePath) {
         }
       }
 
-      // Cột 1 (Cột A): Loại sản phẩm (fill-down cho các dòng bên dưới)
+      // Cột A: Loại sản phẩm (kế thừa fill-down)
       if (cells.A) {
         currentCategory = cells.A;
       }
 
-      // Cột 2 (Cột B): Mã sản phẩm (SKU)
+      // Cột B: Tên sản phẩm
       if (cells.B) {
-        // Nếu mã SP là số thập phân bị lỗi làm tròn float trong XML (VD: "16.126000000000001" -> "16.126")
-        let sku = cells.B;
-        if (/^\d+\.\d{10,}$/.test(sku)) {
-          sku = parseFloat(sku).toString();
+        if (['TÊN SP', 'MÃ SP', 'TỔNG CỘNG', 'TỔNG TỒN'].includes(cells.B.toUpperCase())) {
+          continue;
         }
+
+        let prodName = cells.B;
+        if (/^\d+\.\d{10,}$/.test(prodName)) {
+          prodName = parseFloat(prodName).toString();
+        }
+
+        // Cột C: Tồn kho hiện tại
+        let stockVal = 0;
+        if (cells.C) {
+          const parsed = parseFloat(cells.C);
+          if (!isNaN(parsed)) {
+            stockVal = parsed;
+          }
+        }
+        totalStockC += stockVal;
+
+        // Phân bổ tồn kho theo kho
+        let stockWarehouse1 = 0;
+        let stockWarehouse2 = 0;
+
+        if (config.warehouse === 'warehouse1') {
+          stockWarehouse1 = stockVal;
+        } else if (config.warehouse === 'warehouse2') {
+          stockWarehouse2 = stockVal;
+        } else {
+          // Á Mỹ: toàn bộ tồn kho để 0
+          stockWarehouse1 = 0;
+          stockWarehouse2 = 0;
+        }
+
+        const totalStock = stockWarehouse1 + stockWarehouse2;
+        const stt = products.length + 1;
+        const formattedSku = `${config.code}${String(stt).padStart(3, '0')}`;
 
         products.push({
           row: rowNum,
-          sku,
-          name: supplierName, // Tên SP để theo tên hãng
+          sku: formattedSku,
+          name: prodName,
           category: currentCategory || null,
           uom: 'Hộp',
           unitCost: 0,
           wholesalePrice: 0,
           retailPrice: 0,
-          stockWarehouse1: 0,
-          stockWarehouse2: 0,
+          stockWarehouse1,
+          stockWarehouse2,
           stockWarehouse3: 0,
-          reorderPoint: 0,
+          totalStock,
+          rawStockC: stockVal,
         });
       }
     }
 
-    result.push({
-      rawSheetName: sheet.rawName,
-      supplierName,
-      supplierCode,
+    parsedSheets.push({
+      sheetName: name,
+      supplierName: config.name,
+      supplierCode: config.code,
+      targetWarehouse: config.warehouse,
       products,
+      totalStockC,
     });
   }
 
-  return result;
+  return parsedSheets;
 }
 
 // ============================================================================
-// 2. Hàm gọi API & thực thi thêm Nhà cung cấp + Sản phẩm
+// 3. Tạo file SQL Seed trực tiếp
 // ============================================================================
-async function request(apiPath, options = {}) {
+function generateSqlSeed(sheetsData, outFilePath) {
+  let sql = `-- seed_excel_products.sql
+-- Tự động sinh bởi import-excel-products.js vào lúc ${new Date().toISOString()}
+-- Cập nhật Kho 1, Kho 2, Nhà cung cấp và Sản phẩm theo yêu cầu.
+
+BEGIN;
+
+-- 1. Đảm bảo Kho 1 và Kho 2 có trong Cấu hình (Owners)
+DO $$
+DECLARE
+    cur_info text;
+    new_info jsonb;
+BEGIN
+    SELECT "Info" INTO cur_info FROM "Owners" WHERE "Id" = 1;
+    IF cur_info IS NULL THEN
+        INSERT INTO "Owners" ("Id", "Info", "CreatedAt", "UpdatedAt")
+        VALUES (1, '{"storeName":"KHO HÀNG & PHÂN PHỐI TỔNG HỢP","warehouses":[{"id":"warehouse1","name":"Kho 1","shortName":"Kho 1","color":"primary"},{"id":"warehouse2","name":"Kho 2","shortName":"Kho 2","color":"info"}]}', NOW(), NOW());
+    ELSE
+        BEGIN
+            new_info := cur_info::jsonb;
+        EXCEPTION WHEN OTHERS THEN
+            new_info := jsonb_build_object('storeName', cur_info);
+        END;
+        new_info := jsonb_set(new_info, '{warehouses}', '[{"id":"warehouse1","name":"Kho 1","shortName":"Kho 1","color":"primary"},{"id":"warehouse2","name":"Kho 2","shortName":"Kho 2","color":"info"}]'::jsonb);
+        UPDATE "Owners" SET "Info" = new_info::text, "UpdatedAt" = NOW() WHERE "Id" = 1;
+    END IF;
+END $$;
+
+`;
+
+  // 2. Chèn / cập nhật Nhà cung cấp
+  sql += `-- 2. Chèn Nhà cung cấp\n`;
+  for (const s of sheetsData) {
+    const escapedName = s.supplierName.replace(/'/g, "''");
+    const escapedCode = s.supplierCode.replace(/'/g, "''");
+    const notes = `Nhập từ Sheet "${s.sheetName}"`.replace(/'/g, "''");
+    sql += `INSERT INTO "Suppliers" ("Code", "Name", "Debt", "CreditLimit", "Notes", "CreatedAt", "UpdatedAt")
+VALUES ('${escapedCode}', '${escapedName}', 0, 0, '${notes}', NOW(), NOW())
+ON CONFLICT ("Code") DO UPDATE SET "Name" = EXCLUDED."Name", "UpdatedAt" = NOW();\n`;
+  }
+
+  // 3. Chèn / cập nhật Sản phẩm & Đơn vị tính cơ bản
+  sql += `\n-- 3. Chèn Sản phẩm và Đơn vị tính cơ bản\n`;
+  for (const s of sheetsData) {
+    sql += `\n-- >>> Hãng: ${s.supplierName} (${s.supplierCode}) - Tổng ${s.products.length} SP\n`;
+    for (const p of s.products) {
+      const escapedSku = p.sku.replace(/'/g, "''");
+      const escapedName = p.name.replace(/'/g, "''");
+      const escapedCat = p.category ? `'${p.category.replace(/'/g, "''")}'` : 'NULL';
+      const escapedCode = s.supplierCode.replace(/'/g, "''");
+
+      sql += `DO $$
+DECLARE
+    supp_id int;
+    prod_id int;
+BEGIN
+    SELECT "Id" INTO supp_id FROM "Suppliers" WHERE "Code" = '${escapedCode}';
+
+    -- Ưu tiên tìm SP đã có theo (SupplierId + Name) hoặc Sku để cập nhật trực tiếp không bị trùng bản ghi
+    SELECT "Id" INTO prod_id FROM "Products"
+    WHERE ("SupplierId" = supp_id AND UPPER("Name") = UPPER('${escapedName}'))
+       OR "Sku" = '${escapedSku}'
+    ORDER BY CASE WHEN "Sku" = '${escapedSku}' THEN 0 ELSE 1 END, "Id" ASC
+    LIMIT 1;
+
+    IF prod_id IS NOT NULL THEN
+        UPDATE "Products" SET
+            "Sku" = '${escapedSku}',
+            "Name" = '${escapedName}',
+            "Category" = ${escapedCat},
+            "SupplierId" = supp_id,
+            "StockWarehouse1" = ${p.stockWarehouse1},
+            "StockWarehouse2" = ${p.stockWarehouse2},
+            "TotalStock" = ${p.totalStock},
+            "UpdatedAt" = NOW()
+        WHERE "Id" = prod_id;
+    ELSE
+        INSERT INTO "Products" (
+            "Sku", "Name", "Category", "Uom", "SupplierId",
+            "UnitCost", "WholesalePrice", "RetailPrice",
+            "StockWarehouse1", "StockWarehouse2", "StockWarehouse3",
+            "TotalStock", "ReorderPoint", "CreatedAt", "UpdatedAt"
+        ) VALUES (
+            '${escapedSku}', '${escapedName}', ${escapedCat}, 'Hộp', supp_id,
+            0, 0, 0,
+            ${p.stockWarehouse1}, ${p.stockWarehouse2}, 0,
+            ${p.totalStock}, 0, NOW(), NOW()
+        )
+        RETURNING "Id" INTO prod_id;
+    END IF;
+
+    -- Đơn vị tính cơ bản (ProductUnits)
+    INSERT INTO "ProductUnits" (
+        "ProductId", "UnitName", "ConversionRate", "IsBaseUnit",
+        "RetailPrice", "WholesalePrice", "CanSell", "CreatedAt"
+    ) VALUES (
+        prod_id, 'Hộp', 1, true, 0, 0, true, NOW()
+    )
+    ON CONFLICT DO NOTHING;
+END $$;\n`;
+    }
+  }
+
+  sql += `\nCOMMIT;\n`;
+  fs.writeFileSync(outFilePath, sql, 'utf8');
+}
+
+// ============================================================================
+// 4. Gọi API trực tiếp
+// ============================================================================
+async function requestApi(apiPath, options = {}) {
   const url = `${API_BASE}${apiPath}`;
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -270,130 +429,252 @@ async function request(apiPath, options = {}) {
   return json.data;
 }
 
+// ============================================================================
+// 5. Hàm chính
+// ============================================================================
 async function main() {
   const isDryRun = process.argv.includes('--dry-run');
+  const isSqlOnly = process.argv.includes('--sql');
+  const isDirectDb = process.argv.includes('--direct-db');
 
-  console.log(`Đang đọc file Excel: ${EXCEL_FILE}`);
-  const sheetsData = parseExcelProducts(EXCEL_FILE);
+  console.log('=========================================================================');
+  console.log('      CÔNG CỤ IMPORT SẢN PHẨM & TỒN KHO THEO KHO TỪ FILE EXCEL');
+  console.log('=========================================================================');
+  console.log(`Đang đọc file: ${EXCEL_FILE}`);
 
-  const totalProductsCount = sheetsData.reduce((sum, s) => sum + s.products.length, 0);
-  console.log(`\nĐã phân tích xong ${sheetsData.length} Sheet Tabs (Nhà cung cấp) với tổng cộng ${totalProductsCount} sản phẩm:`);
-  console.log('-------------------------------------------------------------------------');
+  const sheetsData = parseExcelData(EXCEL_FILE);
+  const totalProducts = sheetsData.reduce((sum, s) => sum + s.products.length, 0);
+
+  let totalKho1Stock = 0;
+  let totalKho2Stock = 0;
+  let totalKho1Items = 0;
+  let totalKho2Items = 0;
+  let totalAmyItems = 0;
+
+  console.log(`\nĐã nhận diện thành công ${sheetsData.length} Nhà cung cấp với tổng cộng ${totalProducts} sản phẩm:\n`);
+
   for (const s of sheetsData) {
-    const uniqueCategories = [...new Set(s.products.map((p) => p.category).filter(Boolean))];
+    const whLabel =
+      s.targetWarehouse === 'warehouse1'
+        ? 'Kho 1'
+        : s.targetWarehouse === 'warehouse2'
+        ? 'Kho 2'
+        : 'Tồn 0';
+
+    const stockSum = s.products.reduce((acc, p) => acc + p.totalStock, 0);
+    const uniqueCats = [...new Set(s.products.map((p) => p.category).filter(Boolean))];
+
+    if (s.targetWarehouse === 'warehouse1') {
+      totalKho1Stock += stockSum;
+      totalKho1Items += s.products.length;
+    } else if (s.targetWarehouse === 'warehouse2') {
+      totalKho2Stock += stockSum;
+      totalKho2Items += s.products.length;
+    } else {
+      totalAmyItems += s.products.length;
+    }
+
     console.log(
-      `  • Hãng/NCC: ${s.supplierName.padEnd(12)} (Mã: ${s.supplierCode.padEnd(14)}) | Số SP: ${String(s.products.length).padStart(3)} | Số loại SP (Cột 1): ${uniqueCategories.length}`
+      `  • [Sheet: ${s.sheetName.padEnd(10)}] -> ${s.supplierName.padEnd(14)} (Mã: ${s.supplierCode.padEnd(6)}) | ${whLabel.padEnd(6)} | Số SP: ${String(s.products.length).padStart(3)} | Loại SP: ${String(uniqueCats.length).padStart(2)} | Tổng tồn: ${stockSum.toLocaleString('vi-VN').padStart(8)}`
     );
   }
+
+  console.log('\n-------------------------------------------------------------------------');
+  console.log(`TỔNG KẾT TỒN KHO:`);
+  console.log(`  + Kho 1 (Hoàng Hà + Nice + Royal + Ấn Độ) : ${totalKho1Items} SP | ${totalKho1Stock.toLocaleString('vi-VN')} Hộp`);
+  console.log(`  + Kho 2 (Toko + Takao + Vĩnh Thắng + Mira + Dmax) : ${totalKho2Items} SP | ${totalKho2Stock.toLocaleString('vi-VN')} Hộp`);
+  console.log(`  + Á Mỹ (Tồn kho tạm để 0)                : ${totalAmyItems} SP | 0 Hộp`);
+  console.log(`  => TỔNG CỘNG HỆ THỐNG                     : ${totalProducts} SP | ${(totalKho1Stock + totalKho2Stock).toLocaleString('vi-VN')} Hộp`);
   console.log('-------------------------------------------------------------------------');
 
+  // Luôn tạo sẵn file SQL để tham chiếu
+  const sqlOutPath = path.join(__dirname, 'seed_excel_products.sql');
+  generateSqlSeed(sheetsData, sqlOutPath);
+  console.log(`\n✓ Đã tạo file SQL seed: ${sqlOutPath}`);
+
   if (isDryRun) {
-    console.log('\n[DRY-RUN] Chế độ kiểm tra hoàn tất (không gọi API).');
+    console.log('\n[DRY-RUN] Chế độ kiểm tra hoàn tất. Không có dữ liệu nào được ghi.');
     return;
   }
 
-  console.log(`\nBắt đầu đồng bộ dữ liệu lên API (${API_BASE})...`);
+  if (isSqlOnly) {
+    console.log('\n[SQL ONLY] Đã sinh file SQL thành công. Bạn có thể chạy:');
+    console.log(`  Get-Content seed_excel_products.sql | docker exec -i debtmanager_db psql -U postgres -d debtmanager_db`);
+    return;
+  }
 
-  // Lấy danh sách NCC và SP hiện có để tránh trùng lặp khi chạy lại
-  const existingSuppliers = (await request('/suppliers')) || [];
-  const supplierByName = new Map(
-    existingSuppliers.map((s) => [s.name.trim().toUpperCase(), s])
-  );
-  const supplierByCode = new Map(
-    existingSuppliers.map((s) => [s.code.trim().toUpperCase(), s])
-  );
+  if (isDirectDb) {
+    console.log('\nĐang thực thi SQL trực tiếp vào PostgreSQL container (debtmanager_db)...');
+    try {
+      const sqlContent = fs.readFileSync(sqlOutPath, 'utf8');
+      execSync('docker exec -i debtmanager_db psql -U postgres -d debtmanager_db', {
+        input: sqlContent,
+        stdio: ['pipe', 'inherit', 'inherit'],
+      });
+      console.log('✓ Thực thi SQL trực tiếp vào database thành công!');
+      return;
+    } catch (err) {
+      console.error('Không thể thực thi docker command, chuyển sang gọi qua API...', err.message);
+    }
+  }
 
-  const existingProducts = (await request('/products')) || [];
-  const productBySku = new Map(
-    existingProducts.map((p) => [p.sku.trim().toUpperCase(), p])
-  );
+  // Chế độ mặc định: Gọi API
+  console.log(`\nBắt đầu cập nhật vào cơ sở dữ liệu qua API (${API_BASE})...`);
 
-  let createdSuppliersCount = 0;
-  let reusedSuppliersCount = 0;
-  let createdProductsCount = 0;
-  let skippedProductsCount = 0;
-  let failedProductsCount = 0;
+  // 1. Đảm bảo cấu hình Kho 1 và Kho 2 trong Owners
+  try {
+    const ownerData = await requestApi('/owners');
+    let infoObj = {};
+    if (ownerData && ownerData.info) {
+      try {
+        infoObj = JSON.parse(ownerData.info);
+      } catch {
+        infoObj = { storeName: ownerData.info };
+      }
+    }
+    const currentWarehouses = infoObj.warehouses || [];
+    const hasWh1 = currentWarehouses.some((w) => w.id === 'warehouse1');
+    const hasWh2 = currentWarehouses.some((w) => w.id === 'warehouse2');
 
-  for (const sheet of sheetsData) {
-    console.log(`\n>>> Xử lý Hãng / Nhà cung cấp: [${sheet.supplierCode}] ${sheet.supplierName}`);
+    if (!hasWh1 || !hasWh2) {
+      const updatedWarehouses = [
+        { id: 'warehouse1', name: 'Kho 1', shortName: 'Kho 1', color: 'primary' },
+        { id: 'warehouse2', name: 'Kho 2', shortName: 'Kho 2', color: 'info' },
+        ...currentWarehouses.filter((w) => w.id !== 'warehouse1' && w.id !== 'warehouse2'),
+      ];
+      infoObj.warehouses = updatedWarehouses;
+      await requestApi('/owners', {
+        method: 'PUT',
+        body: JSON.stringify({ info: JSON.stringify(infoObj) }),
+      });
+      console.log('✓ Đã cập nhật Kho 1 và Kho 2 vào Cấu hình Cửa hàng');
+    } else {
+      console.log('✓ Kho 1 và Kho 2 đã có sẵn trong Cấu hình');
+    }
+  } catch (err) {
+    console.warn('  ! Lưu ý khi kiểm tra cấu hình kho:', err.message);
+  }
 
-    let supplier =
-      supplierByName.get(sheet.supplierName.toUpperCase()) ||
-      supplierByCode.get(sheet.supplierCode.toUpperCase());
+  // 2. Lấy danh sách Nhà cung cấp hiện có
+  const existingSuppliers = (await requestApi('/suppliers')) || [];
+  const supplierByCode = new Map(existingSuppliers.map((s) => [s.code.trim().toUpperCase(), s]));
+  const supplierByName = new Map(existingSuppliers.map((s) => [s.name.trim().toUpperCase(), s]));
 
-    if (!supplier) {
-      supplier = await request('/suppliers', {
+  const supplierEntityMap = new Map();
+
+  for (const s of sheetsData) {
+    let supp = supplierByCode.get(s.supplierCode.toUpperCase()) || supplierByName.get(s.supplierName.toUpperCase());
+    if (!supp) {
+      supp = await requestApi('/suppliers', {
         method: 'POST',
         body: JSON.stringify({
-          code: sheet.supplierCode,
-          name: sheet.supplierName,
+          code: s.supplierCode,
+          name: s.supplierName,
           creditLimit: 0,
           initialDebt: 0,
-          notes: `Nhập từ Sheet "${sheet.rawSheetName}" (TK T10.2026.xlsx)`,
+          notes: `Nhập từ Sheet "${s.sheetName}" (TK_T11.2026.xlsx)`,
         }),
       });
-      createdSuppliersCount++;
-      supplierByName.set(supplier.name.trim().toUpperCase(), supplier);
-      supplierByCode.set(supplier.code.trim().toUpperCase(), supplier);
-      console.log(`  + Đã tạo mới NCC: [${supplier.code}] ${supplier.name} (ID: ${supplier.id})`);
+      console.log(`+ Đã tạo mới NCC: [${supp.code}] ${supp.name} (ID: ${supp.id})`);
     } else {
-      reusedSuppliersCount++;
-      console.log(`  = Đã tồn tại NCC: [${supplier.code}] ${supplier.name} (ID: ${supplier.id})`);
+      console.log(`= Đã có NCC: [${supp.code}] ${supp.name} (ID: ${supp.id})`);
     }
+    supplierEntityMap.set(s.supplierCode, supp);
+  }
 
+  // 3. Lấy danh sách sản phẩm hiện có
+  console.log('\nĐang kiểm tra danh sách sản phẩm hiện có...');
+  let existingProducts = [];
+  try {
+    const paged = await requestApi('/products?page=1&pageSize=2000');
+    existingProducts = paged.items || [];
+  } catch {
+    existingProducts = [];
+  }
+  const productBySku = new Map(existingProducts.map((p) => [p.sku.trim().toUpperCase(), p]));
+  const productBySupplierAndName = new Map(
+    existingProducts.map((p) => [`${p.supplierId || 0}::${p.name.trim().toUpperCase()}`, p])
+  );
+
+  let createdCount = 0;
+  let updatedCount = 0;
+  let errorCount = 0;
+
+  console.log('\nBắt đầu import từng sản phẩm...');
+
+  for (const s of sheetsData) {
+    const supplier = supplierEntityMap.get(s.supplierCode);
     let sheetCreated = 0;
-    let sheetSkipped = 0;
+    let sheetUpdated = 0;
 
-    for (const prod of sheet.products) {
-      const skuKey = prod.sku.toUpperCase();
-      if (productBySku.has(skuKey)) {
-        skippedProductsCount++;
-        sheetSkipped++;
-        continue;
-      }
+    // Chạy concurrent theo chunk để tối ưu tốc độ
+    const CHUNK_SIZE = 15;
+    for (let i = 0; i < s.products.length; i += CHUNK_SIZE) {
+      const chunk = s.products.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (p) => {
+          const skuKey = p.sku.trim().toUpperCase();
+          const nameKey = `${supplier.id}::${p.name.trim().toUpperCase()}`;
+          const existing = productBySku.get(skuKey) || productBySupplierAndName.get(nameKey);
 
-      try {
-        const created = await request('/products', {
-          method: 'POST',
-          body: JSON.stringify({
-            sku: prod.sku,
-            name: prod.name,
-            category: prod.category,
-            uom: prod.uom,
+          const payload = {
+            sku: p.sku,
+            name: p.name,
+            category: p.category,
+            uom: p.uom,
             supplierId: supplier.id,
             unitCost: 0,
             wholesalePrice: 0,
             retailPrice: 0,
-            stockWarehouse1: 0,
-            stockWarehouse2: 0,
+            stockWarehouse1: p.stockWarehouse1,
+            stockWarehouse2: p.stockWarehouse2,
             stockWarehouse3: 0,
             reorderPoint: 0,
-          }),
-        });
-        productBySku.set(skuKey, created);
-        createdProductsCount++;
-        sheetCreated++;
-      } catch (err) {
-        failedProductsCount++;
-        console.error(`  - Lỗi tạo SP [SKU: ${prod.sku}] (Dòng ${prod.row}): ${err.message}`);
-      }
+          };
+
+          try {
+            if (existing) {
+              await requestApi(`/products/${existing.id}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload),
+              });
+              updatedCount++;
+              sheetUpdated++;
+            } else {
+              const created = await requestApi('/products', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+              });
+              productBySku.set(skuKey, created);
+              createdCount++;
+              sheetCreated++;
+            }
+          } catch (err) {
+            errorCount++;
+            console.error(`  - Lỗi [SKU: ${p.sku}]: ${err.message}`);
+          }
+        })
+      );
     }
 
     console.log(
-      `  -> Hoàn tất sheet ${sheet.supplierName}: Thêm mới ${sheetCreated} SP, Bỏ qua (đã tồn tại) ${sheetSkipped} SP.`
+      `  -> Hoàn tất [${s.supplierCode}] ${s.supplierName}: Thêm mới ${sheetCreated} SP, Cập nhật ${sheetUpdated} SP.`
     );
   }
 
   console.log('\n=========================================================================');
-  console.log('HOÀN TẤT IMPORT DỮ LIỆU TỪ EXCEL!');
-  console.log(`- Nhà cung cấp tạo mới : ${createdSuppliersCount} (Đã có sẵn: ${reusedSuppliersCount})`);
-  console.log(`- Sản phẩm tạo mới     : ${createdProductsCount}`);
-  console.log(`- Sản phẩm đã tồn tại  : ${skippedProductsCount}`);
-  console.log(`- Sản phẩm lỗi         : ${failedProductsCount}`);
+  console.log('✓ HOÀN TẤT ĐỒNG BỘ DỮ LIỆU VÀO DATABASE THÀNH CÔNG!');
+  console.log(`- Tổng sản phẩm xử lý   : ${totalProducts}`);
+  console.log(`- Sản phẩm tạo mới      : ${createdCount}`);
+  console.log(`- Sản phẩm cập nhật     : ${updatedCount}`);
+  console.log(`- Sản phẩm lỗi          : ${errorCount}`);
+  console.log(`- Tổng tồn Kho 1        : ${totalKho1Stock.toLocaleString('vi-VN')} Hộp (${totalKho1Items} SP)`);
+  console.log(`- Tổng tồn Kho 2        : ${totalKho2Stock.toLocaleString('vi-VN')} Hộp (${totalKho2Items} SP)`);
+  console.log(`- Tồn Á Mỹ (gán 0)      : 0 Hộp (${totalAmyItems} SP)`);
   console.log('=========================================================================');
 }
 
 main().catch((err) => {
-  console.error('\nLỗi thực thi script:', err.message);
+  console.error('\nLỗi thực thi:', err.message);
   process.exit(1);
 });

@@ -1,7 +1,7 @@
+using DebtManager.Application.Common.Exceptions;
 using DebtManager.Application.DTOs.Reports;
 using DebtManager.Application.Interfaces;
 using DebtManager.Application.Interfaces.Repositories;
-using DebtManager.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace DebtManager.Application.Services;
@@ -42,11 +42,23 @@ public class ReportService : IReportService
         }
 
         var products = await _uow.Products.Query().ToListAsync(ct);
-        var productIds = products.Select(p => p.Id).ToList();
 
-        // Get all histories after start to calculate delta_month and delta_after
-        var histories = await _uow.StockHistories.Query()
-            .Where(h => productIds.Contains(h.ProductId) && h.ChangeDate >= start)
+        var importItems = await _uow.ImportVoucherItems.Query()
+            .Include(i => i.ImportVoucher)
+            .Where(i => i.ImportVoucher.Status != "cancelled" && i.ImportVoucher.Date >= start && i.ImportVoucher.Date < end)
+            .ToListAsync(ct);
+
+        var exportItems = await _uow.ExportVoucherItems.Query()
+            .Include(i => i.ExportVoucher)
+            .Where(i => i.ExportVoucher.Status != "cancelled" && i.ExportVoucher.Date >= start && i.ExportVoucher.Date < end)
+            .ToListAsync(ct);
+
+        var stockHistoriesAfterEnd = await _uow.StockHistories.Query()
+            .Where(h => h.ChangeDate >= end)
+            .ToListAsync(ct);
+
+        var stockHistoriesMonth = await _uow.StockHistories.Query()
+            .Where(h => h.ChangeDate >= start && h.ChangeDate < end)
             .ToListAsync(ct);
 
         var response = new StockReportResponseDto
@@ -58,83 +70,48 @@ public class ReportService : IReportService
 
         foreach (var p in products)
         {
-            var pHistories = histories.Where(h => h.ProductId == p.Id).ToList();
+            var pHistoriesAfter = stockHistoriesAfterEnd.Where(h => h.ProductId == p.Id).ToList();
+            var netDeltaAfter = pHistoriesAfter.Sum(h => h.Delta);
 
-            // Total
-            var deltaAfter = pHistories.Where(h => h.ChangeDate >= end).Sum(h => h.Delta);
-            var monthHistories = pHistories.Where(h => h.ChangeDate >= start && h.ChangeDate < end).ToList();
-            var deltaMonth = monthHistories.Sum(h => h.Delta);
-            var importStock = monthHistories.Where(h => h.Delta > 0).Sum(h => h.Delta);
-            var exportStock = monthHistories.Where(h => h.Delta < 0).Sum(h => -h.Delta);
+            var pHistoriesMonth = stockHistoriesMonth.Where(h => h.ProductId == p.Id).ToList();
+            var netDeltaMonth = pHistoriesMonth.Sum(h => h.Delta);
 
-            var closingStock = p.TotalStock - deltaAfter;
-            var openingStock = closingStock - deltaMonth;
+            var closingStock = p.TotalStock - netDeltaAfter;
+            var openingStock = closingStock - netDeltaMonth;
 
-            // Warehouse 1
-            var wh1After = pHistories.Where(h => h.ChangeDate >= end && h.Warehouse == DomainConstants.Warehouses.Warehouse1).Sum(h => h.Delta);
-            var wh1Month = monthHistories.Where(h => h.Warehouse == DomainConstants.Warehouses.Warehouse1).ToList();
-            var wh1Closing = p.StockWarehouse1 - wh1After;
-            var wh1Opening = wh1Closing - wh1Month.Sum(h => h.Delta);
+            var inQty = importItems.Where(i => i.ProductId == p.Id).Sum(i => i.Quantity);
+            var inAmount = importItems.Where(i => i.ProductId == p.Id).Sum(i => i.LineTotal);
 
-            // Warehouse 2
-            var wh2After = pHistories.Where(h => h.ChangeDate >= end && h.Warehouse == DomainConstants.Warehouses.Warehouse2).Sum(h => h.Delta);
-            var wh2Month = monthHistories.Where(h => h.Warehouse == DomainConstants.Warehouses.Warehouse2).ToList();
-            var wh2Closing = p.StockWarehouse2 - wh2After;
-            var wh2Opening = wh2Closing - wh2Month.Sum(h => h.Delta);
-
-            // Warehouse 3
-            var wh3After = pHistories.Where(h => h.ChangeDate >= end && h.Warehouse == DomainConstants.Warehouses.Warehouse3).Sum(h => h.Delta);
-            var wh3Month = monthHistories.Where(h => h.Warehouse == DomainConstants.Warehouses.Warehouse3).ToList();
-            var wh3Closing = p.StockWarehouse3 - wh3After;
-            var wh3Opening = wh3Closing - wh3Month.Sum(h => h.Delta);
+            var outQty = exportItems.Where(i => i.ProductId == p.Id).Sum(i => i.Quantity);
+            var outAmount = exportItems.Where(i => i.ProductId == p.Id).Sum(i => i.LineTotal);
 
             var item = new StockReportItemDto
             {
                 ProductId = p.Id,
                 Sku = p.Sku,
                 Name = p.Name,
-                Category = p.Category,
-                Uom = p.Uom,
-                UnitCost = p.UnitCost,
-                WholesalePrice = p.WholesalePrice,
-                RetailPrice = p.RetailPrice,
+                Uom = p.Uom ?? "Cái",
                 OpeningStock = openingStock,
-                ImportStock = importStock,
-                ExportStock = exportStock,
+                OpeningValue = openingStock * p.UnitCost,
+                ImportQty = inQty,
+                ImportValue = inAmount,
+                ExportQty = outQty,
+                ExportValue = outAmount,
                 ClosingStock = closingStock,
-                Warehouse1 = new StockReportWarehouseDetailDto
-                {
-                    OpeningStock = wh1Opening,
-                    ImportStock = wh1Month.Where(h => h.Delta > 0).Sum(h => h.Delta),
-                    ExportStock = wh1Month.Where(h => h.Delta < 0).Sum(h => -h.Delta),
-                    ClosingStock = wh1Closing
-                },
-                Warehouse2 = new StockReportWarehouseDetailDto
-                {
-                    OpeningStock = wh2Opening,
-                    ImportStock = wh2Month.Where(h => h.Delta > 0).Sum(h => h.Delta),
-                    ExportStock = wh2Month.Where(h => h.Delta < 0).Sum(h => -h.Delta),
-                    ClosingStock = wh2Closing
-                },
-                Warehouse3 = new StockReportWarehouseDetailDto
-                {
-                    OpeningStock = wh3Opening,
-                    ImportStock = wh3Month.Where(h => h.Delta > 0).Sum(h => h.Delta),
-                    ExportStock = wh3Month.Where(h => h.Delta < 0).Sum(h => -h.Delta),
-                    ClosingStock = wh3Closing
-                }
+                ClosingValue = closingStock * p.UnitCost
             };
 
             response.Items.Add(item);
-            response.TotalCostValue += item.TotalCostValue;
-            response.TotalWholesaleValue += item.TotalWholesaleValue;
-            response.TotalRetailValue += item.TotalRetailValue;
+            response.TotalOpeningValue += item.OpeningValue;
+            response.TotalImportValue += item.ImportValue;
+            response.TotalExportValue += item.ExportValue;
+            response.TotalClosingValue += item.ClosingValue;
         }
 
         return response;
     }
 
-    public async Task<DebtReportResponseDto> GetDebtReportAsync(string? month = null, CancellationToken ct = default)
+    public async Task<DebtReportResponseDto> GetDebtReportAsync(string? month = null, string? warehouse = null, CancellationToken ct = default)
     {
         DateTime start;
         DateTime end;
@@ -160,22 +137,32 @@ public class ReportService : IReportService
             periodLabel = $"{start.Year:D4}-{start.Month:D2}";
         }
 
-        var customers = await _uow.Customers.Query().ToListAsync(ct);
-        var suppliers = await _uow.Suppliers.Query().ToListAsync(ct);
+        var wh = (warehouse ?? "").Trim().ToLower();
+        var isAllWh = string.IsNullOrEmpty(wh) || wh == "all" || wh == "overview";
 
-        var customerHistories = await _uow.CustomerDebtHistories.Query()
-            .Where(h => h.CreatedAt >= start)
-            .ToListAsync(ct);
+        var customers = await _uow.Customers.Query().Include(c => c.WarehouseDebts).ToListAsync(ct);
+        var suppliers = await _uow.Suppliers.Query().Include(s => s.WarehouseDebts).ToListAsync(ct);
 
-        var supplierHistories = await _uow.SupplierDebtHistories.Query()
-            .Where(h => h.CreatedAt >= start)
-            .ToListAsync(ct);
+        var custHistoryQuery = _uow.CustomerDebtHistories.Query().Where(h => h.CreatedAt >= start);
+        if (!isAllWh)
+        {
+            custHistoryQuery = custHistoryQuery.Where(h => h.Warehouse.ToLower() == wh);
+        }
+        var customerHistories = await custHistoryQuery.ToListAsync(ct);
+
+        var suppHistoryQuery = _uow.SupplierDebtHistories.Query().Where(h => h.CreatedAt >= start);
+        if (!isAllWh)
+        {
+            suppHistoryQuery = suppHistoryQuery.Where(h => h.Warehouse.ToLower() == wh);
+        }
+        var supplierHistories = await suppHistoryQuery.ToListAsync(ct);
 
         var response = new DebtReportResponseDto
         {
             Month = periodLabel,
             FromDate = start,
-            ToDate = end
+            ToDate = end,
+            SelectedWarehouse = warehouse
         };
 
         // Customers
@@ -186,7 +173,11 @@ public class ReportService : IReportService
             var mHistories = cHistories.Where(h => h.CreatedAt >= start && h.CreatedAt < end).ToList();
             var deltaMonth = mHistories.Sum(h => h.Delta);
 
-            var closingDebt = c.Debt - deltaAfter;
+            decimal currentDebt = isAllWh
+                ? c.Debt
+                : (c.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == wh)?.Debt ?? 0);
+
+            var closingDebt = currentDebt - deltaAfter;
             var openingDebt = closingDebt - deltaMonth;
 
             var increase = mHistories.Where(h => h.Delta > 0).Sum(h => h.Delta);
@@ -201,7 +192,10 @@ public class ReportService : IReportService
                 OpeningDebt = openingDebt,
                 IncreaseDebt = increase,
                 DecreaseDebt = decrease,
-                ClosingDebt = closingDebt
+                ClosingDebt = closingDebt,
+                DebtWarehouse1 = c.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == "warehouse1")?.Debt ?? 0,
+                DebtWarehouse2 = c.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == "warehouse2")?.Debt ?? 0,
+                DebtWarehouse3 = c.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == "warehouse3")?.Debt ?? 0,
             };
             response.Items.Add(item);
 
@@ -220,11 +214,17 @@ public class ReportService : IReportService
             var mHistories = sHistories.Where(h => h.CreatedAt >= start && h.CreatedAt < end).ToList();
             var deltaMonth = mHistories.Sum(h => h.Delta);
 
-            var closingDebt = s.Debt - deltaAfter;
+            decimal currentDebt = isAllWh
+                ? s.Debt
+                : (s.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == wh)?.Debt ?? 0);
+
+            var closingDebt = currentDebt - deltaAfter;
             var openingDebt = closingDebt - deltaMonth;
 
-            var increase = mHistories.Where(h => h.Delta > 0).Sum(h => h.Delta);
-            var decrease = mHistories.Where(h => h.Delta < 0).Sum(h => -h.Delta);
+            // NCC: Delta < 0 là nhập hàng chưa trả tiền (Phát sinh TĂNG nợ phải trả)
+            var increase = mHistories.Where(h => h.Delta < 0).Sum(h => -h.Delta);
+            // NCC: Delta > 0 là phiếu chi trả tiền (Phát sinh GIẢM nợ phải trả)
+            var decrease = mHistories.Where(h => h.Delta > 0).Sum(h => h.Delta);
 
             var item = new DebtReportItemDto
             {
@@ -235,7 +235,10 @@ public class ReportService : IReportService
                 OpeningDebt = openingDebt,
                 IncreaseDebt = increase,
                 DecreaseDebt = decrease,
-                ClosingDebt = closingDebt
+                ClosingDebt = closingDebt,
+                DebtWarehouse1 = s.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == "warehouse1")?.Debt ?? 0,
+                DebtWarehouse2 = s.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == "warehouse2")?.Debt ?? 0,
+                DebtWarehouse3 = s.WarehouseDebts?.FirstOrDefault(w => w.Warehouse.ToLower() == "warehouse3")?.Debt ?? 0,
             };
             response.Items.Add(item);
 
@@ -258,6 +261,7 @@ public class ReportService : IReportService
     {
         DateTime? startDate = null;
         DateTime? endDate = null;
+
         if (!string.IsNullOrWhiteSpace(month) && month != "ALL")
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))

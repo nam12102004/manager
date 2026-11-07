@@ -20,7 +20,7 @@ import {
   ReceiptText,
   FileSpreadsheet,
 } from 'lucide-react';
-import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
+import { formatVND, formatDate, getDebtStatus, parseJsonList, normalizeText, getCurrentMonthStr, getCurrentDateStr, getPartnerWarehouseDebt } from '../utils/formatters';
 import { DEBT_ADJUST_REASONS } from '../utils/constants';
 import { useNotification } from '../context/NotificationContext';
 import { useExport } from '../context/ExportContext';
@@ -36,7 +36,7 @@ import Pagination from '../components/common/Pagination';
 import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
 import VoucherDetailModal from '../components/common/VoucherDetailModal';
 import { supplierService, settingService, warehouseService } from '../services';
-import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from '../components/common/WarehouseMetricCheckboxes';
+import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams, buildPriorityMetrics } from '../components/common/WarehouseMetricCheckboxes';
 import useDragScroll from '../hooks/useDragScroll';
 import TableScrollContainer from '../components/common/TableScrollContainer';
 
@@ -57,6 +57,8 @@ export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDebtWarehouse, setSelectedDebtWarehouse] = useState('all');
+  const [historyWarehouse, setHistoryWarehouse] = useState('all');
   const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [sortBy, setSortBy] = useState('default');
   const regionTabsRef = useRef(null);
@@ -67,6 +69,31 @@ export default function Suppliers() {
   const [totalCount, setTotalCount] = useState(0);
   const [totalReceivables, setTotalReceivables] = useState(0);
   const [totalPayables, setTotalPayables] = useState(0);
+
+  // Checkbox metrics visibility (saved in localStorage, default all unticked)
+  const [visibleMetrics, setVisibleMetrics] = useState(() =>
+    loadSavedMetrics('dm_supplier_metrics_v3')
+  );
+
+  const displayDebtReceivables = useMemo(() => {
+    if (visibleMetrics.debtTotal) return totalReceivables;
+    const checkedWhs = Object.keys(visibleMetrics.debtWarehouses || {}).filter((k) => visibleMetrics.debtWarehouses[k]);
+    if (checkedWhs.length === 0) return 0;
+    return suppliers.reduce((sum, s) => {
+      const whDebtSum = checkedWhs.reduce((wSum, whId) => wSum + getPartnerWarehouseDebt(s, whId), 0);
+      return sum + (whDebtSum > 0 ? whDebtSum : 0);
+    }, 0);
+  }, [visibleMetrics.debtTotal, visibleMetrics.debtWarehouses, totalReceivables, suppliers]);
+
+  const displayDebtPayables = useMemo(() => {
+    if (visibleMetrics.debtTotal) return totalPayables;
+    const checkedWhs = Object.keys(visibleMetrics.debtWarehouses || {}).filter((k) => visibleMetrics.debtWarehouses[k]);
+    if (checkedWhs.length === 0) return 0;
+    return suppliers.reduce((sum, s) => {
+      const whDebtSum = checkedWhs.reduce((wSum, whId) => wSum + getPartnerWarehouseDebt(s, whId), 0);
+      return sum + (whDebtSum < 0 ? Math.abs(whDebtSum) : 0);
+    }, 0);
+  }, [visibleMetrics.debtTotal, visibleMetrics.debtWarehouses, totalPayables, suppliers]);
   const [allRegions, setAllRegions] = useState([]);
   const isFirstFilterChange = useRef(true);
 
@@ -77,10 +104,6 @@ export default function Suppliers() {
     });
   }, []);
 
-  // Checkbox metrics visibility (saved in localStorage, default all unticked)
-  const [visibleMetrics, setVisibleMetrics] = useState(() =>
-    loadSavedMetrics('dm_supplier_metrics_v3')
-  );
 
   const [ledgerSupplier, setLedgerSupplier] = useState(null);
 
@@ -115,6 +138,7 @@ export default function Suppliers() {
     bankAccount: '',
     taxNumber: '',
     initialDebt: 0,
+    initialDebtWarehouse: 'warehouse1',
     notes: '',
   });
 
@@ -149,6 +173,9 @@ export default function Suppliers() {
   };
 
   // Load Suppliers with server-side pagination (15 items/page)
+  // Ticked metrics: records having data for them are listed first (server-side, before pagination)
+  const priorityMetrics = buildPriorityMetrics(visibleMetrics, 'import');
+
   const loadSuppliers = useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
@@ -161,6 +188,7 @@ export default function Suppliers() {
         sortBy: sortBy !== 'default' ? sortBy : undefined,
         fromDate: timeParams.fromDate,
         toDate: timeParams.toDate,
+        priorityMetrics,
       });
 
       if (res && res.items) {
@@ -180,7 +208,7 @@ export default function Suppliers() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedRegion, sortBy, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate, notify]);
+  }, [currentPage, searchQuery, selectedRegion, sortBy, priorityMetrics, visibleMetrics.timeMode, visibleMetrics.timeDate, visibleMetrics.timeMonth, visibleMetrics.timeFromDate, visibleMetrics.timeToDate, notify]);
 
   // Initial load
   useEffect(() => {
@@ -214,7 +242,7 @@ export default function Suppliers() {
     } else {
       setCurrentPage(1);
     }
-  }, [selectedRegion, sortBy, searchQuery]);
+  }, [selectedRegion, sortBy, searchQuery, priorityMetrics]);
 
   // Open Create
   const handleOpenCreate = () => {
@@ -229,6 +257,7 @@ export default function Suppliers() {
       bankAccount: '',
       taxNumber: '',
       initialDebt: 0,
+      initialDebtWarehouse: 'warehouse1',
       notes: '',
     });
     setIsCreateOpen(true);
@@ -254,14 +283,30 @@ export default function Suppliers() {
   // Open Adjust
   const handleOpenAdjust = (supplier) => {
     setSelectedSupplier(supplier);
+    const targetWh = selectedDebtWarehouse !== 'all' ? selectedDebtWarehouse : 'warehouse1';
     setAdjustData({
       mode: 'delta',
       delta: 0,
-      newDebt: supplier.debt || 0,
+      warehouse: targetWh,
+      newDebt: supplier.warehouseDebts?.[targetWh] ?? 0,
       reason: DEBT_ADJUST_REASONS[0],
       note: '',
     });
     setIsAdjustOpen(true);
+  };
+
+  const loadDebtHistory = async (supplierId, period) => {
+    setHistoryLoading(true);
+    try {
+      const params = typeof period === 'object' ? { ...period } : { month: period || undefined };
+      if (historyWarehouse && historyWarehouse !== 'all') params.warehouse = historyWarehouse;
+      const records = await supplierService.getDebtHistory(supplierId, params);
+      setDebtHistoryRecords(records || []);
+    } catch (err) {
+      notify.error(err.message || 'Không thể tải lịch sử sổ nợ NCC');
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   // Open History via supplierService
@@ -272,17 +317,6 @@ export default function Suppliers() {
     loadDebtHistory(supplier.id, targetPeriod);
   };
 
-  const loadDebtHistory = async (supplierId, period) => {
-    setHistoryLoading(true);
-    try {
-      const records = await supplierService.getDebtHistory(supplierId, period || undefined);
-      setDebtHistoryRecords(records || []);
-    } catch (err) {
-      notify.error(err.message || 'Không thể tải lịch sử sổ nợ NCC');
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
 
   // Submit Create via supplierService
   const handleCreateSubmit = async (e) => {
@@ -332,6 +366,7 @@ export default function Suppliers() {
     setSubmitting(true);
     try {
       const payload = {
+        warehouse: adjustData.warehouse || 'warehouse1',
         reason: adjustData.reason,
         note: adjustData.note,
         delta: adjustData.mode === 'delta' ? Number(adjustData.delta || 0) : undefined,
@@ -411,21 +446,22 @@ export default function Suppliers() {
           visibleMetrics={visibleMetrics}
           onChange={setVisibleMetrics}
           showCashBook={true}
+          showDebt={true}
           primaryDirection="import"
           storageKey="dm_supplier_metrics_v3"
         />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải thu:</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{visibleMetrics.debtTotal ? 'Phải thu:' : 'Phải thu (kho):'}</span>
             <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--info-text)' }}>
-              {formatVND(totalReceivables)}
+              {formatVND(displayDebtReceivables)}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Phải trả:</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{visibleMetrics.debtTotal ? 'Phải trả:' : 'Phải trả (kho):'}</span>
             <span className="mono" style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--warning-text)' }}>
-              {formatVND(totalPayables)}
+              {formatVND(displayDebtPayables)}
             </span>
           </div>
         </div>
@@ -707,8 +743,21 @@ export default function Suppliers() {
                 )}
 
                 {visibleMetrics.receipt && <th style={{ textAlign: 'right', color: '#16a34a' }}>Đã Thu</th>}
-                <th style={{ textAlign: 'right' }}>Phải Thu</th>
-                <th style={{ textAlign: 'right' }}>Phải Trả</th>
+                {/* Cột Công nợ theo từng kho */}
+                {warehouses.map((wh) => (
+                  visibleMetrics.debtWarehouses?.[wh.id] ? (
+                    <th key={`th-sup-debt-${wh.id}`} style={{ textAlign: 'right', color: '#7e22ce' }}>
+                      Nợ {wh.shortName || wh.name}
+                    </th>
+                  ) : null
+                ))}
+                {/* Cột Công nợ Tổng */}
+                {visibleMetrics.debtTotal && (
+                  <>
+                    <th style={{ textAlign: 'right' }}>Phải Thu</th>
+                    <th style={{ textAlign: 'right' }}>Phải Trả</th>
+                  </>
+                )}
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
               </tr>
             </thead>
@@ -853,36 +902,72 @@ export default function Suppliers() {
                         )}
                       </td>
                     )}
-                    {/* Cột 1: Phải Thu (Cửa hàng nộp tiền trước để lấy hàng) */}
-                    <td style={{ textAlign: 'right' }}>
-                      {s.debt > 0 ? (
-                        <div>
-                          <span className="mono" style={{ fontWeight: 800, color: 'var(--info-text)' }}>
-                            {formatVND(s.debt)}
-                          </span>
-                          <div style={{ fontSize: '0.6875rem', color: 'var(--info-text)', marginTop: '2px', fontWeight: 600 }}>
-                            Đã nộp trước
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
-                      )}
-                    </td>
-                    {/* Cột 2: Phải Trả (Mình nợ nhà cung cấp) */}
-                    <td style={{ textAlign: 'right' }}>
-                      {s.debt < 0 ? (
-                        <div>
-                          <span className="mono" style={{ fontWeight: 800, color: 'var(--warning-text)' }}>
-                            {formatVND(Math.abs(s.debt))}
-                          </span>
-                          <div style={{ fontSize: '0.6875rem', color: 'var(--warning-text)', marginTop: '2px', fontWeight: 600 }}>
-                            Cần thanh toán
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
-                      )}
-                    </td>
+                    {/* Cột Công nợ theo từng kho */}
+                    {warehouses.map((wh) => {
+                      if (!visibleMetrics.debtWarehouses?.[wh.id]) return null;
+                      const whDebt = getPartnerWarehouseDebt(s, wh.id);
+                      return (
+                        <td key={`td-sup-debt-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
+                          {whDebt > 0 ? (
+                            <div>
+                              <span style={{ fontWeight: 800, color: 'var(--info-text)' }}>
+                                {formatVND(whDebt)}
+                              </span>
+                              <div style={{ fontSize: '0.6875rem', color: 'var(--info-text)', marginTop: '2px', fontWeight: 600 }}>
+                                Đã nộp trước
+                              </div>
+                            </div>
+                          ) : whDebt < 0 ? (
+                            <div>
+                              <span style={{ fontWeight: 800, color: 'var(--warning-text)' }}>
+                                {formatVND(Math.abs(whDebt))}
+                              </span>
+                              <div style={{ fontSize: '0.6875rem', color: 'var(--warning-text)', marginTop: '2px', fontWeight: 600 }}>
+                                Cần thanh toán
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    {/* Cột Công nợ Tổng */}
+                    {visibleMetrics.debtTotal && (
+                      <>
+                        {/* Cột 1: Phải Thu (Cửa hàng nộp tiền trước để lấy hàng) */}
+                        <td style={{ textAlign: 'right' }}>
+                          {s.debt > 0 ? (
+                            <div>
+                              <span className="mono" style={{ fontWeight: 800, color: 'var(--info-text)' }}>
+                                {formatVND(s.debt)}
+                              </span>
+                              <div style={{ fontSize: '0.6875rem', color: 'var(--info-text)', marginTop: '2px', fontWeight: 600 }}>
+                                Đã nộp trước
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                          )}
+                        </td>
+                        {/* Cột 2: Phải Trả (Mình nợ nhà cung cấp) */}
+                        <td style={{ textAlign: 'right' }}>
+                          {s.debt < 0 ? (
+                            <div>
+                              <span className="mono" style={{ fontWeight: 800, color: 'var(--warning-text)' }}>
+                                {formatVND(Math.abs(s.debt))}
+                              </span>
+                              <div style={{ fontSize: '0.6875rem', color: 'var(--warning-text)', marginTop: '2px', fontWeight: 600 }}>
+                                Cần thanh toán
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 ₫</span>
+                          )}
+                        </td>
+                      </>
+                    )}
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', gap: '0.35rem' }} onClick={(e) => e.stopPropagation()}>
                         <button
@@ -1194,6 +1279,28 @@ export default function Suppliers() {
         }
       >
         <form onSubmit={handleAdjustSubmit}>
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label">Kho Điều Chỉnh Công Nợ <span className="req">*</span></label>
+            <select
+              className="form-select"
+              value={adjustData.warehouse || 'warehouse1'}
+              onChange={(e) => {
+                const wh = e.target.value;
+                const whDebt = selectedSupplier?.warehouseDebts?.[wh] ?? 0;
+                setAdjustData({
+                  ...adjustData,
+                  warehouse: wh,
+                  newDebt: whDebt,
+                  delta: 0
+                });
+              }}
+            >
+              <option value="warehouse1">Kho 1</option>
+              <option value="warehouse2">Kho 2</option>
+              <option value="warehouse3">Kho 3</option>
+            </select>
+          </div>
+
           <div
             style={{
               padding: '0.75rem 1rem',
@@ -1205,9 +1312,17 @@ export default function Suppliers() {
               alignItems: 'center',
             }}
           >
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Dư nợ hiện tại:</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Nợ tại {adjustData.warehouse === 'warehouse2' ? 'Kho 2' : adjustData.warehouse === 'warehouse3' ? 'Kho 3' : 'Kho 1'}:
+            </span>
             <span className="mono" style={{ fontSize: '1.125rem', fontWeight: 800 }}>
-              {selectedSupplier?.debt < 0 ? `Cần trả: ${formatVND(Math.abs(selectedSupplier?.debt))}` : formatVND(selectedSupplier?.debt || 0)}
+              {(() => {
+                const curWhDebt = selectedSupplier?.warehouseDebts?.[adjustData.warehouse || 'warehouse1'] ?? 0;
+                return curWhDebt < 0 ? `Cần trả: ${formatVND(Math.abs(curWhDebt))}` : formatVND(curWhDebt);
+              })()}
+              <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '8px' }}>
+                (Tổng: {selectedSupplier?.debt < 0 ? `Cần trả ${formatVND(Math.abs(selectedSupplier.debt))}` : formatVND(selectedSupplier?.debt || 0)})
+              </span>
             </span>
           </div>
 

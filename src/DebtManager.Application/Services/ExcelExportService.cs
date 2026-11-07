@@ -93,13 +93,16 @@ public class ExcelExportService : IExcelExportService
                     switch (table.ToLowerInvariant())
                     {
                         case "products":
-                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất danh mục Sản phẩm & Tồn kho...");
-                            var prods = await uow.Products.Query().AsNoTracking().ToListAsync(ct);
+                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất danh mục Sản phẩm, Đơn vị tính & Tồn kho...");
+                            var prods = await uow.Products.Query().Include(p => p.Units).AsNoTracking().ToListAsync(ct);
                             sheets["1.SanPham"] = prods.Select(p => new
                             {
                                 MaSKU = p.Sku,
                                 TenSanPham = p.Name,
-                                DVT = p.Uom,
+                                DVT_CoSo = p.Uom,
+                                CacDonViQuyDoi = p.Units != null && p.Units.Any(u => !u.IsBaseUnit)
+                                    ? string.Join(", ", p.Units.Where(u => !u.IsBaseUnit).Select(u => $"{u.UnitName} (x{u.ConversionRate:G29})"))
+                                    : "",
                                 DanhMuc = p.Category,
                                 GiaVon = p.UnitCost,
                                 GiaSi = p.WholesalePrice,
@@ -107,13 +110,32 @@ public class ExcelExportService : IExcelExportService
                                 TonKho1 = p.StockWarehouse1,
                                 TonKho2 = p.StockWarehouse2,
                                 TonKho3 = p.StockWarehouse3,
-                                TongTonKho = p.TotalStock
+                                TongTonKhoCoSo = p.TotalStock
                             }).ToList();
+
+                            // Sheet 1b: Danh sách chi tiết các Đơn vị tính quy đổi
+                            var allUnits = prods.SelectMany(p => (p.Units ?? new List<Domain.Entities.ProductUnit>()).Select(u => new
+                            {
+                                MaSKU = p.Sku,
+                                TenSanPham = p.Name,
+                                TenDonVi = u.UnitName,
+                                HeSoQuyDoi = u.ConversionRate,
+                                LaDonViCoSo = u.IsBaseUnit ? "Có" : "Không",
+                                GiaLe = u.RetailPrice,
+                                GiaSi = u.WholesalePrice,
+                                MaVach = u.Barcode ?? "",
+                                ChoPhepBan = u.CanSell ? "Có" : "Không"
+                            })).ToList();
+
+                            if (allUnits.Count > 0)
+                            {
+                                sheets["1b.DonViQuyDoi"] = allUnits;
+                            }
                             break;
 
                         case "customers":
-                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất danh sách Khách hàng & Công nợ...");
-                            var custs = await uow.Customers.Query().AsNoTracking().ToListAsync(ct);
+                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất danh sách Khách hàng & Công nợ theo kho...");
+                            var custs = await uow.Customers.Query().Include(c => c.WarehouseDebts).AsNoTracking().ToListAsync(ct);
                             sheets["2.KhachHang"] = custs.Select(c => new
                             {
                                 MaKH = c.Code,
@@ -123,13 +145,16 @@ public class ExcelExportService : IExcelExportService
                                 Email = c.Email,
                                 KhuVuc = c.Region,
                                 DiaChi = c.AddressesJson,
-                                DuNoHienTai = c.Debt
+                                NoKho1 = c.WarehouseDebts?.FirstOrDefault(w => w.Warehouse == "warehouse1")?.Debt ?? 0,
+                                NoKho2 = c.WarehouseDebts?.FirstOrDefault(w => w.Warehouse == "warehouse2")?.Debt ?? 0,
+                                NoKho3 = c.WarehouseDebts?.FirstOrDefault(w => w.Warehouse == "warehouse3")?.Debt ?? 0,
+                                TongDuNo = c.Debt
                             }).ToList();
                             break;
 
                         case "suppliers":
-                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất danh sách Nhà cung cấp...");
-                            var supps = await uow.Suppliers.Query().AsNoTracking().ToListAsync(ct);
+                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất danh sách Nhà cung cấp & Công nợ theo kho...");
+                            var supps = await uow.Suppliers.Query().Include(s => s.WarehouseDebts).AsNoTracking().ToListAsync(ct);
                             sheets["3.NhaCungCap"] = supps.Select(s => new
                             {
                                 MaNCC = s.Code,
@@ -140,18 +165,25 @@ public class ExcelExportService : IExcelExportService
                                 MaSoThue = s.TaxNumber,
                                 KhuVuc = s.Region,
                                 DiaChi = s.AddressesJson,
+                                NoKho1 = s.WarehouseDebts?.FirstOrDefault(w => w.Warehouse == "warehouse1")?.Debt ?? 0,
+                                NoKho2 = s.WarehouseDebts?.FirstOrDefault(w => w.Warehouse == "warehouse2")?.Debt ?? 0,
+                                NoKho3 = s.WarehouseDebts?.FirstOrDefault(w => w.Warehouse == "warehouse3")?.Debt ?? 0,
+                                TongDuNo = s.Debt,
                                 CongNoPhaiTra = s.Debt < 0 ? Math.Abs(s.Debt) : 0,
                                 TienUngTruoc = s.Debt > 0 ? s.Debt : 0
                             }).ToList();
                             break;
 
                         case "exports":
-                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất lịch sử Phiếu xuất kho...");
+                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất lịch sử Phiếu xuất kho & Chi tiết...");
                             var exps = await uow.ExportVouchers.Query()
                                 .Include(v => v.Customer)
+                                .Include(v => v.Items)
+                                    .ThenInclude(i => i.Product)
                                 .AsNoTracking()
                                 .OrderByDescending(v => v.Date)
                                 .ToListAsync(ct);
+
                             sheets["4.PhieuXuat"] = exps.Select(e => new
                             {
                                 SoPhieu = e.VoucherNumber,
@@ -166,15 +198,34 @@ public class ExcelExportService : IExcelExportService
                                 TrangThai = e.Status,
                                 GhiChu = e.Notes
                             }).ToList();
+
+                            sheets["4b.ChiTietXuat"] = exps.SelectMany(e => e.Items.Select(i => new
+                            {
+                                SoPhieu = e.VoucherNumber,
+                                NgayXuat = e.Date.ToString("yyyy-MM-dd HH:mm"),
+                                KhachHang = e.Customer?.Name ?? "",
+                                KhoXuat = e.Warehouse,
+                                MaSKU = i.Product != null ? i.Product.Sku : "",
+                                TenSanPham = i.Product?.Name ?? "",
+                                SoLuong = i.Quantity,
+                                DVT = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product?.Uom ?? ""),
+                                HeSoQuyDoi = i.ConversionRate,
+                                SoLuongCoSo = i.BaseQuantity > 0 ? i.BaseQuantity : i.Quantity * i.ConversionRate,
+                                DonGia = i.SalePrice,
+                                ThanhTien = i.LineTotal
+                            })).ToList();
                             break;
 
                         case "imports":
-                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất lịch sử Phiếu nhập kho...");
+                            _jobManager.UpdateProgress(jobId, progress, "Đang xuất lịch sử Phiếu nhập kho & Chi tiết...");
                             var imps = await uow.ImportVouchers.Query()
                                 .Include(v => v.Supplier)
+                                .Include(v => v.Items)
+                                    .ThenInclude(i => i.Product)
                                 .AsNoTracking()
                                 .OrderByDescending(v => v.Date)
                                 .ToListAsync(ct);
+
                             sheets["5.PhieuNhap"] = imps.Select(i => new
                             {
                                 SoPhieu = i.VoucherNumber,
@@ -189,6 +240,22 @@ public class ExcelExportService : IExcelExportService
                                 TrangThai = i.Status,
                                 GhiChu = i.Notes
                             }).ToList();
+
+                            sheets["5b.ChiTietNhap"] = imps.SelectMany(imp => imp.Items.Select(i => new
+                            {
+                                SoPhieu = imp.VoucherNumber,
+                                NgayNhap = imp.Date.ToString("yyyy-MM-dd HH:mm"),
+                                NhaCungCap = imp.Supplier?.Name ?? "",
+                                KhoNhan = imp.Warehouse,
+                                MaSKU = i.Product != null ? i.Product.Sku : "",
+                                TenSanPham = i.Product?.Name ?? "",
+                                SoLuong = i.Quantity,
+                                DVT = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product?.Uom ?? ""),
+                                HeSoQuyDoi = i.ConversionRate,
+                                SoLuongCoSo = i.BaseQuantity > 0 ? i.BaseQuantity : i.Quantity * i.ConversionRate,
+                                DonGia = i.UnitPrice,
+                                ThanhTien = i.LineTotal
+                            })).ToList();
                             break;
 
                         case "receipts":
@@ -203,6 +270,7 @@ public class ExcelExportService : IExcelExportService
                             {
                                 SoPhieuThu = r.ReceiptNumber,
                                 NgayThu = r.Date.ToString("yyyy-MM-dd HH:mm"),
+                                Kho = r.Warehouse,
                                 DoiTac = r.Customer != null ? r.Customer.Name : (r.Supplier != null ? r.Supplier.Name : ""),
                                 SoTienThu = r.Amount,
                                 HinhThuc = r.Method,
@@ -222,6 +290,7 @@ public class ExcelExportService : IExcelExportService
                             {
                                 SoPhieuChi = p.PaymentNumber,
                                 NgayChi = p.Date.ToString("yyyy-MM-dd HH:mm"),
+                                Kho = p.Warehouse,
                                 DoiTac = p.Supplier != null ? p.Supplier.Name : (p.Customer != null ? p.Customer.Name : ""),
                                 SoTienChi = p.Amount,
                                 HinhThuc = p.Method,

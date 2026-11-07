@@ -32,6 +32,7 @@ import { generateExportHtml, printInNewTab } from '../utils/printVoucher';
 import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
 import useDragScroll from '../hooks/useDragScroll';
 import TableScrollContainer from '../components/common/TableScrollContainer';
+import { getProductUnits, getPrimaryDisplayUnit, formatStockDisplay, getStockInUnit } from '../utils/uomHelper';
 
 export default function Exports({ initialOpenCreate = false }) {
   const tableContainerRef = useDragScroll();
@@ -231,7 +232,14 @@ export default function Exports({ initialOpenCreate = false }) {
         const prod = products.find((p) => p.id === Number(value));
         item.productId = Number(value);
         if (prod) {
-          item.salePrice = prod.retailPrice;
+          const units = getProductUnits(prod);
+          const defUnit = getPrimaryDisplayUnit(prod) || units.find((u) => u.isBaseUnit) || units[0];
+          const conv = Number(defUnit?.conversionRate || 1);
+          item.unitName = defUnit?.unitName || prod.uom || 'Cái';
+          item.conversionRate = conv;
+          item.salePrice = conv > 1
+            ? (defUnit.retailPrice || (prod.retailPrice || 0) * conv)
+            : (prod.retailPrice || prod.salePrice || 0);
         }
       } else {
         item[field] = Number(value);
@@ -260,15 +268,33 @@ export default function Exports({ initialOpenCreate = false }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // Validate items don't exceed stock
+      // Cumulative stock validation across all rows in base units
+      const requestedBaseByProduct = {};
       for (const item of createForm.items) {
         if (!item.productId) continue;
-        const prod = products.find((p) => p.id === Number(item.productId));
+        const pid = Number(item.productId);
+        const convRate = Number(item.conversionRate || 1);
+        const qty = Number(item.quantity || 0);
+        requestedBaseByProduct[pid] = (requestedBaseByProduct[pid] || 0) + (qty * convRate);
+      }
+
+      for (const item of createForm.items) {
+        if (!item.productId) continue;
+        const pid = Number(item.productId);
+        const prod = products.find((p) => p.id === pid);
         if (!prod) continue;
         const whStock = getProductStockForWarehouse(prod, createForm.warehouse);
-        const qty = Number(item.quantity || 0);
-        if (qty > whStock) {
-          notify.error(`Sản phẩm "${prod.name}" chỉ còn ${whStock} ${prod.uom || 'ĐVT'}, không thể xuất ${qty}`);
+        const convRate = Number(item.conversionRate || 1);
+        const baseQty = Number(item.quantity || 0) * convRate;
+        const totalRequestedBase = requestedBaseByProduct[pid] || baseQty;
+
+        if (totalRequestedBase > whStock) {
+          const stockInCurrentUnit = getStockInUnit(whStock, convRate);
+          const unitLabel = item.unitName || prod.uom || 'ĐVT';
+          const stockBreakdownStr = formatStockDisplay(whStock, prod.units, prod.uom);
+          notify.error(
+            `Sản phẩm "${prod.name}" chỉ còn ${stockBreakdownStr} (tối đa ${stockInCurrentUnit} ${unitLabel}), không đủ để xuất tổng cộng ${totalRequestedBase} ${prod.uom || 'ĐVT'}`
+          );
           setSubmitting(false);
           return;
         }
@@ -788,8 +814,10 @@ export default function Exports({ initialOpenCreate = false }) {
                     const prod = products.find((p) => p.id === Number(item.productId));
                     const currentWhStock = getProductStockForWarehouse(prod, createForm.warehouse);
 
+                    const convRate = Number(item.conversionRate || 1);
+                    const currentUnitStock = getStockInUnit(currentWhStock, convRate);
                     const lineTotal = Number(item.quantity || 0) * Number(item.salePrice || 0);
-                    const isOutOfStock = currentWhStock < Number(item.quantity || 0);
+                    const isOutOfStock = currentWhStock < (Number(item.quantity || 0) * convRate);
 
                     return (
                       <tr key={idx}>
@@ -797,7 +825,6 @@ export default function Exports({ initialOpenCreate = false }) {
                           <SearchableSelect
                             options={products.map((p) => {
                               const whStock = getProductStockForWarehouse(p, createForm.warehouse);
-                              const total = Number(p.totalStock ?? 0);
                               const targetWh = warehouses.find((w) => w.id === createForm.warehouse);
                               const whLabel = targetWh?.shortName || targetWh?.name || 'kho này';
                               return {
@@ -806,7 +833,7 @@ export default function Exports({ initialOpenCreate = false }) {
                                 label: p.name,
                                 code: p.sku || p.code,
                                 uom: p.uom || 'ĐVT',
-                                subLabel: `Tồn ${whLabel}: ${formatNumber(whStock)} (Tổng: ${formatNumber(total)}) | Giá bán: ${formatVND(p.retailPrice || p.salePrice || 0)}`,
+                                subLabel: `Tồn ${whLabel}: ${formatStockDisplay(whStock, p.units, p.uom)} | Giá bán: ${formatVND(p.retailPrice || p.salePrice || 0)}`,
                               };
                             })}
                             value={item.productId}
@@ -816,10 +843,46 @@ export default function Exports({ initialOpenCreate = false }) {
                             searchFields={['label', 'code']}
                           />
                         </td>
+                        <td>
+                          <select
+                            className="form-select"
+                            value={item.unitName || prod?.uom || 'Cái'}
+                            onChange={(e) => {
+                              const uName = e.target.value;
+                              const uList = getProductUnits(prod);
+                              const targetU = uList.find((u) => u.unitName === uName) || uList[0];
+                              const conv = Number(targetU?.conversionRate || 1);
+                              const price = conv > 1
+                                ? (targetU.retailPrice || (prod?.retailPrice || 0) * conv)
+                                : (prod?.retailPrice || prod?.salePrice || 0);
+                              setCreateForm((prev) => {
+                                const nextItems = [...prev.items];
+                                nextItems[idx] = {
+                                  ...nextItems[idx],
+                                  unitName: targetU?.unitName || uName,
+                                  conversionRate: conv,
+                                  salePrice: price || nextItems[idx].salePrice
+                                };
+                                return { ...prev, items: nextItems };
+                              });
+                            }}
+                          >
+                            {getProductUnits(prod).map((u) => (
+                              <option key={u.unitName} value={u.unitName}>
+                                {u.unitName} {u.conversionRate > 1 ? `(x${u.conversionRate})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
                         <td style={{ textAlign: 'center' }}>
                           <span className={`badge badge-${isOutOfStock ? 'danger' : 'neutral'} mono`}>
-                            {formatNumber(currentWhStock)} {prod?.uom || ''}
+                            {formatNumber(currentUnitStock)} {item.unitName || prod?.uom || ''}
                           </span>
+                          {prod && prod.units && prod.units.length > 1 && (
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              {formatStockDisplay(currentWhStock, prod.units, prod.uom)}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <input
@@ -1092,15 +1155,23 @@ export default function Exports({ initialOpenCreate = false }) {
                 </div>
                 {(() => {
                   const cust = customers.find((c) => c.id === selectedExport.customerId || c.name === selectedExport.customerName);
-                  const rawDebt = cust?.debt != null ? Number(cust.debt) : (selectedExport.customerDebt != null ? Number(selectedExport.customerDebt) : null);
-                  if (rawDebt == null) return null;
-                  const isNeg = rawDebt < 0;
-                  const label = isNeg ? 'Tổng công nợ còn lại:' : 'Công nợ còn lại của quý khách:';
+                  let totalDebt = null;
+                  if (cust?.totalDebt != null) totalDebt = Number(cust.totalDebt);
+                  else if (cust?.warehouseDebts && typeof cust.warehouseDebts === 'object') {
+                    const vals = Object.values(cust.warehouseDebts);
+                    if (vals.length > 0) totalDebt = vals.reduce((sum, v) => sum + Number(v || 0), 0);
+                  }
+                  if (totalDebt == null && cust?.debt != null) totalDebt = Number(cust.debt);
+                  if (totalDebt == null && selectedExport.customerDebt != null) totalDebt = Number(selectedExport.customerDebt);
+                  if (totalDebt == null) return null;
+
+                  const isNeg = totalDebt < 0;
+                  const label = isNeg ? 'Tổng công nợ còn lại (Cửa hàng nợ khách):' : 'Tổng công nợ còn lại của quý khách:';
                   return (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 700, borderTop: '1px dashed var(--border-color)', paddingTop: '0.4rem', marginTop: '0.2rem' }}>
                       <span>{label}</span>
-                      <span className="mono" style={{ color: isNeg ? 'var(--info)' : (rawDebt > 0 ? 'var(--danger)' : 'var(--text-muted)') }}>
-                        {formatVND(rawDebt)}
+                      <span className="mono" style={{ color: isNeg ? 'var(--info)' : (totalDebt > 0 ? 'var(--danger)' : 'var(--text-muted)') }}>
+                        {formatVND(totalDebt)}
                       </span>
                     </div>
                   );

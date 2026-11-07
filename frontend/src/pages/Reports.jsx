@@ -24,7 +24,7 @@ import { reportService, warehouseService } from '../services';
 
 export default function Reports() {
   const notify = useNotification();
-  const { openExportModal } = useExport();
+  const { openExportModal, startReportExport } = useExport();
 
   const [activeReportTab, setActiveReportTab] = useState('stock'); // 'stock' | 'debts'
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day'
@@ -35,6 +35,7 @@ export default function Reports() {
 
   const [stockReport, setStockReport] = useState(null);
   const [debtReport, setDebtReport] = useState(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState('all');
 
   const loadReport = async () => {
     setLoading(true);
@@ -44,7 +45,7 @@ export default function Reports() {
         const data = await reportService.getStockReport(period);
         setStockReport(data || null);
       } else {
-        const data = await reportService.getDebtReport(period);
+        const data = await reportService.getDebtReport(period, selectedWarehouse);
         setDebtReport(data || null);
       }
     } catch (err) {
@@ -56,7 +57,7 @@ export default function Reports() {
 
   useEffect(() => {
     loadReport();
-  }, [activeReportTab, timeMode, selectedMonth, selectedDate]);
+  }, [activeReportTab, timeMode, selectedMonth, selectedDate, selectedWarehouse]);
 
   useEffect(() => {
     const handleWarehousesUpdated = () => {
@@ -78,11 +79,41 @@ export default function Reports() {
         reportService.exportStockReportCSV(stockReport, period);
         notify.success('Xuất file báo cáo tồn kho thành công!');
       } else {
-        reportService.exportDebtReportCSV(debtReport, period);
+        reportService.exportDebtReportCSV(debtReport, period, selectedWarehouse, warehouses);
         notify.success('Xuất file báo cáo công nợ thành công!');
       }
     } catch (err) {
       notify.error(err.message || 'Không thể xuất file CSV');
+    }
+  };
+
+  // Export Debt Report to Excel
+  const handleExportDebtExcel = async () => {
+    try {
+      const isAll = selectedWarehouse === 'all';
+      const warehouseList = isAll ? [] : [selectedWarehouse];
+      const isDay = timeMode === 'day';
+      const period = isDay ? selectedDate : selectedMonth;
+      const whLabel = isAll ? 'Tất cả kho' : (warehouses.find((w) => w.id === selectedWarehouse)?.name || selectedWarehouse);
+
+      const req = {
+        reportType: 'debt',
+        periodMode: isDay ? 'day' : 'month',
+        day: isDay ? selectedDate : undefined,
+        month: !isDay ? selectedMonth : undefined,
+        granularity: 'all',
+        groupBy: 'partner',
+        warehouses: warehouseList,
+        breakdownByWarehouse: isAll,
+        debtMode: 'from_beginning',
+        includeDetailSheet: true,
+      };
+
+      const title = `Báo cáo công nợ · ${whLabel} · ${period}`;
+      const fileName = `BaoCao_CongNo_${isAll ? 'Tat_Ca_Kho' : selectedWarehouse}_${period}.xlsx`;
+      await startReportExport(req, title, fileName);
+    } catch (err) {
+      notify.error(err.message || 'Không thể bắt đầu xuất file Excel');
     }
   };
 
@@ -100,14 +131,25 @@ export default function Reports() {
           </p>
         </div>
         <div className="page-actions">
-          <button
-            className="btn btn-primary"
-            onClick={() => openExportModal({ tab: 'matrix', month: selectedMonth })}
-            style={{ gap: '6px' }}
-          >
-            <FileSpreadsheet size={16} />
-            <span>Xuất Excel Ma Trận Ngày</span>
-          </button>
+          {activeReportTab === 'stock' ? (
+            <button
+              className="btn btn-primary"
+              onClick={() => openExportModal({ tab: 'matrix', month: selectedMonth })}
+              style={{ gap: '6px' }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Xuất Excel Ma Trận Ngày</span>
+            </button>
+          ) : (
+            <button
+              className="btn btn-primary"
+              onClick={handleExportDebtExcel}
+              style={{ gap: '6px' }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Xuất Excel Công Nợ</span>
+            </button>
+          )}
           <button className="btn btn-outline" onClick={handleExportCSV}>
             <Download size={16} />
             <span>Xuất CSV Nhanh</span>
@@ -139,6 +181,23 @@ export default function Reports() {
             showRange={false}
           />
         </div>
+
+        {activeReportTab === 'debts' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Kho:</span>
+            <select
+              className="form-select"
+              style={{ width: 'auto', minWidth: '160px' }}
+              value={selectedWarehouse}
+              onChange={(e) => setSelectedWarehouse(e.target.value)}
+            >
+              <option value="all">Tất cả kho (Toàn bộ)</option>
+              {warehouses.map((wh) => (
+                <option key={wh.id} value={wh.id}>{wh.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Tab Toggle Buttons */}
         <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
@@ -305,7 +364,18 @@ export default function Reports() {
                     <th style={{ textAlign: 'right' }}>Nợ Đầu Kỳ</th>
                     <th style={{ textAlign: 'right' }}>Phát Sinh Tăng</th>
                     <th style={{ textAlign: 'right' }}>Phát Sinh Giảm</th>
-                    <th style={{ textAlign: 'right' }}>Dư Nợ Cuối Kỳ</th>
+                    {selectedWarehouse === 'all' ? (
+                      <>
+                        <th style={{ textAlign: 'right' }}>Nợ Kho 1</th>
+                        <th style={{ textAlign: 'right' }}>Nợ Kho 2</th>
+                        <th style={{ textAlign: 'right' }}>Nợ Kho 3</th>
+                        <th style={{ textAlign: 'right' }}>Dư Nợ Cuối Kỳ (Tổng)</th>
+                      </>
+                    ) : (
+                      <th style={{ textAlign: 'right' }}>
+                        Dư Nợ ({warehouses.find((w) => w.id === selectedWarehouse)?.name || selectedWarehouse})
+                      </th>
+                    )}
                     <th style={{ textAlign: 'right' }}>Phải Thu</th>
                     <th style={{ textAlign: 'right' }}>Phải Trả</th>
                   </tr>
@@ -329,9 +399,20 @@ export default function Reports() {
                       <td style={{ textAlign: 'right', color: 'var(--success)' }} className="mono">
                         {formatVND(Math.abs(it.decreaseDebt))}
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800 }} className="mono">
-                        {formatVND(Math.abs(it.closingDebt))}
-                      </td>
+                      {selectedWarehouse === 'all' ? (
+                        <>
+                          <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.debtWarehouse1 || 0)}</td>
+                          <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.debtWarehouse2 || 0)}</td>
+                          <td style={{ textAlign: 'right' }} className="mono">{formatVND(it.debtWarehouse3 || 0)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 800 }} className="mono">
+                            {formatVND(Math.abs(it.closingDebt))}
+                          </td>
+                        </>
+                      ) : (
+                        <td style={{ textAlign: 'right', fontWeight: 800 }} className="mono">
+                          {formatVND(Math.abs(it.closingDebt))}
+                        </td>
+                      )}
                       <td style={{ textAlign: 'right' }} className="mono">
                         <div style={{ fontWeight: it.receivable > 0 ? 700 : 400, color: it.receivable > 0 ? (it.partnerType === 'customer' ? 'var(--danger)' : 'var(--info-text)') : 'var(--text-muted)' }}>
                           {it.receivable > 0 ? formatVND(it.receivable) : '0 ₫'}

@@ -97,6 +97,7 @@ export const cashBookService = {
     const payload = {
       customerId: formData.partnerType === 'customer' ? Number(formData.partnerId) : formData.customerId,
       supplierId: formData.partnerType === 'supplier' ? Number(formData.partnerId) : formData.supplierId,
+      warehouse: formData.warehouse || 'warehouse1',
       amount: Number(formData.amount),
       method: formData.method || 'cash',
       notes: formData.notes?.trim() || undefined,
@@ -144,6 +145,7 @@ export const cashBookService = {
     const payload = {
       supplierId: formData.partnerType === 'supplier' ? Number(formData.partnerId) : formData.supplierId,
       customerId: formData.partnerType === 'customer' ? Number(formData.partnerId) : formData.customerId,
+      warehouse: formData.warehouse || 'warehouse1',
       amount: Number(formData.amount),
       method: formData.method || 'bank_transfer',
       notes: formData.notes?.trim() || undefined,

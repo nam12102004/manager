@@ -25,6 +25,7 @@ public class PaymentsController : BaseApiController
         [FromQuery] string? date,
         [FromQuery] string? fromDate,
         [FromQuery] string? toDate,
+        [FromQuery] string? warehouse,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -32,11 +33,11 @@ public class PaymentsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _paymentService.GetPagedPaymentsAsync(supplierId, customerId, q, month, date, fromDate, toDate, page.Value, pageSize, ct);
+            var paged = await _paymentService.GetPagedPaymentsAsync(supplierId, customerId, q, month, date, fromDate, toDate, warehouse, page.Value, pageSize, ct);
             return Success(paged);
         }
 
-        var list = await _paymentService.GetPaymentsAsync(supplierId, customerId, q, month, date, fromDate, toDate, ct);
+        var list = await _paymentService.GetPaymentsAsync(supplierId, customerId, q, month, date, fromDate, toDate, warehouse, ct);
         return Success(list);
     }
 

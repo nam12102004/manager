@@ -877,11 +877,14 @@ export default function ExcelExport() {
     reportType === 'debt' ||
     (reportType === 'inout' && groupBy === 'product_partner');
 
-  const showProductAndWarehouseFilter =
+  const showProductFilter =
     reportType === 'sales' ||
     reportType === 'purchases' ||
     reportType === 'inventory' ||
     reportType === 'inout';
+
+  const showWarehouseFilter =
+    showProductFilter || reportType === 'debt';
 
   // Format summary labels
   const reportTypeMeta = REPORT_TYPES.find((r) => r.value === reportType);
@@ -1754,7 +1757,7 @@ export default function ExcelExport() {
                   )}
 
                   {/* Product MultiSelect */}
-                  {showProductAndWarehouseFilter && (
+                  {showProductFilter && (
                     <div>
                       <div className="xe-label">
                         <Package size={14} color="var(--primary)" />
@@ -1797,7 +1800,7 @@ export default function ExcelExport() {
                 </div>
 
                 {/* Warehouses */}
-                {showProductAndWarehouseFilter && warehouses.length > 0 && (
+                {showWarehouseFilter && warehouses.length > 0 && (
                   <div style={{ marginTop: 14 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
                       <div className="xe-label" style={{ margin: 0 }}>
@@ -1839,6 +1842,8 @@ export default function ExcelExport() {
                         <span>
                           {reportType === 'inventory'
                             ? 'Tách cột tồn kho theo từng kho trên 1 sheet'
+                            : reportType === 'debt'
+                            ? 'Tách cột công nợ theo từng kho trên 1 sheet'
                             : 'Tách cột doanh số theo từng kho trên 1 sheet'}
                         </span>
                       </label>
@@ -2246,12 +2251,14 @@ export default function ExcelExport() {
                       <span>{partnerCountText}</span>
                     </div>
                   )}
-                  {showProductAndWarehouseFilter && (
+                  {showProductFilter && (
+                    <div className="xe-summary-row">
+                      <span>Sản phẩm</span>
+                      <span>{productCountText}</span>
+                    </div>
+                  )}
+                  {showWarehouseFilter && (
                     <>
-                      <div className="xe-summary-row">
-                        <span>Sản phẩm</span>
-                        <span>{productCountText}</span>
-                      </div>
                       <div className="xe-summary-row">
                         <span>Kho hàng</span>
                         <span>{warehouseCountText}</span>

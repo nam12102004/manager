@@ -16,6 +16,7 @@ public class Customer
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    public ICollection<CustomerWarehouseDebt> WarehouseDebts { get; set; } = new List<CustomerWarehouseDebt>();
     public ICollection<CustomerDebtHistory> DebtHistories { get; set; } = new List<CustomerDebtHistory>();
     public ICollection<ExportVoucher> ExportVouchers { get; set; } = new List<ExportVoucher>();
     public ICollection<Receipt> Receipts { get; set; } = new List<Receipt>();

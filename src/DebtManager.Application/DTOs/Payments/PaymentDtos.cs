@@ -3,6 +3,7 @@ namespace DebtManager.Application.DTOs.Payments;
 public class CreatePaymentDto
 {
     public DateTime? Date { get; set; }
+    public string? Warehouse { get; set; } = "warehouse1";
     public int? SupplierId { get; set; }
     public int? CustomerId { get; set; }
     public decimal Amount { get; set; }
@@ -17,6 +18,7 @@ public class PaymentDto
     public long Id { get; set; }
     public string PaymentNumber { get; set; } = string.Empty;
     public DateTime Date { get; set; }
+    public string? Warehouse { get; set; } = "warehouse1";
     public int? SupplierId { get; set; }
     public string? SupplierName { get; set; }
     public string? SupplierCode { get; set; }

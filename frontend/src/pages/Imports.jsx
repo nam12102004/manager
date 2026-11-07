@@ -28,6 +28,7 @@ import { generateImportHtml, printInNewTab } from '../utils/printVoucher';
 import EntityTransactionLedger from '../components/common/EntityTransactionLedger';
 import useDragScroll from '../hooks/useDragScroll';
 import TableScrollContainer from '../components/common/TableScrollContainer';
+import { getProductUnits, getPrimaryDisplayUnit, formatStockDisplay, getStockInUnit } from '../utils/uomHelper';
 
 export default function Imports({ initialOpenCreate = false }) {
   const tableContainerRef = useDragScroll();
@@ -227,7 +228,12 @@ export default function Imports({ initialOpenCreate = false }) {
         const prod = products.find((p) => p.id === Number(value));
         item.productId = Number(value);
         if (prod) {
-          item.unitPrice = prod.unitCost;
+          const units = getProductUnits(prod);
+          const defUnit = getPrimaryDisplayUnit(prod) || units.find((u) => u.isBaseUnit) || units[0];
+          const conv = Number(defUnit?.conversionRate || 1);
+          item.unitName = defUnit?.unitName || prod.uom || 'Cái';
+          item.conversionRate = conv;
+          item.unitPrice = conv > 1 ? (prod.unitCost || 0) * conv : (prod.unitCost || 0);
         }
       } else {
         item[field] = Number(value);
@@ -263,8 +269,10 @@ export default function Imports({ initialOpenCreate = false }) {
         notes: createForm.notes,
         items: createForm.items.map((it) => ({
           productId: it.productId,
-          quantity: it.quantity,
-          unitCost: it.unitPrice,
+          quantity: Number(it.quantity || 0),
+          unitCost: Number(it.unitPrice || 0),
+          unitName: it.unitName,
+          conversionRate: Number(it.conversionRate || 1),
         })),
       });
 
@@ -645,10 +653,20 @@ export default function Imports({ initialOpenCreate = false }) {
                 value={createForm.supplierId}
                 onChange={(val) => {
                   if (val !== createForm.supplierId) {
+                    const suppProds = products.filter((p) => String(p.supplierId) === String(val));
+                    const firstP = suppProds.length > 0 ? suppProds[0] : null;
+                    const units = firstP ? getProductUnits(firstP) : [];
+                    const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
                     setCreateForm({ 
                       ...createForm, 
                       supplierId: val,
-                      items: [{ productId: '', quantity: 1, unitPrice: 0 }] 
+                      items: [{
+                        productId: firstP ? firstP.id : '',
+                        quantity: 1,
+                        unitName: defUnit?.unitName || firstP?.uom || 'Cái',
+                        conversionRate: defUnit?.conversionRate || 1,
+                        unitPrice: (defUnit && defUnit.conversionRate > 1 ? (firstP?.unitCost || 0) * defUnit.conversionRate : (firstP?.unitCost || 0)) || 0
+                      }] 
                     });
                   }
                 }}
@@ -702,10 +720,11 @@ export default function Imports({ initialOpenCreate = false }) {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '45%' }}>Sản Phẩm</th>
-                    <th style={{ width: '20%', textAlign: 'right' }}>Số Lượng Nhập</th>
-                    <th style={{ width: '20%', textAlign: 'right' }}>Đơn Giá Nhập</th>
-                    <th style={{ width: '15%', textAlign: 'right' }}>Thành Tiền</th>
+                    <th style={{ width: '38%' }}>Sản Phẩm</th>
+                    <th style={{ width: '15%' }}>ĐVT Nhập</th>
+                    <th style={{ width: '15%', textAlign: 'right' }}>Số Lượng Nhập</th>
+                    <th style={{ width: '17%', textAlign: 'right' }}>Đơn Giá Nhập</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>Thành Tiền</th>
                     <th style={{ width: '5%', textAlign: 'center' }}>Xóa</th>
                   </tr>
                 </thead>
@@ -732,7 +751,7 @@ export default function Imports({ initialOpenCreate = false }) {
                                   label: p.name,
                                   code: p.sku || p.code,
                                   uom: p.uom || 'ĐVT',
-                                  subLabel: `ĐVT: ${p.uom || 'ĐVT'} | Tồn ${whLabel}: ${formatNumber(whStock)} (Tổng: ${formatNumber(total)}) | Giá nhập: ${formatVND(p.unitCost || 0)}`,
+                                  subLabel: `ĐVT: ${p.uom || 'ĐVT'} | Tồn ${whLabel}: ${formatStockDisplay(whStock, p.units, p.uom)} | Giá nhập: ${formatVND(p.unitCost || 0)}`,
                                 };
                               })}
                             value={item.productId}
@@ -741,6 +760,35 @@ export default function Imports({ initialOpenCreate = false }) {
                             searchPlaceholder="Tìm theo mã SKU, tên SP..."
                             searchFields={['label', 'code']}
                           />
+                        </td>
+                        <td>
+                          <select
+                            className="form-select"
+                            value={item.unitName || prod?.uom || 'Cái'}
+                            onChange={(e) => {
+                              const uName = e.target.value;
+                              const uList = getProductUnits(prod);
+                              const targetU = uList.find((u) => u.unitName === uName) || uList[0];
+                              const conv = Number(targetU?.conversionRate || 1);
+                              const cost = Number(prod?.unitCost || 0) * conv;
+                              setCreateForm((prev) => {
+                                const nextItems = [...prev.items];
+                                nextItems[idx] = {
+                                  ...nextItems[idx],
+                                  unitName: targetU?.unitName || uName,
+                                  conversionRate: conv,
+                                  unitPrice: cost || nextItems[idx].unitPrice
+                                };
+                                return { ...prev, items: nextItems };
+                              });
+                            }}
+                          >
+                            {getProductUnits(prod).map((u) => (
+                              <option key={u.unitName} value={u.unitName}>
+                                {u.unitName} {u.conversionRate > 1 ? `(x${u.conversionRate})` : ''}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td>
                           <input
@@ -964,10 +1012,6 @@ export default function Imports({ initialOpenCreate = false }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: 'var(--success)' }}>
                   <span>Đã trả NCC:</span>
                   <span className="mono">{formatVND(selectedImport.paidAmount)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 700, color: selectedImport.unpaidAmount > 0 ? 'var(--warning-text)' : 'var(--text-muted)' }}>
-                  <span>Còn nợ lại NCC:</span>
-                  <span className="mono">{formatVND(selectedImport.unpaidAmount)}</span>
                 </div>
               </div>
             </div>

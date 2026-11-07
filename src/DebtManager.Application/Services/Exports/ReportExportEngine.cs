@@ -168,7 +168,7 @@ public class ReportExportEngine
         }
         else if (request.BreakdownByWarehouse)
         {
-            if (rType == "inventory")
+            if (rType == "inventory" || rType == "debt")
             {
                 activeWarehouses = new List<string> { "warehouse1", "warehouse2", "warehouse3" };
             }
@@ -496,12 +496,50 @@ public class ReportExportEngine
         }
         else if (rType == "debt")
         {
-            result.FixedColumns = new List<string> { "STT", "Loại", "Mã", "Tên đối tác" };
-            result.BucketMetrics.Add(new BucketMetricDto { Key = "dk", Label = "ĐK", Suffix = " (ĐK)" });
-            result.BucketMetrics.Add(new BucketMetricDto { Key = "ck", Label = "CK", Suffix = " (CK)" });
+            if (isWhBreakdown)
+            {
+                result.FixedColumns = new List<string> { "STT", "Loại", "Mã", "Tên đối tác" };
+                if (result.Buckets.Count <= 1)
+                {
+                    foreach (var w in whs)
+                    {
+                        var label = FormatWarehouseLabel(w);
+                        result.BucketMetrics.Add(new BucketMetricDto { Key = $"dk_{w}", Label = $"{label} (ĐK)", Suffix = $" ({label} ĐK)" });
+                        result.BucketMetrics.Add(new BucketMetricDto { Key = $"ck_{w}", Label = $"{label} (CK)", Suffix = $" ({label} CK)" });
+                    }
+                    result.TotalColumns.Add("Tổng ĐK");
+                    result.TotalColumns.Add("Tổng CK");
+                }
+                else
+                {
+                    foreach (var w in whs)
+                    {
+                        var label = FormatWarehouseLabel(w);
+                        result.BucketMetrics.Add(new BucketMetricDto { Key = $"dk_{w}", Label = $"{label} (ĐK)", Suffix = $" - {label} (ĐK)" });
+                        result.BucketMetrics.Add(new BucketMetricDto { Key = $"ck_{w}", Label = $"{label} (CK)", Suffix = $" - {label} (CK)" });
+                    }
+                    result.BucketMetrics.Add(new BucketMetricDto { Key = "dk_tot", Label = "Tổng ĐK", Suffix = " (Tổng ĐK)" });
+                    result.BucketMetrics.Add(new BucketMetricDto { Key = "ck_tot", Label = "Tổng CK", Suffix = " (Tổng CK)" });
 
-            result.TotalColumns.Add("Tổng ĐK");
-            result.TotalColumns.Add("Tổng CK");
+                    foreach (var w in whs)
+                    {
+                        var label = FormatWarehouseLabel(w);
+                        result.TotalColumns.Add($"Tổng {label} (ĐK)");
+                        result.TotalColumns.Add($"Tổng {label} (CK)");
+                    }
+                    result.TotalColumns.Add("Tổng ĐK Toàn Kỳ");
+                    result.TotalColumns.Add("Tổng CK Toàn Kỳ");
+                }
+            }
+            else
+            {
+                result.FixedColumns = new List<string> { "STT", "Loại", "Mã", "Tên đối tác", "Kho" };
+                result.BucketMetrics.Add(new BucketMetricDto { Key = "dk", Label = "ĐK", Suffix = " (ĐK)" });
+                result.BucketMetrics.Add(new BucketMetricDto { Key = "ck", Label = "CK", Suffix = " (CK)" });
+
+                result.TotalColumns.Add("Tổng ĐK");
+                result.TotalColumns.Add("Tổng CK");
+            }
         }
         else if (rType == "inventory")
         {
@@ -636,7 +674,7 @@ public class ReportExportEngine
             ProductId = i.ProductId,
             ProductSku = i.Product != null ? i.Product.Sku : $"SP{i.ProductId:D3}",
             ProductName = i.Product != null ? i.Product.Name : $"Sản phẩm #{i.ProductId}",
-            Unit = i.Product != null ? (i.Product.Uom ?? "") : "",
+            Unit = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product != null ? (i.Product.Uom ?? "") : ""),
             Quantity = (decimal)i.Quantity,
             Amount = i.LineTotal,
             Price = i.SalePrice
@@ -725,7 +763,7 @@ public class ReportExportEngine
             ProductId = i.ProductId,
             ProductSku = i.Product != null ? i.Product.Sku : (i.Sku ?? $"SP{i.ProductId:D3}"),
             ProductName = i.Product != null ? i.Product.Name : (i.ProductName ?? $"Sản phẩm #{i.ProductId}"),
-            Unit = i.Product != null ? (i.Product.Uom ?? "") : "",
+            Unit = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product != null ? (i.Product.Uom ?? "") : ""),
             Quantity = (decimal)i.Quantity,
             Amount = i.LineTotal,
             Price = i.UnitPrice
@@ -807,7 +845,7 @@ public class ReportExportEngine
             ProductId = i.ProductId,
             ProductSku = i.Product != null ? i.Product.Sku : (i.Sku ?? $"SP{i.ProductId:D3}"),
             ProductName = i.Product != null ? i.Product.Name : (i.ProductName ?? $"Sản phẩm #{i.ProductId}"),
-            Unit = i.Product != null ? (i.Product.Uom ?? "") : "",
+            Unit = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product != null ? (i.Product.Uom ?? "") : ""),
             Quantity = (decimal)i.Quantity,
             UnitPrice = i.UnitPrice,
             Amount = i.LineTotal
@@ -830,7 +868,7 @@ public class ReportExportEngine
             ProductId = i.ProductId,
             ProductSku = i.Product != null ? i.Product.Sku : $"SP{i.ProductId:D3}",
             ProductName = i.Product != null ? i.Product.Name : $"Sản phẩm #{i.ProductId}",
-            Unit = i.Product != null ? (i.Product.Uom ?? "") : "",
+            Unit = !string.IsNullOrWhiteSpace(i.UnitName) ? i.UnitName : (i.Product != null ? (i.Product.Uom ?? "") : ""),
             Quantity = (decimal)i.Quantity,
             UnitPrice = i.SalePrice,
             Amount = i.LineTotal
@@ -1259,22 +1297,72 @@ public class ReportExportEngine
         // Debt calculation mode: "from_beginning" (mặc định - công nợ từ đầu) hoặc "in_period" (chỉ tính phát sinh trong khoảng thời gian lọc)
         var isFromBeginning = !string.Equals(request.DebtMode, "in_period", StringComparison.OrdinalIgnoreCase);
 
+        var activeWarehouses = (request.Warehouses ?? new List<string>())
+            .Where(w => !string.IsNullOrWhiteSpace(w) && !w.Equals("all", StringComparison.OrdinalIgnoreCase))
+            .Select(w => w.Trim().ToLower())
+            .Distinct()
+            .ToList();
+
+        var isWhBreakdown = request.BreakdownByWarehouse;
+        List<string> whList = new();
+        if (isWhBreakdown)
+        {
+            if (activeWarehouses.Count > 1)
+            {
+                whList = activeWarehouses.OrderBy(w => w).ToList();
+            }
+            else
+            {
+                whList = new List<string> { "warehouse1", "warehouse2", "warehouse3" };
+            }
+        }
+        else if (activeWarehouses.Count > 0)
+        {
+            whList = activeWarehouses;
+        }
+
+        bool isWhFiltered = !isWhBreakdown && activeWarehouses.Count > 0;
+
+        var whTotalDauKy = whList.ToDictionary(w => w, _ => 0m);
+        var whTotalCuoiKy = whList.ToDictionary(w => w, _ => 0m);
+        var whTotalDauKyByBucket = whList.ToDictionary(w => w, _ => new decimal[buckets.Count]);
+        var whTotalCuoiKyByBucket = whList.ToDictionary(w => w, _ => new decimal[buckets.Count]);
+
         // Process Customers if in scope
         if (request.PartnerScope != "supplier")
         {
-            var custQuery = uow.Customers.Query();
+            var custQuery = uow.Customers.Query().Include(c => c.WarehouseDebts).AsQueryable();
             if (request.CustomerIds.Count > 0)
                 custQuery = custQuery.Where(c => request.CustomerIds.Contains(c.Id));
 
-            var customers = await custQuery.Select(c => new { c.Id, c.Code, c.Name, c.Debt }).ToListAsync(ct);
+            var customers = await custQuery.Select(c => new
+            {
+                c.Id,
+                c.Code,
+                c.Name,
+                c.Debt,
+                WarehouseDebts = c.WarehouseDebts.ToList()
+            }).ToListAsync(ct);
             var customerIds = customers.Select(c => c.Id).ToList();
 
-            var allCustHistoriesAfterStart = await uow.CustomerDebtHistories.Query()
-                .Where(h => customerIds.Contains(h.CustomerId) && h.CreatedAt >= start)
+            var custHistQuery = uow.CustomerDebtHistories.Query()
+                .Where(h => customerIds.Contains(h.CustomerId) && h.CreatedAt >= start);
+
+            if (isWhFiltered)
+            {
+                custHistQuery = custHistQuery.Where(h => activeWarehouses.Contains(h.Warehouse.ToLower()));
+            }
+            else if (isWhBreakdown && whList.Count > 0)
+            {
+                custHistQuery = custHistQuery.Where(h => whList.Contains(h.Warehouse.ToLower()));
+            }
+
+            var allCustHistoriesAfterStart = await custHistQuery
                 .OrderBy(h => h.CreatedAt)
                 .Select(h => new
                 {
                     h.CustomerId,
+                    h.Warehouse,
                     h.CreatedAt,
                     h.Delta,
                     h.SourceType,
@@ -1293,73 +1381,192 @@ public class ReportExportEngine
             foreach (var c in customers)
             {
                 var historiesAfterStart = custHistoriesByCustomer.TryGetValue(c.Id, out var chList) ? chList : new();
-
-                // Công nợ đầu kỳ:
-                // Nếu "from_beginning" (mặc định): Công nợ đầu kỳ = c.Debt - tổng phát sinh từ mốc start trở đi
-                // Nếu "in_period": 0
-                decimal dauKy = isFromBeginning ? (c.Debt - historiesAfterStart.Sum(h => h.Delta)) : 0m;
-
                 var inPeriodHistories = historiesAfterStart.Where(h => h.CreatedAt < end).ToList();
 
-                decimal rowTang = 0;
-                decimal rowGiam = 0;
-                decimal runningBal = dauKy;
-
-                var bucketData = new Dictionary<string, object>();
-                var bucketDk = new decimal[buckets.Count];
-                var bucketCk = new decimal[buckets.Count];
-
-                for (int b = 0; b < buckets.Count; b++)
+                if (isWhBreakdown)
                 {
-                    var bucket = buckets[b];
-                    var inBucket = inPeriodHistories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive);
+                    var whDauKy = new Dictionary<string, decimal>();
+                    var whCuoiKy = new Dictionary<string, decimal>();
+                    var whBucketDk = new Dictionary<string, decimal[]>();
+                    var whBucketCk = new Dictionary<string, decimal[]>();
 
-                    decimal bTang = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
-                    decimal bGiam = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
+                    decimal totDauKy = 0m;
+                    decimal totCuoiKy = 0m;
+                    var totBucketDk = new decimal[buckets.Count];
+                    var totBucketCk = new decimal[buckets.Count];
 
-                    rowTang += bTang;
-                    rowGiam += bGiam;
+                    foreach (var w in whList)
+                    {
+                        var wKey = w.ToLower();
+                        var wHistoriesAfterStart = historiesAfterStart.Where(h => (h.Warehouse ?? "").ToLower() == wKey).ToList();
+                        var wInPeriod = inPeriodHistories.Where(h => (h.Warehouse ?? "").ToLower() == wKey).ToList();
 
-                    decimal bDk = runningBal;
-                    decimal bCk = bDk + bTang - bGiam;
-                    runningBal = bCk;
+                        decimal wCurrentDebt = c.WarehouseDebts?.FirstOrDefault(wd => wd.Warehouse.ToLower() == wKey)?.Debt ?? 0m;
+                        decimal wDk = isFromBeginning ? (wCurrentDebt - wHistoriesAfterStart.Sum(h => h.Delta)) : 0m;
 
-                    bucketDk[b] = bDk;
-                    bucketCk[b] = bCk;
+                        whDauKy[w] = wDk;
+                        totDauKy += wDk;
+                        whTotalDauKy[w] += wDk;
 
-                    bucketData[$"{bucket.Header} (ĐK)"] = bDk;
-                    bucketData[$"{bucket.Header} (CK)"] = bCk;
+                        decimal runningBal = wDk;
+                        var bDkArr = new decimal[buckets.Count];
+                        var bCkArr = new decimal[buckets.Count];
+
+                        for (int b = 0; b < buckets.Count; b++)
+                        {
+                            var bucket = buckets[b];
+                            var inBucket = wInPeriod.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive).ToList();
+
+                            decimal bTang = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
+                            decimal bGiam = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
+
+                            bDkArr[b] = runningBal;
+                            bCkArr[b] = runningBal + bTang - bGiam;
+                            runningBal = bCkArr[b];
+
+                            totBucketDk[b] += bDkArr[b];
+                            totBucketCk[b] += bCkArr[b];
+                            whTotalDauKyByBucket[w][b] += bDkArr[b];
+                            whTotalCuoiKyByBucket[w][b] += bCkArr[b];
+                        }
+
+                        whBucketDk[w] = bDkArr;
+                        whBucketCk[w] = bCkArr;
+
+                        decimal wCk = wDk + wInPeriod.Sum(h => h.Delta);
+                        whCuoiKy[w] = wCk;
+                        totCuoiKy += wCk;
+                        whTotalCuoiKy[w] += wCk;
+                    }
+
+                    if (!request.IncludeZeroRows && totDauKy == 0 && totCuoiKy == 0 && inPeriodHistories.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        totalDauKyByBucket[b] += totBucketDk[b];
+                        totalCuoiKyByBucket[b] += totBucketCk[b];
+                    }
+                    totalDauKy += totDauKy;
+                    totalCuoiKy += totCuoiKy;
+
+                    var row = new Dictionary<string, object>
+                    {
+                        ["STT"] = stt++,
+                        ["Loại"] = "Khách hàng",
+                        ["Mã"] = c.Code,
+                        ["Tên đối tác"] = c.Name
+                    };
+
+                    if (buckets.Count <= 1)
+                    {
+                        foreach (var w in whList)
+                        {
+                            var label = FormatWarehouseLabel(w);
+                            row[$"{label} (ĐK)"] = whDauKy[w];
+                            row[$"{label} (CK)"] = whCuoiKy[w];
+                        }
+                        row["Tổng ĐK"] = totDauKy;
+                        row["Tổng CK"] = totCuoiKy;
+                    }
+                    else
+                    {
+                        for (int b = 0; b < buckets.Count; b++)
+                        {
+                            var bucket = buckets[b];
+                            foreach (var w in whList)
+                            {
+                                var label = FormatWarehouseLabel(w);
+                                row[$"{bucket.Header} - {label} (ĐK)"] = whBucketDk[w][b];
+                                row[$"{bucket.Header} - {label} (CK)"] = whBucketCk[w][b];
+                            }
+                            row[$"{bucket.Header} (Tổng ĐK)"] = totBucketDk[b];
+                            row[$"{bucket.Header} (Tổng CK)"] = totBucketCk[b];
+                        }
+
+                        foreach (var w in whList)
+                        {
+                            var label = FormatWarehouseLabel(w);
+                            row[$"Tổng {label} (ĐK)"] = whDauKy[w];
+                            row[$"Tổng {label} (CK)"] = whCuoiKy[w];
+                        }
+                        row["Tổng ĐK Toàn Kỳ"] = totDauKy;
+                        row["Tổng CK Toàn Kỳ"] = totCuoiKy;
+                    }
+
+                    rows.Add(row);
                 }
-
-                decimal cuoiKy = dauKy + rowTang - rowGiam;
-
-                if (!request.IncludeZeroRows && dauKy == 0 && rowTang == 0 && rowGiam == 0 && cuoiKy == 0)
+                else
                 {
-                    continue;
+                    decimal currentDebt = isWhFiltered
+                        ? (c.WarehouseDebts?.Where(w => activeWarehouses.Contains(w.Warehouse.ToLower())).Sum(w => w.Debt) ?? 0m)
+                        : c.Debt;
+
+                    decimal dauKy = isFromBeginning ? (currentDebt - historiesAfterStart.Sum(h => h.Delta)) : 0m;
+
+                    decimal rowTang = 0;
+                    decimal rowGiam = 0;
+                    decimal runningBal = dauKy;
+
+                    var bucketData = new Dictionary<string, object>();
+                    var bucketDk = new decimal[buckets.Count];
+                    var bucketCk = new decimal[buckets.Count];
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        var bucket = buckets[b];
+                        var inBucket = inPeriodHistories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive).ToList();
+
+                        decimal bTang = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
+                        decimal bGiam = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
+
+                        rowTang += bTang;
+                        rowGiam += bGiam;
+
+                        decimal bDk = runningBal;
+                        decimal bCk = bDk + bTang - bGiam;
+                        runningBal = bCk;
+
+                        bucketDk[b] = bDk;
+                        bucketCk[b] = bCk;
+
+                        bucketData[$"{bucket.Header} (ĐK)"] = bDk;
+                        bucketData[$"{bucket.Header} (CK)"] = bCk;
+                    }
+
+                    decimal cuoiKy = dauKy + inPeriodHistories.Sum(h => h.Delta);
+
+                    if (!request.IncludeZeroRows && dauKy == 0 && rowTang == 0 && rowGiam == 0 && cuoiKy == 0)
+                    {
+                        continue;
+                    }
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        totalDauKyByBucket[b] += bucketDk[b];
+                        totalCuoiKyByBucket[b] += bucketCk[b];
+                    }
+
+                    var row = new Dictionary<string, object>
+                    {
+                        ["STT"] = stt++,
+                        ["Loại"] = "Khách hàng",
+                        ["Mã"] = c.Code,
+                        ["Tên đối tác"] = c.Name,
+                        ["Kho"] = isWhFiltered ? FormatWarehouseLabel(activeWarehouses[0]) : "Tất cả kho"
+                    };
+
+                    foreach (var kvp in bucketData) row[kvp.Key] = kvp.Value;
+
+                    row["Tổng ĐK"] = dauKy;
+                    row["Tổng CK"] = cuoiKy;
+
+                    totalDauKy += dauKy;
+                    totalCuoiKy += cuoiKy;
+                    rows.Add(row);
                 }
-
-                for (int b = 0; b < buckets.Count; b++)
-                {
-                    totalDauKyByBucket[b] += bucketDk[b];
-                    totalCuoiKyByBucket[b] += bucketCk[b];
-                }
-
-                var row = new Dictionary<string, object>
-                {
-                    ["STT"] = stt++,
-                    ["Loại"] = "Khách hàng",
-                    ["Mã"] = c.Code,
-                    ["Tên đối tác"] = c.Name
-                };
-
-                foreach (var kvp in bucketData) row[kvp.Key] = kvp.Value;
-
-                row["Tổng ĐK"] = dauKy;
-                row["Tổng CK"] = cuoiKy;
-
-                totalDauKy += dauKy;
-                totalCuoiKy += cuoiKy;
-                rows.Add(row);
 
                 // Detail sheet items
                 if (request.IncludeDetailSheet)
@@ -1375,6 +1582,7 @@ public class ReportExportEngine
                             ["_rawDate"] = h.CreatedAt,
                             ["STT"] = 0,
                             ["Thời gian"] = h.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                            ["Kho"] = FormatWarehouseLabel(h.Warehouse ?? ""),
                             ["Loại đối tác"] = "Khách hàng",
                             ["Mã đối tác"] = c.Code,
                             ["Tên đối tác"] = c.Name,
@@ -1393,19 +1601,38 @@ public class ReportExportEngine
         // Process Suppliers if in scope
         if (request.PartnerScope != "customer")
         {
-            var suppQuery = uow.Suppliers.Query();
+            var suppQuery = uow.Suppliers.Query().Include(s => s.WarehouseDebts).AsQueryable();
             if (request.SupplierIds.Count > 0)
                 suppQuery = suppQuery.Where(s => request.SupplierIds.Contains(s.Id));
 
-            var suppliers = await suppQuery.Select(s => new { s.Id, s.Code, s.Name, s.Debt }).ToListAsync(ct);
+            var suppliers = await suppQuery.Select(s => new
+            {
+                s.Id,
+                s.Code,
+                s.Name,
+                s.Debt,
+                WarehouseDebts = s.WarehouseDebts.ToList()
+            }).ToListAsync(ct);
             var supplierIds = suppliers.Select(s => s.Id).ToList();
 
-            var allSuppHistoriesAfterStart = await uow.SupplierDebtHistories.Query()
-                .Where(h => supplierIds.Contains(h.SupplierId) && h.CreatedAt >= start)
+            var suppHistQuery = uow.SupplierDebtHistories.Query()
+                .Where(h => supplierIds.Contains(h.SupplierId) && h.CreatedAt >= start);
+
+            if (isWhFiltered)
+            {
+                suppHistQuery = suppHistQuery.Where(h => activeWarehouses.Contains(h.Warehouse.ToLower()));
+            }
+            else if (isWhBreakdown && whList.Count > 0)
+            {
+                suppHistQuery = suppHistQuery.Where(h => whList.Contains(h.Warehouse.ToLower()));
+            }
+
+            var allSuppHistoriesAfterStart = await suppHistQuery
                 .OrderBy(h => h.CreatedAt)
                 .Select(h => new
                 {
                     h.SupplierId,
+                    h.Warehouse,
                     h.CreatedAt,
                     h.Delta,
                     h.SourceType,
@@ -1424,73 +1651,196 @@ public class ReportExportEngine
             foreach (var s in suppliers)
             {
                 var historiesAfterStart = suppHistoriesBySupplier.TryGetValue(s.Id, out var shList) ? shList : new();
-
-                // Công nợ đầu kỳ:
-                // Nếu "from_beginning" (mặc định): Công nợ đầu kỳ = s.Debt - tổng phát sinh từ mốc start trở đi
-                // Nếu "in_period": 0
-                decimal dauKy = isFromBeginning ? (s.Debt - historiesAfterStart.Sum(h => h.Delta)) : 0m;
-
                 var inPeriodHistories = historiesAfterStart.Where(h => h.CreatedAt < end).ToList();
 
-                decimal rowTang = 0;
-                decimal rowGiam = 0;
-                decimal runningBal = dauKy;
-
-                var bucketData = new Dictionary<string, object>();
-                var bucketDk = new decimal[buckets.Count];
-                var bucketCk = new decimal[buckets.Count];
-
-                for (int b = 0; b < buckets.Count; b++)
+                if (isWhBreakdown)
                 {
-                    var bucket = buckets[b];
-                    var inBucket = inPeriodHistories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive);
+                    var whDauKy = new Dictionary<string, decimal>();
+                    var whCuoiKy = new Dictionary<string, decimal>();
+                    var whBucketDk = new Dictionary<string, decimal[]>();
+                    var whBucketCk = new Dictionary<string, decimal[]>();
 
-                    decimal bTang = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
-                    decimal bGiam = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
+                    decimal totDauKy = 0m;
+                    decimal totCuoiKy = 0m;
+                    var totBucketDk = new decimal[buckets.Count];
+                    var totBucketCk = new decimal[buckets.Count];
 
-                    rowTang += bTang;
-                    rowGiam += bGiam;
+                    foreach (var w in whList)
+                    {
+                        var wKey = w.ToLower();
+                        var wHistoriesAfterStart = historiesAfterStart.Where(h => (h.Warehouse ?? "").ToLower() == wKey).ToList();
+                        var wInPeriod = inPeriodHistories.Where(h => (h.Warehouse ?? "").ToLower() == wKey).ToList();
 
-                    decimal bDk = runningBal;
-                    decimal bCk = bDk + bTang - bGiam;
-                    runningBal = bCk;
+                        decimal wCurrentDebt = s.WarehouseDebts?.FirstOrDefault(wd => wd.Warehouse.ToLower() == wKey)?.Debt ?? 0m;
+                        decimal wDk = isFromBeginning ? (wCurrentDebt - wHistoriesAfterStart.Sum(h => h.Delta)) : 0m;
 
-                    bucketDk[b] = bDk;
-                    bucketCk[b] = bCk;
+                        whDauKy[w] = wDk;
+                        totDauKy += wDk;
+                        whTotalDauKy[w] += wDk;
 
-                    bucketData[$"{bucket.Header} (ĐK)"] = bDk;
-                    bucketData[$"{bucket.Header} (CK)"] = bCk;
+                        decimal runningBal = wDk;
+                        var bDkArr = new decimal[buckets.Count];
+                        var bCkArr = new decimal[buckets.Count];
+
+                        for (int b = 0; b < buckets.Count; b++)
+                        {
+                            var bucket = buckets[b];
+                            var inBucket = wInPeriod.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive).ToList();
+
+                            // NCC: Delta < 0 là nhập hàng chưa trả tiền (Phát sinh TĂNG nợ phải trả)
+                            decimal bTang = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
+                            // NCC: Delta > 0 là phiếu chi trả tiền (Phát sinh GIẢM nợ phải trả)
+                            decimal bGiam = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
+
+                            bDkArr[b] = runningBal;
+                            bCkArr[b] = runningBal + inBucket.Sum(h => h.Delta);
+                            runningBal = bCkArr[b];
+
+                            totBucketDk[b] += bDkArr[b];
+                            totBucketCk[b] += bCkArr[b];
+                            whTotalDauKyByBucket[w][b] += bDkArr[b];
+                            whTotalCuoiKyByBucket[w][b] += bCkArr[b];
+                        }
+
+                        whBucketDk[w] = bDkArr;
+                        whBucketCk[w] = bCkArr;
+
+                        decimal wCk = wDk + wInPeriod.Sum(h => h.Delta);
+                        whCuoiKy[w] = wCk;
+                        totCuoiKy += wCk;
+                        whTotalCuoiKy[w] += wCk;
+                    }
+
+                    if (!request.IncludeZeroRows && totDauKy == 0 && totCuoiKy == 0 && inPeriodHistories.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        totalDauKyByBucket[b] += totBucketDk[b];
+                        totalCuoiKyByBucket[b] += totBucketCk[b];
+                    }
+                    totalDauKy += totDauKy;
+                    totalCuoiKy += totCuoiKy;
+
+                    var row = new Dictionary<string, object>
+                    {
+                        ["STT"] = stt++,
+                        ["Loại"] = "Nhà cung cấp",
+                        ["Mã"] = s.Code,
+                        ["Tên đối tác"] = s.Name
+                    };
+
+                    if (buckets.Count <= 1)
+                    {
+                        foreach (var w in whList)
+                        {
+                            var label = FormatWarehouseLabel(w);
+                            row[$"{label} (ĐK)"] = whDauKy[w];
+                            row[$"{label} (CK)"] = whCuoiKy[w];
+                        }
+                        row["Tổng ĐK"] = totDauKy;
+                        row["Tổng CK"] = totCuoiKy;
+                    }
+                    else
+                    {
+                        for (int b = 0; b < buckets.Count; b++)
+                        {
+                            var bucket = buckets[b];
+                            foreach (var w in whList)
+                            {
+                                var label = FormatWarehouseLabel(w);
+                                row[$"{bucket.Header} - {label} (ĐK)"] = whBucketDk[w][b];
+                                row[$"{bucket.Header} - {label} (CK)"] = whBucketCk[w][b];
+                            }
+                            row[$"{bucket.Header} (Tổng ĐK)"] = totBucketDk[b];
+                            row[$"{bucket.Header} (Tổng CK)"] = totBucketCk[b];
+                        }
+
+                        foreach (var w in whList)
+                        {
+                            var label = FormatWarehouseLabel(w);
+                            row[$"Tổng {label} (ĐK)"] = whDauKy[w];
+                            row[$"Tổng {label} (CK)"] = whCuoiKy[w];
+                        }
+                        row["Tổng ĐK Toàn Kỳ"] = totDauKy;
+                        row["Tổng CK Toàn Kỳ"] = totCuoiKy;
+                    }
+
+                    rows.Add(row);
                 }
-
-                decimal cuoiKy = dauKy + rowTang - rowGiam;
-
-                if (!request.IncludeZeroRows && dauKy == 0 && rowTang == 0 && rowGiam == 0 && cuoiKy == 0)
+                else
                 {
-                    continue;
+                    decimal currentDebt = isWhFiltered
+                        ? (s.WarehouseDebts?.Where(w => activeWarehouses.Contains(w.Warehouse.ToLower())).Sum(w => w.Debt) ?? 0m)
+                        : s.Debt;
+
+                    decimal dauKy = isFromBeginning ? (currentDebt - historiesAfterStart.Sum(h => h.Delta)) : 0m;
+
+                    decimal rowTang = 0;
+                    decimal rowGiam = 0;
+                    decimal runningBal = dauKy;
+
+                    var bucketData = new Dictionary<string, object>();
+                    var bucketDk = new decimal[buckets.Count];
+                    var bucketCk = new decimal[buckets.Count];
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        var bucket = buckets[b];
+                        var inBucket = inPeriodHistories.Where(h => h.CreatedAt >= bucket.Start && h.CreatedAt < bucket.EndExclusive).ToList();
+
+                        // NCC: Delta < 0 là nhập hàng chưa trả tiền (Phát sinh TĂNG nợ phải trả)
+                        decimal bTang = inBucket.Where(h => h.Delta < 0).Sum(h => Math.Abs(h.Delta));
+                        // NCC: Delta > 0 là phiếu chi trả tiền (Phát sinh GIẢM nợ phải trả)
+                        decimal bGiam = inBucket.Where(h => h.Delta > 0).Sum(h => h.Delta);
+
+                        rowTang += bTang;
+                        rowGiam += bGiam;
+
+                        decimal bDk = runningBal;
+                        decimal bCk = bDk + inBucket.Sum(h => h.Delta);
+                        runningBal = bCk;
+
+                        bucketDk[b] = bDk;
+                        bucketCk[b] = bCk;
+
+                        bucketData[$"{bucket.Header} (ĐK)"] = bDk;
+                        bucketData[$"{bucket.Header} (CK)"] = bCk;
+                    }
+
+                    decimal cuoiKy = dauKy + inPeriodHistories.Sum(h => h.Delta);
+
+                    if (!request.IncludeZeroRows && dauKy == 0 && rowTang == 0 && rowGiam == 0 && cuoiKy == 0)
+                    {
+                        continue;
+                    }
+
+                    for (int b = 0; b < buckets.Count; b++)
+                    {
+                        totalDauKyByBucket[b] += bucketDk[b];
+                        totalCuoiKyByBucket[b] += bucketCk[b];
+                    }
+
+                    var row = new Dictionary<string, object>
+                    {
+                        ["STT"] = stt++,
+                        ["Loại"] = "Nhà cung cấp",
+                        ["Mã"] = s.Code,
+                        ["Tên đối tác"] = s.Name,
+                        ["Kho"] = isWhFiltered ? FormatWarehouseLabel(activeWarehouses[0]) : "Tất cả kho"
+                    };
+
+                    foreach (var kvp in bucketData) row[kvp.Key] = kvp.Value;
+
+                    row["Tổng ĐK"] = dauKy;
+                    row["Tổng CK"] = cuoiKy;
+
+                    totalDauKy += dauKy;
+                    totalCuoiKy += cuoiKy;
+                    rows.Add(row);
                 }
-
-                for (int b = 0; b < buckets.Count; b++)
-                {
-                    totalDauKyByBucket[b] += bucketDk[b];
-                    totalCuoiKyByBucket[b] += bucketCk[b];
-                }
-
-                var row = new Dictionary<string, object>
-                {
-                    ["STT"] = stt++,
-                    ["Loại"] = "Nhà cung cấp",
-                    ["Mã"] = s.Code,
-                    ["Tên đối tác"] = s.Name
-                };
-
-                foreach (var kvp in bucketData) row[kvp.Key] = kvp.Value;
-
-                row["Tổng ĐK"] = dauKy;
-                row["Tổng CK"] = cuoiKy;
-
-                totalDauKy += dauKy;
-                totalCuoiKy += cuoiKy;
-                rows.Add(row);
 
                 // Detail sheet items
                 if (request.IncludeDetailSheet)
@@ -1506,14 +1856,15 @@ public class ReportExportEngine
                             ["_rawDate"] = h.CreatedAt,
                             ["STT"] = 0,
                             ["Thời gian"] = h.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                            ["Kho"] = FormatWarehouseLabel(h.Warehouse ?? ""),
                             ["Loại đối tác"] = "Nhà cung cấp",
                             ["Mã đối tác"] = s.Code,
                             ["Tên đối tác"] = s.Name,
                             ["Loại chứng từ"] = FormatSourceType(h.SourceType),
                             ["Số chứng từ"] = h.ReferenceId ?? "",
                             ["Diễn giải"] = reasonDesc,
-                            ["Nợ tăng (VNĐ)"] = h.Delta > 0 ? h.Delta : 0,
-                            ["Nợ giảm (VNĐ)"] = h.Delta < 0 ? Math.Abs(h.Delta) : 0,
+                            ["Nợ tăng (VNĐ)"] = h.Delta < 0 ? Math.Abs(h.Delta) : 0,
+                            ["Nợ giảm (VNĐ)"] = h.Delta > 0 ? h.Delta : 0,
                             ["Dư nợ sau GD (VNĐ)"] = h.AfterDebt
                         });
                     }
@@ -1530,15 +1881,57 @@ public class ReportExportEngine
             ["Tên đối tác"] = $"Toàn bộ ({rows.Count} đối tác)"
         };
 
-        for (int b = 0; b < buckets.Count; b++)
+        if (isWhBreakdown)
         {
-            var bucket = buckets[b];
-            totalRow[$"{bucket.Header} (ĐK)"] = totalDauKyByBucket[b];
-            totalRow[$"{bucket.Header} (CK)"] = totalCuoiKyByBucket[b];
+            if (buckets.Count <= 1)
+            {
+                foreach (var w in whList)
+                {
+                    var label = FormatWarehouseLabel(w);
+                    totalRow[$"{label} (ĐK)"] = whTotalDauKy[w];
+                    totalRow[$"{label} (CK)"] = whTotalCuoiKy[w];
+                }
+                totalRow["Tổng ĐK"] = totalDauKy;
+                totalRow["Tổng CK"] = totalCuoiKy;
+            }
+            else
+            {
+                for (int b = 0; b < buckets.Count; b++)
+                {
+                    var bucket = buckets[b];
+                    foreach (var w in whList)
+                    {
+                        var label = FormatWarehouseLabel(w);
+                        totalRow[$"{bucket.Header} - {label} (ĐK)"] = whTotalDauKyByBucket[w][b];
+                        totalRow[$"{bucket.Header} - {label} (CK)"] = whTotalCuoiKyByBucket[w][b];
+                    }
+                    totalRow[$"{bucket.Header} (Tổng ĐK)"] = totalDauKyByBucket[b];
+                    totalRow[$"{bucket.Header} (Tổng CK)"] = totalCuoiKyByBucket[b];
+                }
+
+                foreach (var w in whList)
+                {
+                    var label = FormatWarehouseLabel(w);
+                    totalRow[$"Tổng {label} (ĐK)"] = whTotalDauKy[w];
+                    totalRow[$"Tổng {label} (CK)"] = whTotalCuoiKy[w];
+                }
+                totalRow["Tổng ĐK Toàn Kỳ"] = totalDauKy;
+                totalRow["Tổng CK Toàn Kỳ"] = totalCuoiKy;
+            }
+        }
+        else
+        {
+            totalRow["Kho"] = isWhFiltered ? FormatWarehouseLabel(activeWarehouses[0]) : "Tất cả kho";
+            for (int b = 0; b < buckets.Count; b++)
+            {
+                var bucket = buckets[b];
+                totalRow[$"{bucket.Header} (ĐK)"] = totalDauKyByBucket[b];
+                totalRow[$"{bucket.Header} (CK)"] = totalCuoiKyByBucket[b];
+            }
+            totalRow["Tổng ĐK"] = totalDauKy;
+            totalRow["Tổng CK"] = totalCuoiKy;
         }
 
-        totalRow["Tổng ĐK"] = totalDauKy;
-        totalRow["Tổng CK"] = totalCuoiKy;
         rows.Add(totalRow);
 
         var sheetTitle = isFromBeginning ? "Cong_No_Tu_Dau" : "Cong_No_Phat_Sinh";
@@ -2289,7 +2682,7 @@ public class ReportExportEngine
         IUnitOfWork uow,
         CancellationToken ct)
     {
-        var prodQuery = uow.Products.Query().AsNoTracking();
+        var prodQuery = uow.Products.Query().Include(p => p.Units).AsNoTracking();
 
         if (request.ProductIds.Count > 0)
             prodQuery = prodQuery.Where(p => request.ProductIds.Contains(p.Id));

@@ -22,6 +22,7 @@ public class SuppliersController : BaseApiController
         [FromQuery] string? sortBy,
         [FromQuery] string? fromDate,
         [FromQuery] string? toDate,
+        [FromQuery] string? priorityMetrics,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -29,7 +30,7 @@ public class SuppliersController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _supplierService.GetPagedSuppliersAsync(q, region, sortBy, page.Value, pageSize, fromDate, toDate, ct);
+            var paged = await _supplierService.GetPagedSuppliersAsync(q, region, sortBy, page.Value, pageSize, fromDate, toDate, priorityMetrics, ct);
             return Success(paged);
         }
 
@@ -69,8 +70,9 @@ public class SuppliersController : BaseApiController
         [FromQuery] string? month,
         [FromQuery] string? fromDate,
         [FromQuery] string? toDate,
+        [FromQuery] string? warehouse,
         CancellationToken ct)
-        => Success(await _supplierService.GetDebtHistoryAsync(id, month, fromDate, toDate, ct));
+        => Success(await _supplierService.GetDebtHistoryAsync(id, month, fromDate, toDate, warehouse, ct));
 
     [HttpPost("{id:int}/debt-adjust")]
     public async Task<ActionResult<ApiResponse<bool>>> AdjustDebt(

@@ -46,36 +46,43 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
   const paidAmount = Number(exportData.paidAmount || 0);
   const unpaidThisOrder = Number(exportData.unpaidAmount || (totalSale - paidAmount));
   
-  // Tính công nợ còn lại của khách hàng:
-  // - Nếu công nợ >= 0 (khách nợ hoặc hết nợ): nhãn "Công nợ còn lại của quý khách:"
-  // - Nếu công nợ < 0 (công nợ âm - cty nợ khách): nhãn "Tổng công nợ còn lại:"
-  let debtLabel = 'Công nợ còn lại của quý khách:';
-  let debtDisplay = '0 ₫';
+  // Tính tổng công nợ còn lại của khách hàng (trên tất cả các kho):
+  let totalDebt = null;
 
-  const rawDebt = customer?.debt != null
-    ? Number(customer.debt)
-    : (exportData.customerDebt != null ? Number(exportData.customerDebt) : null);
-
-  if (rawDebt != null) {
-    if (rawDebt < 0) {
-      debtLabel = 'Tổng công nợ còn lại:';
-      debtDisplay = formatVND(rawDebt);
-    } else if (rawDebt > 0) {
-      debtLabel = 'Công nợ còn lại của quý khách:';
-      debtDisplay = formatVND(rawDebt);
-    } else {
-      debtLabel = 'Công nợ còn lại của quý khách:';
-      debtDisplay = '0 ₫';
+  // 1. Ưu tiên tính từ customer nếu có truyền vào
+  if (customer) {
+    if (customer.totalDebt != null) {
+      totalDebt = Number(customer.totalDebt);
+    } else if (customer.warehouseDebts && typeof customer.warehouseDebts === 'object') {
+      const vals = Object.values(customer.warehouseDebts);
+      if (vals.length > 0) {
+        totalDebt = vals.reduce((sum, v) => sum + Number(v || 0), 0);
+      }
     }
-  } else {
-    if (unpaidThisOrder < 0) {
-      debtLabel = 'Tổng công nợ còn lại:';
-      debtDisplay = formatVND(unpaidThisOrder);
-    } else {
-      debtLabel = 'Công nợ còn lại của quý khách:';
-      debtDisplay = formatVND(unpaidThisOrder);
+    if (totalDebt == null && customer.debt != null) {
+      totalDebt = Number(customer.debt);
     }
   }
+
+  // 2. Nếu chưa có, lấy từ exportData.customerDebt do backend trả về
+  if (totalDebt == null) {
+    if (exportData.customerDebt != null) {
+      totalDebt = Number(exportData.customerDebt);
+    } else if (exportData.CustomerDebt != null) {
+      totalDebt = Number(exportData.CustomerDebt);
+    }
+  }
+
+  // 3. Fallback cuối cùng nếu không có dữ liệu đối tác
+  if (totalDebt == null) {
+    totalDebt = unpaidThisOrder;
+  }
+
+  let debtLabel = 'Tổng công nợ còn lại của quý khách:';
+  if (totalDebt < 0) {
+    debtLabel = 'Tổng công nợ còn lại (Cửa hàng nợ quý khách):';
+  }
+  const debtDisplay = formatVND(totalDebt);
 
   const totalInWords = numberToWordsVN(totalSale);
 
@@ -317,6 +324,12 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
         <span>${formatVND(paidAmount)}</span>
       </div>
 
+      ${unpaidThisOrder > 0 ? `
+      <div class="summary-row" style="font-size: 11.5pt; color: #444;">
+        <span>Tiền nợ lại đơn này:</span>
+        <span>${formatVND(unpaidThisOrder)}</span>
+      </div>` : ''}
+
       <div class="summary-row total-debt-row">
         <span><strong>${debtLabel}</strong></span>
         <span><strong>${debtDisplay}</strong></span>
@@ -378,8 +391,6 @@ export function generateImportHtml({ importData, ownerInfo = null, supplier = nu
 
   const totalAmount = Number(importData.totalAmount || 0);
   const paidAmount = Number(importData.paidAmount || 0);
-  const unpaidAmount = Number(importData.unpaidAmount || (totalAmount - paidAmount));
-  const currentTotalDebt = supplier?.debt != null ? Number(supplier.debt) : unpaidAmount;
 
   const totalInWords = numberToWordsVN(totalAmount);
   const items = importData.items || [];

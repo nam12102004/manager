@@ -215,3 +215,22 @@ export function normalizeText(str) {
     .trim();
 }
 
+
+
+/**
+ * Safely extract debt for a specific warehouse from a customer or supplier object
+ * Supports case-insensitive warehouse IDs (e.g. warehouse1, WAREHOUSE1)
+ * @param {Object} partner
+ * @param {string} whId
+ * @returns {number}
+ */
+export function getPartnerWarehouseDebt(partner, whId) {
+  if (!partner || !partner.warehouseDebts || !whId) return 0;
+  const debts = partner.warehouseDebts;
+  if (debts[whId] !== undefined) return Number(debts[whId]) || 0;
+  const lower = String(whId).toLowerCase();
+  if (debts[lower] !== undefined) return Number(debts[lower]) || 0;
+  const key = Object.keys(debts).find((k) => k.toLowerCase() === lower);
+  if (key && debts[key] !== undefined) return Number(debts[key]) || 0;
+  return 0;
+}

@@ -22,6 +22,7 @@ public class SupplierPagedResult : PagedResult<SupplierDto>
 {
     public decimal TotalReceivables { get; set; }
     public decimal TotalPayables { get; set; }
+    public decimal TotalPrepaid { get; set; }
     public decimal TotalImportAmount { get; set; }
     public decimal TotalPaymentAmount { get; set; }
     public decimal TotalExportAmount { get; set; }
@@ -53,6 +54,7 @@ public class ImportPagedResult : PagedResult<ImportVoucherDto>
 
 public class ExportPagedResult : PagedResult<ExportVoucherDto>
 {
+    public decimal TotalAmount { get; set; }
     public decimal TotalSale { get; set; }
     public decimal TotalPaid { get; set; }
     public decimal TotalDebt { get; set; }

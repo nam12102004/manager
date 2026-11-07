@@ -24,6 +24,7 @@ public class ReceiptsController : BaseApiController
         [FromQuery] string? date,
         [FromQuery] string? fromDate,
         [FromQuery] string? toDate,
+        [FromQuery] string? warehouse,
         [FromQuery] int? page,
         [FromQuery] int pageSize = 15,
         [FromQuery] bool all = false,
@@ -31,11 +32,11 @@ public class ReceiptsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _receiptService.GetPagedReceiptsAsync(customerId, supplierId, q, month, date, fromDate, toDate, page.Value, pageSize, ct);
+            var paged = await _receiptService.GetPagedReceiptsAsync(customerId, supplierId, q, month, date, fromDate, toDate, warehouse, page.Value, pageSize, ct);
             return Success(paged);
         }
 
-        var list = await _receiptService.GetReceiptsAsync(customerId, supplierId, q, month, date, fromDate, toDate, ct);
+        var list = await _receiptService.GetReceiptsAsync(customerId, supplierId, q, month, date, fromDate, toDate, warehouse, ct);
         return Success(list);
     }
 

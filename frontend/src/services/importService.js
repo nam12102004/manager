@@ -93,7 +93,7 @@ export const importService = {
 
     return {
       supplierId: Number(formData.supplierId),
-      warehouse: formData.warehouse || 'kho_1',
+      warehouse: formData.warehouse || 'warehouse1',
       date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
       discountPercent: formData.discountType === 'percent' ? Number(formData.discountValue || 0) : undefined,
       discountValue: formData.discountType === 'amount' ? Number(formData.discountValue || 0) : undefined,
@@ -103,6 +103,8 @@ export const importService = {
         productId: Number(it.productId),
         quantity: Number(it.quantity),
         unitPrice: Number(it.unitCost || it.unitPrice || 0),
+        unitName: it.unitName,
+        conversionRate: Number(it.conversionRate || 1),
       })),
     };
   },

@@ -74,6 +74,7 @@ export const customerService = {
       region: formData.region?.trim() || undefined,
       creditLimit: 0,
       initialDebt: formData.initialDebt ? Number(formData.initialDebt) : 0,
+      initialDebtWarehouse: formData.initialDebtWarehouse || "warehouse1",
       notes: formData.notes?.trim() || undefined,
     };
   },

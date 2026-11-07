@@ -50,6 +50,17 @@ import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from
 import { productService, warehouseService } from '../services';
 import useDragScroll from '../hooks/useDragScroll';
 import TableScrollContainer from '../components/common/TableScrollContainer';
+import SubUnitsEditor from '../components/common/SubUnitsEditor';
+import {
+  getProductUnits,
+  getBaseUnit,
+  getPrimaryDisplayUnit,
+  saveDisplayUnitForProduct,
+  loadDisplayUnitsMap,
+  convertQtyToDisplayUnit,
+  getDisplayPrices,
+  formatStockDisplay,
+} from '../utils/uomHelper';
 
 const PRODUCT_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -109,6 +120,9 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isSubUnitOpen, setIsSubUnitOpen] = useState(false);
+  const [productUnits, setProductUnits] = useState([]);
+  const [displayUnitOverrides, setDisplayUnitOverrides] = useState(() => loadDisplayUnitsMap());
 
   // Warehouse Management Modals
   const [isAddWarehouseOpen, setIsAddWarehouseOpen] = useState(false);
@@ -305,6 +319,42 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   const allCategoriesCount = Object.values(categoryCounts).reduce((sum, n) => sum + Number(n || 0), 0);
   const allSuppliersCount = Object.values(supplierCounts).reduce((sum, n) => sum + Number(n || 0), 0);
 
+  // Cascading horizontal filter logic:
+  // When category is selected, filter suppliers to only those with count > 0 (or selected).
+  // When unselected (ALL), restore all suppliers.
+  const visibleSuppliers = React.useMemo(() => {
+    if (selectedCategory === 'ALL') {
+      return suppliers;
+    }
+    return suppliers.filter((sup) => {
+      const supKey = String(sup.id);
+      const count = supplierCounts[supKey] || 0;
+      const isSelected = String(selectedSupplierId) === supKey;
+      return count > 0 || isSelected;
+    });
+  }, [suppliers, selectedCategory, supplierCounts, selectedSupplierId]);
+
+  const showNoneSupplier = selectedCategory !== 'ALL'
+    ? (supplierCounts.NONE || 0) > 0 || selectedSupplierId === 'NONE'
+    : (supplierCounts.NONE || 0) > 0;
+
+  // When supplier is selected, filter categories to only those with count > 0 (or selected).
+  // When unselected (''), restore all categories.
+  const visibleCategories = React.useMemo(() => {
+    if (!selectedSupplierId) {
+      return categories;
+    }
+    return categories.filter((cat) => {
+      const count = categoryCounts[cat.trim()] ?? categoryCounts[cat] ?? 0;
+      const isSelected = selectedCategory === cat || (selectedCategory && selectedCategory.trim() === cat.trim());
+      return count > 0 || isSelected;
+    });
+  }, [categories, selectedSupplierId, categoryCounts, selectedCategory]);
+
+  const showNoneCategory = Boolean(selectedSupplierId)
+    ? (categoryCounts.NONE || 0) > 0 || selectedCategory === 'NONE'
+    : (categoryCounts.NONE || 0) > 0;
+
   // Current active warehouse object if in specific warehouse mode
   const currentWarehouseObj = warehouses.find((w) => w.id === selectedWarehouse);
   const isOverview = selectedWarehouse === 'overview';
@@ -363,17 +413,19 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       stockWarehouse3: 0,
       reorderPoint: 5,
     });
+    setProductUnits([{ unitName: 'Cái', conversionRate: 1, isBaseUnit: true }]);
     setIsCreateOpen(true);
   };
 
   // Open Edit Modal
   const handleOpenEdit = (product) => {
     setSelectedProduct(product);
+    const primaryUnit = getPrimaryDisplayUnit(product, displayUnitOverrides[String(product.id)]);
     setFormData({
       sku: product.sku,
       name: product.name,
       category: product.category || '',
-      uom: product.uom || 'Cái',
+      uom: primaryUnit?.unitName || product.uom || 'Cái',
       barcode: product.barcode || '',
       supplierId: product.supplierId || '',
       unitCost: product.unitCost,
@@ -381,7 +433,88 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       retailPrice: product.retailPrice,
       reorderPoint: product.reorderPoint,
     });
+    setProductUnits(
+      product.units && product.units.length > 0
+        ? product.units
+        : [{ unitName: product.uom || 'Cái', conversionRate: 1, isBaseUnit: true }]
+    );
     setIsEditOpen(true);
+  };
+
+  // Open Sub-Units Modal
+  const handleOpenSubUnits = (product) => {
+    setSelectedProduct(product);
+    const primaryUnit = getPrimaryDisplayUnit(product, displayUnitOverrides[String(product.id)]);
+    setFormData((prev) => ({
+      ...prev,
+      uom: primaryUnit?.unitName || product.uom || 'Cái',
+    }));
+    setProductUnits(
+      product.units && product.units.length > 0
+        ? product.units
+        : [{ unitName: product.uom || 'Cái', conversionRate: 1, isBaseUnit: true }]
+    );
+    setIsSubUnitOpen(true);
+  };
+
+  const handleSaveSubUnits = async () => {
+    if (!selectedProduct) return;
+    setSubmitting(true);
+    try {
+      const chosenUom = formData.uom?.trim() || selectedProduct.uom || 'Cái';
+      await productService.update(selectedProduct.id, {
+        sku: selectedProduct.sku,
+        name: selectedProduct.name,
+        category: selectedProduct.category,
+        uom: chosenUom,
+        barcode: selectedProduct.barcode,
+        supplierId: selectedProduct.supplierId ? Number(selectedProduct.supplierId) : null,
+        unitCost: Number(selectedProduct.unitCost || 0),
+        wholesalePrice: Number(selectedProduct.wholesalePrice || 0),
+        retailPrice: Number(selectedProduct.retailPrice || 0),
+        reorderPoint: Number(selectedProduct.reorderPoint || 0),
+        units: productUnits,
+      });
+      saveDisplayUnitForProduct(selectedProduct.id, chosenUom);
+      setDisplayUnitOverrides(loadDisplayUnitsMap());
+      notify.success('Cập nhật đơn vị tính & đơn vị hiển thị chính thành công!');
+      setIsSubUnitOpen(false);
+      loadData();
+    } catch (err) {
+      notify.error(err.message || 'Cập nhật đơn vị tính thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Đổi nhanh Đơn vị hiển thị chính của từng sản phẩm ngay trên bảng Kho & Sản phẩm
+  const handleChangeProductDisplayUnit = async (product, newUnitName) => {
+    if (!product || !newUnitName) return;
+    saveDisplayUnitForProduct(product.id, newUnitName);
+    setDisplayUnitOverrides((prev) => ({
+      ...prev,
+      [String(product.id)]: newUnitName,
+    }));
+    setProducts((prev) =>
+      prev.map((item) => (item.id === product.id ? { ...item, uom: newUnitName } : item))
+    );
+    try {
+      await productService.update(product.id, {
+        sku: product.sku,
+        name: product.name,
+        category: product.category,
+        uom: newUnitName,
+        barcode: product.barcode,
+        supplierId: product.supplierId ? Number(product.supplierId) : null,
+        unitCost: Number(product.unitCost || 0),
+        wholesalePrice: Number(product.wholesalePrice || 0),
+        retailPrice: Number(product.retailPrice || 0),
+        reorderPoint: Number(product.reorderPoint || 0),
+        units: product.units && product.units.length > 0 ? product.units : undefined,
+      });
+    } catch {
+      // Lựa chọn vẫn được giữ trong localStorage nếu mất kết nối tạm thời
+    }
   };
 
   // Open Adjust Modal
@@ -539,7 +672,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         });
       }
 
-      await productService.create({
+      const created = await productService.create({
         ...formData,
         supplierId: formData.supplierId ? Number(formData.supplierId) : null,
         unitCost: Number(formData.unitCost || 0),
@@ -550,7 +683,13 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
         stockWarehouse3: stocks.warehouse3 || 0,
         warehouseStocks: stocks,
         reorderPoint: Number(formData.reorderPoint || 0),
+        units: productUnits,
       });
+
+      if (created?.id && formData.uom?.trim()) {
+        saveDisplayUnitForProduct(created.id, formData.uom.trim());
+        setDisplayUnitOverrides(loadDisplayUnitsMap());
+      }
 
       notify.success(
         !isOverview && currentWarehouseObj
@@ -569,19 +708,43 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
   // Submit Edit Product
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.sku || !formData.sku.trim()) {
+      notify.warning('Vui lòng nhập mã SKU sản phẩm');
+      return;
+    }
+    if (!formData.name || !formData.name.trim()) {
+      notify.warning('Vui lòng nhập tên sản phẩm');
+      return;
+    }
     setSubmitting(true);
     try {
-      await productService.update(selectedProduct.id, {
-        name: formData.name,
+      const chosenUom = formData.uom?.trim() || 'Cái';
+      const updated = await productService.update(selectedProduct.id, {
+        sku: formData.sku.trim(),
+        name: formData.name.trim(),
         category: formData.category,
-        uom: formData.uom,
+        uom: chosenUom,
         barcode: formData.barcode,
         supplierId: formData.supplierId ? Number(formData.supplierId) : null,
         unitCost: Number(formData.unitCost || 0),
         wholesalePrice: Number(formData.wholesalePrice || 0),
         retailPrice: Number(formData.retailPrice || 0),
         reorderPoint: Number(formData.reorderPoint || 0),
+        units: productUnits,
       });
+      saveDisplayUnitForProduct(selectedProduct.id, chosenUom);
+      setDisplayUnitOverrides(loadDisplayUnitsMap());
+      if (ledgerProduct?.id === selectedProduct.id) {
+        setLedgerProduct((prev) =>
+          prev
+            ? {
+                ...prev,
+                sku: updated?.sku || formData.sku.trim(),
+                name: updated?.name || formData.name.trim(),
+              }
+            : prev
+        );
+      }
       notify.success('Cập nhật sản phẩm thành công!');
       setIsEditOpen(false);
       loadData();
@@ -867,7 +1030,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
 
         <div style={{ minWidth: '240px' }}>
           <SearchableSelect
-            options={suppliers.map((s) => ({
+            options={visibleSuppliers.map((s) => ({
               id: s.id,
               value: s.id,
               label: s.name,
@@ -1024,7 +1187,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             </span>
           </button>
 
-          {suppliers.map((sup) => {
+          {visibleSuppliers.map((sup) => {
             const supKey = String(sup.id);
             const isSelected = String(selectedSupplierId) === supKey;
             const count = supplierCounts[supKey] || 0;
@@ -1032,7 +1195,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               <button
                 key={sup.id}
                 type="button"
-                onClick={() => setSelectedSupplierId(sup.id)}
+                onClick={() => setSelectedSupplierId(isSelected ? '' : sup.id)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1066,10 +1229,10 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             );
           })}
 
-          {(supplierCounts.NONE || 0) > 0 && (
+          {showNoneSupplier && (
             <button
               type="button"
-              onClick={() => setSelectedSupplierId('NONE')}
+              onClick={() => setSelectedSupplierId(selectedSupplierId === 'NONE' ? '' : 'NONE')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1129,12 +1292,12 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       {/* Category Tabs Strip (Excel-like Sheet Tabs Bar, same style as Customers region tabs) */}
       {(() => {
         const renderTab = (key, label, count, extraStyle = {}) => {
-          const isSelected = selectedCategory === key;
+          const isSelected = selectedCategory === key || (selectedCategory && selectedCategory.trim() === key.trim());
           return (
             <button
               key={key}
               type="button"
-              onClick={() => setSelectedCategory(key)}
+              onClick={() => setSelectedCategory(isSelected && key !== 'ALL' ? 'ALL' : key)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1238,9 +1401,9 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               }}
             >
               {renderTab('ALL', 'Tất cả', allCategoriesCount)}
-              {categories.map((cat) => renderTab(cat, cat, categoryCounts[cat.trim()] || 0, { textTransform: 'uppercase' }))}
-              {(categoryCounts.NONE || 0) > 0 &&
-                renderTab('NONE', 'Chưa phân danh mục', categoryCounts.NONE, { fontStyle: 'italic' })}
+              {visibleCategories.map((cat) => renderTab(cat, cat, categoryCounts[cat.trim()] ?? categoryCounts[cat] ?? 0, { textTransform: 'uppercase' }))}
+              {showNoneCategory &&
+                renderTab('NONE', 'Chưa phân danh mục', categoryCounts.NONE || 0, { fontStyle: 'italic' })}
             </div>
 
             <button type="button" onClick={() => scrollCategoryTabs('right')} style={scrollBtnStyle} title="Cuộn sang phải">
@@ -1368,6 +1531,14 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                   ? (p.warehouseMetrics?.[currentWarehouseObj.id] || p.warehouseMetrics?.[currentWarehouseObj.id.toLowerCase()])
                   : null;
 
+                const allUnits = getProductUnits(p);
+                const baseUnit = getBaseUnit(p);
+                const displayUnit = getPrimaryDisplayUnit(p, displayUnitOverrides[String(p.id)]);
+                const displayUnitName = displayUnit?.unitName || p.uom || 'Cái';
+                const displayPrices = getDisplayPrices(p, displayUnit);
+                const displayTotalStock = convertQtyToDisplayUnit(p.totalStock, displayUnit);
+                const displayWhStock = convertQtyToDisplayUnit(whStock, displayUnit);
+
                 return (
                   <tr
                     key={p.id}
@@ -1390,13 +1561,73 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                         </span>
                       )}
                     </td>
-                    <td>{p.uom || 'Cái'}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: '105px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {allUnits.length > 1 ? (
+                            <select
+                              className="form-select"
+                              style={{
+                                padding: '2px 22px 2px 6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                height: '26px',
+                                minWidth: '82px',
+                                color: 'var(--primary)',
+                                borderColor: 'rgba(37, 99, 235, 0.35)',
+                                backgroundColor: '#eff6ff',
+                              }}
+                              value={displayUnitName}
+                              onChange={(e) => handleChangeProductDisplayUnit(p, e.target.value)}
+                              title="Chọn đơn vị hiển thị chính cho sản phẩm này"
+                            >
+                              {allUnits.map((u) => (
+                                <option key={u.unitName} value={u.unitName}>
+                                  {u.unitName} {Number(u.conversionRate) > 1 ? `(x${u.conversionRate} ${baseUnit.unitName})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span style={{ fontWeight: 600 }}>{displayUnitName}</span>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-icon"
+                            style={{ width: '24px', height: '24px', color: 'var(--primary)', flexShrink: 0 }}
+                            title="Cấu hình đơn vị quy đổi (Thêm Hộp / Viên / Thùng...)"
+                            onClick={() => handleOpenSubUnits(p)}
+                          >
+                            <Layers size={13} />
+                          </button>
+                        </div>
+                        {allUnits.length > 1 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                            {allUnits
+                              .filter((u) => Number(u.conversionRate) > 1)
+                              .map((u) => (
+                                <span
+                                  key={u.id || u.unitName}
+                                  className="badge badge-neutral mono"
+                                  style={{ fontSize: '0.65rem', padding: '1px 5px' }}
+                                >
+                                  1 {u.unitName} = {u.conversionRate} {baseUnit.unitName}
+                                </span>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
 
                     {isOverview ? (
                       <td style={{ textAlign: 'right' }}>
                         <span className={`badge badge-${Number(p.totalStock) <= 0 ? 'danger' : 'success'} mono`} style={{ fontWeight: 700 }}>
-                          {formatNumber(p.totalStock)}
+                          {formatNumber(displayTotalStock)} {displayUnitName}
                         </span>
+                        {allUnits.length > 1 && (
+                          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            {formatStockDisplay(p.totalStock, allUnits, baseUnit.unitName)}
+                          </div>
+                        )}
                       </td>
                     ) : (
                       <>
@@ -1405,8 +1636,13 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                             className={`badge badge-${whStock <= 0 ? 'danger' : 'success'} mono`}
                             style={{ fontWeight: 800, fontSize: '0.875rem' }}
                           >
-                            {formatNumber(whStock)}
+                            {formatNumber(displayWhStock)} {displayUnitName}
                           </span>
+                          {allUnits.length > 1 && (
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              {formatStockDisplay(whStock, allUnits, baseUnit.unitName)}
+                            </div>
+                          )}
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {whStock < 0 ? (
@@ -1426,12 +1662,12 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                         {warehouses.map((wh) => {
                           if (!visibleMetrics.exportWarehouses?.[wh.id]) return null;
                           const metric = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
-                          const exportQty = metric?.exportQty || 0;
+                          const exportQty = convertQtyToDisplayUnit(metric?.exportQty || 0, displayUnit);
                           const exportAmount = metric?.exportAmount || 0;
                           return (
                             <td key={`td-prod-exp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
                               <div style={{ fontWeight: 700, color: exportQty > 0 ? '#ea580c' : 'var(--text-muted)' }}>
-                                SL: {formatNumber(exportQty)} {p.uom || ''}
+                                SL: {formatNumber(exportQty)} {displayUnitName}
                               </div>
                               <div style={{ fontSize: '0.75rem', color: exportAmount > 0 ? '#c2410c' : 'var(--text-muted)' }}>
                                 {formatVND(exportAmount)}
@@ -1444,7 +1680,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                         {visibleMetrics.exportTotal && (
                           <td style={{ textAlign: 'right' }} className="mono">
                             <div style={{ fontWeight: 800, color: (p.totalExportQty || 0) > 0 ? '#ea580c' : 'var(--text-muted)' }}>
-                              SL: {formatNumber(p.totalExportQty || 0)} {p.uom || ''}
+                              SL: {formatNumber(convertQtyToDisplayUnit(p.totalExportQty || 0, displayUnit))} {displayUnitName}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: (p.totalExportAmount || 0) > 0 ? '#c2410c' : 'var(--text-muted)' }}>
                               {formatVND(p.totalExportAmount || 0)}
@@ -1456,12 +1692,12 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                         {warehouses.map((wh) => {
                           if (!visibleMetrics.importWarehouses?.[wh.id]) return null;
                           const metric = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
-                          const importQty = metric?.importQty || 0;
+                          const importQty = convertQtyToDisplayUnit(metric?.importQty || 0, displayUnit);
                           const importAmount = metric?.importAmount || 0;
                           return (
                             <td key={`td-prod-imp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
                               <div style={{ fontWeight: 700, color: importQty > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
-                                SL: {formatNumber(importQty)} {p.uom || ''}
+                                SL: {formatNumber(importQty)} {displayUnitName}
                               </div>
                               <div style={{ fontSize: '0.75rem', color: importAmount > 0 ? '#1e40af' : 'var(--text-muted)' }}>
                                 {formatVND(importAmount)}
@@ -1474,7 +1710,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                         {visibleMetrics.importTotal && (
                           <td style={{ textAlign: 'right' }} className="mono">
                             <div style={{ fontWeight: 800, color: (p.totalImportQty || 0) > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
-                              SL: {formatNumber(p.totalImportQty || 0)} {p.uom || ''}
+                              SL: {formatNumber(convertQtyToDisplayUnit(p.totalImportQty || 0, displayUnit))} {displayUnitName}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: (p.totalImportAmount || 0) > 0 ? '#1e40af' : 'var(--text-muted)' }}>
                               {formatVND(p.totalImportAmount || 0)}
@@ -1506,7 +1742,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                           {(visibleMetrics.exportWarehouses?.[currentWarehouseObj.id] || visibleMetrics.exportTotal) && (
                             <td style={{ textAlign: 'right' }} className="mono">
                               <div style={{ fontWeight: 800, color: (activeWhMetric?.exportQty || 0) > 0 ? '#ea580c' : 'var(--text-muted)' }}>
-                                SL: {formatNumber(activeWhMetric?.exportQty || 0)} {p.uom || ''}
+                                SL: {formatNumber(convertQtyToDisplayUnit(activeWhMetric?.exportQty || 0, displayUnit))} {displayUnitName}
                               </div>
                               <div style={{ fontSize: '0.75rem', color: (activeWhMetric?.exportAmount || 0) > 0 ? '#c2410c' : 'var(--text-muted)' }}>
                                 {formatVND(activeWhMetric?.exportAmount || 0)}
@@ -1516,7 +1752,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                           {(visibleMetrics.importWarehouses?.[currentWarehouseObj.id] || visibleMetrics.importTotal) && (
                             <td style={{ textAlign: 'right' }} className="mono">
                               <div style={{ fontWeight: 800, color: (activeWhMetric?.importQty || 0) > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
-                                SL: {formatNumber(activeWhMetric?.importQty || 0)} {p.uom || ''}
+                                SL: {formatNumber(convertQtyToDisplayUnit(activeWhMetric?.importQty || 0, displayUnit))} {displayUnitName}
                               </div>
                               <div style={{ fontSize: '0.75rem', color: (activeWhMetric?.importAmount || 0) > 0 ? '#1e40af' : 'var(--text-muted)' }}>
                                 {formatVND(activeWhMetric?.importAmount || 0)}
@@ -1542,13 +1778,22 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
                     )}
 
                     <td style={{ textAlign: 'right' }} className="mono">
-                      {formatVND(p.unitCost)}
+                      <div>{formatVND(displayPrices.unitCost)}</div>
+                      {allUnits.length > 1 && (
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>/{displayUnitName}</div>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right' }} className="mono">
-                      {formatVND(p.wholesalePrice)}
+                      <div>{formatVND(displayPrices.wholesalePrice)}</div>
+                      {allUnits.length > 1 && (
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>/{displayUnitName}</div>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }} className="mono">
-                      {formatVND(p.retailPrice)}
+                      <div>{formatVND(displayPrices.retailPrice)}</div>
+                      {allUnits.length > 1 && (
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500 }}>/{displayUnitName}</div>
+                      )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', gap: '0.35rem' }} onClick={(e) => e.stopPropagation()}>
@@ -1998,6 +2243,16 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               ))}
             </div>
           )}
+
+          <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
+
+          <SubUnitsEditor
+            baseUom={formData.uom}
+            onBaseUomChange={(newUom) => setFormData((prev) => ({ ...prev, uom: newUom }))}
+            units={productUnits}
+            onChange={setProductUnits}
+            disabled={submitting}
+          />
         </form>
       </Modal>
 
@@ -2020,6 +2275,20 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
       >
         <form onSubmit={handleEditSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">
+                Mã SKU <span className="req">*</span>
+              </label>
+              <input
+                type="text"
+                className="form-input mono"
+                placeholder="VD: SP001"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                required
+              />
+            </div>
+
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">
                 Tên Sản Phẩm <span className="req">*</span>
@@ -2044,7 +2313,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             </div>
 
             <div className="form-group">
-              <label className="form-label">Đơn vị tính</label>
+              <label className="form-label">Đơn vị tính hiển thị chính</label>
               <input
                 type="text"
                 className="form-input"
@@ -2087,7 +2356,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
             <div className="form-group">
-              <label className="form-label">Giá Vốn</label>
+              <label className="form-label">Giá Vốn (Theo ĐV bé nhất)</label>
               <input
                 type="number"
                 className="form-input mono"
@@ -2098,7 +2367,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             </div>
 
             <div className="form-group">
-              <label className="form-label">Giá Sỉ</label>
+              <label className="form-label">Giá Sỉ (Theo ĐV bé nhất)</label>
               <input
                 type="number"
                 className="form-input mono"
@@ -2109,7 +2378,7 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
             </div>
 
             <div className="form-group">
-              <label className="form-label">Giá Lẻ</label>
+              <label className="form-label">Giá Lẻ (Theo ĐV bé nhất)</label>
               <input
                 type="number"
                 className="form-input mono"
@@ -2119,7 +2388,43 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               />
             </div>
           </div>
+
+          <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
+
+          <SubUnitsEditor
+            baseUom={formData.uom}
+            onBaseUomChange={(newUom) => setFormData((prev) => ({ ...prev, uom: newUom }))}
+            units={productUnits}
+            onChange={setProductUnits}
+            disabled={submitting}
+          />
         </form>
+      </Modal>
+
+      {/* Modal Quản Lý Đơn Vị Tính Quy Đổi */}
+      <Modal
+        isOpen={isSubUnitOpen}
+        onClose={() => setIsSubUnitOpen(false)}
+        title={`Đơn Vị Tính & Đơn Vị Hiển Thị Chính: ${selectedProduct?.name || ''}`}
+        size="lg"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setIsSubUnitOpen(false)} disabled={submitting}>
+              Đóng
+            </button>
+            <button className="btn btn-primary" onClick={handleSaveSubUnits} disabled={submitting}>
+              {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </button>
+          </>
+        }
+      >
+        <SubUnitsEditor
+          baseUom={formData.uom || selectedProduct?.uom}
+          onBaseUomChange={(newUom) => setFormData((prev) => ({ ...prev, uom: newUom }))}
+          units={productUnits}
+          onChange={setProductUnits}
+          disabled={submitting}
+        />
       </Modal>
 
       {/* Modal Điều Chỉnh Tồn Kho */}
@@ -2159,7 +2464,11 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               >
                 <span>{currentWarehouseObj.name}</span>
                 <span className="mono" style={{ color: 'var(--text-secondary)' }}>
-                  Tồn hiện tại: {formatNumber(getProductStockForWarehouse(selectedProduct, currentWarehouseObj.id))}
+                  Tồn hiện tại: {formatStockDisplay(
+                    getProductStockForWarehouse(selectedProduct, currentWarehouseObj.id),
+                    getProductUnits(selectedProduct),
+                    getBaseUnit(selectedProduct).unitName
+                  )}
                 </span>
               </div>
             ) : (
@@ -2178,7 +2487,11 @@ export default function Products({ initialWarehouse = 'overview', onWarehouseCha
               >
                 {warehouses.map((wh) => (
                   <option key={wh.id} value={wh.id}>
-                    {wh.name} - Tồn hiện tại: {formatNumber(getProductStockForWarehouse(selectedProduct, wh.id))}
+                    {wh.name} - Tồn hiện tại: {formatStockDisplay(
+                      getProductStockForWarehouse(selectedProduct, wh.id),
+                      getProductUnits(selectedProduct),
+                      getBaseUnit(selectedProduct).unitName
+                    )}
                   </option>
                 ))}
               </select>

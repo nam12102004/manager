@@ -1,0 +1,301 @@
+Total customers parsed: 288
+Special rows: 17
+By Route:
+  - THÀNH PHỐ: 57 khách hàng
+  - NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG: 122 khách hàng
+  - GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU: 109 khách hàng
+Khách không có mã KH (cột B rỗng): 86
+Mã trùng nhau: 3
+  - KH.111: 2 lần
+  - KH.140723165: 2 lần
+  - KH.140723036: 2 lần
+
+Detailed list of customers:
+  1. Row   7 | Tuyến: THÀNH PHỐ | Mã: KH.140723099 | Tên: CH Bích Hường(2) | Nợ: 140378200 | Có: 
+  2. Row   8 | Tuyến: THÀNH PHỐ | Mã: KH.140723041 | Tên: CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839 | Nợ: 61076260 | Có: 
+  3. Row   9 | Tuyến: THÀNH PHỐ | Mã: KH.140723218 | Tên: CH Hoàng chiều (2) - Phố Song Hào - ĐT: | Nợ: 25146800 | Có: 
+  4. Row  10 | Tuyến: THÀNH PHỐ | Mã: KH.140723052 | Tên: ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882 | Nợ: 24916600 | Có: 
+  5. Row  11 | Tuyến: THÀNH PHỐ | Mã: KH.140723105 | Tên: CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879 | Nợ: 22507900 | Có: 
+  6. Row  12 | Tuyến: THÀNH PHỐ | Mã: KH.140723113 | Tên: CH Hoà an (2)- 474 Trường Chinh  ĐT: 0912 715 919 - 3 600 565 | Nợ: 18227000 | Có: 
+  7. Row  13 | Tuyến: THÀNH PHỐ | Mã: KH.140723069 | Tên: CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445 | Nợ: 16699200 | Có: 
+  8. Row  14 | Tuyến: THÀNH PHỐ | Mã: KH.140723046 | Tên: CH Quân Mùi (2)- Quân Khu 3 - (TP) ĐT: 0836530350 | Nợ: 16089900 | Có: 
+  9. Row  15 | Tuyến: THÀNH PHỐ | Mã: KH.140723078 | Tên: CH Thắm Hoan(2) - 164 Trường Chinh  - TP 0838929288 ĐT: 03503 838 492 | Nợ: 9138000 | Có: 
+ 10. Row  16 | Tuyến: THÀNH PHỐ | Mã: KH.140723201 | Tên: CH Đức Linh(2) - 725 Trường Chinh - ĐT: 0888 769 786 | Nợ: 8322000 | Có: 
+ 11. Row  17 | Tuyến: THÀNH PHỐ | Mã: KH.140723087 | Tên: CH Thanh Điện (2) - Đường Vũ Hữu Lợi - TP NĐ - ĐT: 01273882942 | Nợ: 7434000 | Có: 
+ 12. Row  18 | Tuyến: THÀNH PHỐ | Mã: KH.140723153 | Tên: CH cô Lai  Đặng Xá (2) - ĐT: 0812672543 | Nợ: 1956000 | Có: 
+ 13. Row  19 | Tuyến: THÀNH PHỐ | Mã: KH.3447385 | Tên: CH Thắng Hằng - Giải Phóng - TP Nam Định | Nợ: 1622080 | Có: 
+ 14. Row  20 | Tuyến: THÀNH PHỐ | Mã: KH.140723062 | Tên: CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT 0855933170 (vợ)-  0988500259 | Nợ: 1544010 | Có: 
+ 15. Row  21 | Tuyến: THÀNH PHỐ | Mã: KH.140723172 | Tên: CH Văn Thưởng(2) - Trường Chinh -TP Nam Định ĐT: 01245 154 4 | Nợ: 127500 | Có: 
+ 16. Row  22 | Tuyến: THÀNH PHỐ | Mã: KH.140723133 | Tên: CH Thuỷ Vượng(2) - Đò Quan - TP Nam Định ĐT: 3 859 671 - 0948 598 993 | Nợ: 9200 | Có: 
+ 17. Row  23 | Tuyến: THÀNH PHỐ | Mã: KH.3364989 | Tên: CH Đại Việt - Mỹ Lộc - TP Nam Định | Nợ: 2000 | Có: 
+ 18. Row  24 | Tuyến: THÀNH PHỐ | Mã: KH.140723242 | Tên: Showroom Tân Phong(2)-ĐT: 0943531966 | Nợ: 0 | Có: 0
+ 19. Row  25 | Tuyến: THÀNH PHỐ | Mã: KH.140723187 | Tên: CH Phương Liên(2) - Đường 52-  TP - ĐT: 0915606333 - 0969633579 | Nợ: 0 | Có: 0
+ 20. Row  26 | Tuyến: THÀNH PHỐ | Mã: KH.140723214 | Tên: CH huy dũng(2) (đường hưng yên) - TP | Nợ: 0 | Có: 0
+ 21. Row  27 | Tuyến: THÀNH PHỐ | Mã: KH.140723168 | Tên: CH Dũng Roma(2) - Đô thị Hòa Vượng -TP Nam Định ĐT: 0915018549 | Nợ: 0 | Có: 0
+ 22. Row  28 | Tuyến: THÀNH PHỐ | Mã: KH.140723048 | Tên: CH Duy Lạng - Mỹ Tân - TP Nam Định - 0915 446 786 | Nợ: 0 | Có: 0
+ 23. Row  29 | Tuyến: THÀNH PHỐ | Mã: KH.140723239 | Tên: CH Hùng Phát (2)-0941356333-chợ hoa mỹ tân,nam định | Nợ: 0 | Có: 0
+ 24. Row  30 | Tuyến: THÀNH PHỐ | Mã: KH.140723135 | Tên: CH Minh Khang(2) - Trường Chinh - ĐT: 0366234811 | Nợ: 0 | Có: 0
+ 25. Row  31 | Tuyến: THÀNH PHỐ | Mã: KH.140723213 | Tên: CH Đăng Văn(2) - Đường 10 - Đệ Tứ - ĐT: 0914755242 | Nợ: 0 | Có: 0
+ 26. Row  32 | Tuyến: THÀNH PHỐ | Mã: KH.140723195 | Tên: CH Hiền Thu(2)-0366.363.689 NGÃ 4 ĐƯỜNG S2 | Nợ: 0 | Có: 0
+ 27. Row  33 | Tuyến: THÀNH PHỐ | Mã: KH.140723055 | Tên: CH Hoàng Đăng 497 TC đối diện sân thiên trường-0941811892 | Nợ: 0 | Có: 0
+ 28. Row  34 | Tuyến: THÀNH PHỐ | Mã: KH.140723212 | Tên: CH Dương Tiến(2) - TP ( nhà cắt gạch gần đường S2) - ĐT: 0918882929 | Nợ: 0 | Có: 0
+ 29. Row  35 | Tuyến: THÀNH PHỐ | Mã: KH.140723125 | Tên: CH Thắng Hòa (2)- 60 Trường Chinh - TP Nam Định  ĐT: 03503 840 504 | Nợ: 0 | Có: 0
+ 30. Row  36 | Tuyến: THÀNH PHỐ | Mã: KH.140723173 | Tên: Chị Trâm - CH Anh Nam (2)  điện nước) 435 Trần Huy  Liệu - ĐT: 0916838092 | Nợ: 0 | Có: 0
+ 31. Row  37 | Tuyến: THÀNH PHỐ | Mã: KH.140723080 | Tên: Đại Lý Thành Chung(Anh Hải-0949592916) | Nợ: 0 | Có: 0
+ 32. Row  38 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Gia Khang - 279 Đặng Xuân Bảng | Nợ: 0 | Có: 0
+ 33. Row  39 | Tuyến: THÀNH PHỐ | Mã:  | Tên: Đại lý Thanh Tung - ĐT: 0913014053 | Nợ: 0 | Có: 0
+ 34. Row  40 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Đức Linh - 259 Trường Chinh - ĐT: 0888 769 786 | Nợ: 0 | Có: 0
+ 35. Row  41 | Tuyến: THÀNH PHỐ | Mã:  | Tên: kho Tây Sơn - | Nợ: 0 | Có: 0
+ 36. Row  42 | Tuyến: THÀNH PHỐ | Mã:  | Tên: Công ty Thiên Hoàng - ĐT: 0917368164 | Nợ: 0 | Có: 0
+ 37. Row  43 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Năm Phượng -  Trường Chinh -  TP Nam Định 0912 367975 | Nợ: 0 | Có: 0
+ 38. Row  44 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Dương Tùng - 667 Trường Chinh - TP | Nợ: 0 | Có: 0
+ 39. Row  45 | Tuyến: THÀNH PHỐ | Mã: KH.140723226 | Tên: CH Huy Kiên(2) - Mỹ Lộc ( A.kiên tây sơn) - 0906050328 | Nợ: 0 | Có: 0
+ 40. Row  46 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Cường Ngân- Mỹ Lộc - ĐT: 0946890915 | Nợ: 0 | Có: 0
+ 41. Row  47 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Oanh Chợ Sét - Mỹ Lộc - TP Nam Định  ĐT: 01275281760 | Nợ: 0 | Có: 0
+ 42. Row  48 | Tuyến: THÀNH PHỐ | Mã:  | Tên: cty huệ hải | Nợ: 0 | Có: 0
+ 43. Row  49 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Thanh Tùng - Mỹ Tiến - Mỹ Lộc - ĐT: 0912652078 | Nợ: 0 | Có: 0
+ 44. Row  50 | Tuyến: THÀNH PHỐ | Mã: KH.140723228 | Tên: CH Hoài Trang(2) - Đường Giải Phóng - TP Nam Định ĐT: 03502241368 - anh trung (0968 857 299) - chị trang 0917761410 | Nợ: 0 | Có: 0
+ 45. Row  51 | Tuyến: THÀNH PHỐ | Mã: KH.140723098 | Tên: CH Quang An (2)- Thôn lý nội - Xã Phú Phúc - HN - ĐT: 0972770591 | Nợ: 0 | Có: 0
+ 46. Row  52 | Tuyến: THÀNH PHỐ | Mã: KH.140723183 | Tên: Nội thất Sen tô (2) - ĐT: 0945342655 | Nợ: 0 | Có: 0
+ 47. Row  53 | Tuyến: THÀNH PHỐ | Mã: KH.140723285 | Tên: CH Toan Anh (2):633 Trần Huy Liệu-TP NĐ:0859420388 | Nợ: 0 | Có: 
+ 48. Row  54 | Tuyến: THÀNH PHỐ | Mã: KH.140723209 | Tên: CH Phương Huê (2)-0942637406-248 điện biên | Nợ: 0 | Có: 
+ 49. Row  55 | Tuyến: THÀNH PHỐ | Mã: KH.140723043 | Tên: CH Hoài tuyên - (2)-TP-  ĐT: 0919744131 | Nợ: 0 | Có: 
+ 50. Row  56 | Tuyến: THÀNH PHỐ | Mã: KH.140723384 | Tên: CH Danh Trung:0355903682-151 đặng xuân bảng | Nợ: 0 | Có: 
+ 51. Row  57 | Tuyến: THÀNH PHỐ | Mã: KH.140723141 | Tên: CH Quang Phóng(2) - Mỹ Hà - Mỹ Lộc -  ĐT: 0983656838 | Nợ: 0 | Có: 
+ 52. Row  58 | Tuyến: THÀNH PHỐ | Mã: KH.140723090 | Tên: CH Mai Dịu ( mới) - 563 Trường chinh  ĐT: 0943673739 | Nợ: 0 | Có: 
+ 53. Row  59 | Tuyến: THÀNH PHỐ | Mã: KH.140723137 | Tên: CH Hùng Yến (2)- 162 Trường Chinh - ĐT: 0915606525 - 0834926868 (c. yến) | Nợ: 0 | Có: 
+ 54. Row  60 | Tuyến: THÀNH PHỐ | Mã:  | Tên: CH Sơn Hoàn - Mỹ Lộc - ĐT: 0943096194 | Nợ: 0 | Có: 
+ 55. Row  61 | Tuyến: THÀNH PHỐ | Mã: KH.140723130 | Tên: CH Quảng Mận(2) - Mỹ Hưng - Mỹ Lộc - ĐT: 0854014007 | Nợ: 0 | Có: 
+ 56. Row  62 | Tuyến: THÀNH PHỐ | Mã: KH.140723151 | Tên: CH TUẤN HOÀI (2)-0949372910-đường 52m -Tp NĐ | Nợ:  | Có: 374400
+ 57. Row  63 | Tuyến: THÀNH PHỐ | Mã: KH.13784455 | Tên: CH Vũ Hùng-192 trần thánh tông-0912.975.345 | Nợ:  | Có: 21748820
+ 58. Row  74 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723101 | Tên: CH Mạnh Thắng(2) - yên cường - Ý Yên -  ĐT: 0987536619 (c.thủy) - 0917786583 | Nợ: 263713600 | Có: 
+ 59. Row  75 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723044 | Tên: CH Tòng Lăng - Yên Trị - ý yên - ĐT: 0856626888 - 0828 268 999 | Nợ: 149055520 | Có: 
+ 60. Row  76 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723001 | Tên: CH Anh Tâm (2)- Thị trấn Xuân Trường - ĐT: 0932365559 - 0948859636 | Nợ: 122289200 | Có: 
+ 61. Row  77 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723117 | Tên: CH Cao Kỳ (2) - Cầu vô tình - ĐT: 0916175899 | Nợ: 75148240 | Có: 
+ 62. Row  78 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.111 | Tên: ch đức giang (2) -đường đen -  Trực Ninh | Nợ: 72660000 | Có: 
+ 63. Row  79 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723178 | Tên: CH Cúc Hậu (2)- Ngã 4 chợ cống-tân thịnh-nam trực-NĐ - ĐT: 0911 004 694-0946.637.804 | Nợ: 54097200 | Có: 
+ 64. Row  80 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723100 | Tên: CH Gia Hưng (2) - Chợ gạo - ĐT: 0948886730 | Nợ: 52952560 | Có: 
+ 65. Row  81 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723207 | Tên: CH gia huy  (2) - Núi ngăm - ĐT:  0964280276 | Nợ: 47444800 | Có: 
+ 66. Row  82 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723086 | Tên: CH Đức Duy (2) - Xuân Trường - ĐT: 02283 752 338 | Nợ: 46042000 | Có: 
+ 67. Row  83 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723033 | Tên: CH Trình Hoa (2)- Ý Yên - ĐT: 0384260258 ( vợ) - 01655 006 452 | Nợ: 41184000 | Có: 
+ 68. Row  84 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723037 | Tên: CH Nam Huyền - Chợ Quắn - 0392388757 | Nợ: 39725600 | Có: 
+ 69. Row  85 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723067 | Tên: CH Lan Lợi  (2)- Gôi - ĐT: 0942607282 ( gửi bến mới -  ĐT nhà xe: 0988122758 a. bình) | Nợ: 36670720 | Có: 
+ 70. Row  86 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.113 | Tên: CH Dương Cậy - Cổ Lễ 0944469969 | Nợ: 30295000 | Có: 
+ 71. Row  87 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723060 | Tên: CH Cúc Bách (2) - Cổ Lễ - ĐT: 0912 829  221 | Nợ: 25860000 | Có: 
+ 72. Row  88 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.8339258 | Tên: CH Dương Hương (2)-Xuân Thành - Xuân trường  ĐT 0915329232 - 0948 287 687 | Nợ: 21000400 | Có: 
+ 73. Row  89 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723191 | Tên: Chinh Hoài (2)- Xuân kiên - Xuân Trường - ĐT: 0912450447 | Nợ: 18840500 | Có: 
+ 74. Row  90 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723034 | Tên: CH Ly Dần -  ( chồng) Vụ Bản ĐT: 0944808571 - 01674805756 | Nợ: 15000000 | Có: 
+ 75. Row  91 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723102 | Tên: CH Dũng Hoa(2) - ý yên - ĐT: 0989321791 | Nợ: 11522200 | Có: 
+ 76. Row  92 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723162 | Tên: CH Tiên Hoa(2) - km7 - Đường 55 - Nam Trực -  ĐT: 0912443022 | Nợ: 10294000 | Có: 
+ 77. Row  93 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723185 | Tên: CH Trần Vũ (2) - gần cầu an duyên Đại An - Vụ Bản- ĐT: 0989987368 | Nợ: 9917860 | Có: 
+ 78. Row  94 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723155 | Tên: CH tuấn Bình(2) - Đường 57A - Tân Lập - Yên Tiến - Ý Yên - ĐT: 0349591078 - 0912740395 | Nợ: 8706000 | Có: 
+ 79. Row  95 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723081 | Tên: CH Nghi Thoa (2) - Thọ Nghiệp - Xuân Trường - ĐT: 03503 887 050 - 0974 558 327 | Nợ: 6660000 | Có: 
+ 80. Row  96 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723156 | Tên: CH Quản Lan(2) - Chợ Chùa  ĐT: 0916 161 013 | Nợ: 1938000 | Có: 
+ 81. Row  97 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723134 | Tên: CH Ánh Tuyết (2) - Chợ hầu  - Vụ Bản - ĐT: 0916 509 676 | Nợ: 1780000 | Có: 
+ 82. Row  98 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723231 | Tên: CH Ngọc Căn(2) - Nam Dương - Nam Trực ĐT: 0945009507 ( số mới) | Nợ: 1360000 | Có: 
+ 83. Row  99 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723127 | Tên: CH Huê Vượng(2) - Cổ Lễ  - ĐT: 0946525505 (chị huê) | Nợ: 1286000 | Có: 
+ 84. Row 100 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723095 | Tên: CH Thuận Thành (2)- Xuân Trường (gần tượng đài Trường Chinh) - ĐT: 3 751 851 - DĐ: 0945 365 313 | Nợ: 0 | Có: 
+ 85. Row 101 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723305 | Tên: Anh Hồng - Nội thất xanh - ĐT: 0941412283 | Nợ: 0 | Có: 
+ 86. Row 102 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723053 | Tên: CH Tiến Lực-yên cường -yy 0368.013.997 | Nợ: 0 | Có: 
+ 87. Row 103 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723047 | Tên: CH Hùng Liên -0975941137-phà đống cao -yy | Nợ: 0 | Có: 
+ 88. Row 104 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723054 | Tên: CH Hoa Huê (2) - gần cầu non nước -  ý yên ĐT CH: 0904165111 ( Gửi bến moi - ĐT nhà xe: 0344336559 - Quỳnh) | Nợ: 0 | Có: 0
+ 89. Row 105 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723251 | Tên: CH Minh Tiến(2) -  Phú Thôn - Tân khánh - Vụ Bản - ĐT: 0376407176-0829884992 | Nợ: 0 | Có: 0
+ 90. Row 106 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723373 | Tên: CH Đức Hải(2)( Đình Huyền) - Nghĩa An - Nam Trực -   - ĐT: 0948598862-Đi đường 55 - qua chợ cà 300m | Nợ: 0 | Có: 
+ 91. Row 107 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723186 | Tên: Ch Quốc Hà( 2 )-cống khâm-nam trực-0949719334 | Nợ: 0 | Có: 
+ 92. Row 108 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723145 | Tên: CH Phúc Nam (2)- Nam Trực - ĐT: 0852496089 | Nợ: 0 | Có: 
+ 93. Row 109 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723188 | Tên: CH Bằng Lan(2)-0963.994.423 Cầu điện biên -Trực ninh(qua huyền đệ) | Nợ: 0 | Có: 
+ 94. Row 110 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723131 | Tên: CH Tiến Khích(2) - Nam Thái - Nam Trực -  0948933650 | Nợ: 0 | Có: 
+ 95. Row 111 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723189 | Tên: CH Lại Hằng(2) - Cổ Lễ - ĐT: 0834 610  880 | Nợ: 0 | Có: 
+ 96. Row 112 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723370 | Tên: CH Tấn Tùng ( mới)(2) - Cát Đằng -Ý Yên - 0944751066 ( Gửi xe Hiếu Bằng - Bến mới) | Nợ: 0 | Có: 
+ 97. Row 113 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723128 | Tên: CH Quang Khải(2) - (cạnh UB xã Nam Thắng) Nam Trực - TPĐT: 0946 744 420 | Nợ: 0 | Có: 
+ 98. Row 114 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723152 | Tên: CH Công Định (2)- ngã 3 ngặt kéo - Trực Ninh (TP) ĐT: 0844 889 111-0974 724 682-0 | Nợ: 0 | Có: 
+ 99. Row 115 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723122 | Tên: CH Xuân Thủy (2) - Cầu Bo - Ý Yên ĐT: - 09128920078 -  0904 770 600 ( Gửi xe Hiếu Bằng bến mới) | Nợ: 0 | Có: 
+100. Row 116 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723114 | Tên: CH mặt trời đỏ Công Định(2)-  ngặt kéo - Trực Ninh  ĐT: 0353176314 | Nợ: 0 | Có: 
+101. Row 117 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723068 | Tên: CH Xuân Trường (2)- Xã Việt Hùng - Quần Lạc -  Trực Ninh  - ĐT: 0857413669 | Nợ: 0 | Có: 
+102. Row 118 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723171 | Tên: CH Đôn Loan(2)-0368080222-gần xuân dương | Nợ: 0 | Có: 
+103. Row 119 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723194 | Tên: CH Nguyệt Quang(2)- Trực Ninh - ĐT: 09144318590 | Nợ: 0 | Có: 
+104. Row 120 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723203 | Tên: CH Đức Thư(2) 0824443268-tt cổ lễ -trực ninh | Nợ: 0 | Có: 
+105. Row 121 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723083 | Tên: CH Quyết Thúy (2) - trung Khanh - Nam Thái -Nam trực - ĐT: 0934608223 | Nợ: 0 | Có: 
+106. Row 122 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723104 | Tên: CH Hương Lý (2)- Nam Trực - ĐT: 0918311892 | Nợ: 0 | Có: 
+107. Row 123 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723027 | Tên: CH Tiến Phượng (2) --Nam trực-trực ninh-nđ - ĐT: 0945 418 663 | Nợ: 0 | Có: 
+108. Row 124 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Mai Hương - Cầu An Lá - 0948 114 716 | Nợ: 0 | Có: 
+109. Row 125 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Hiền Khiên - Cổ Lễ - ĐT: 0984 048 435 | Nợ: 0 | Có: 
+110. Row 126 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723220 | Tên: CH Cao Quỳnh(2)0836541998 chợ chùa-nam trực | Nợ: 0 | Có: 
+111. Row 127 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723057 | Tên: CH Chiến Liên-0394987342-trung lao trực ninh | Nợ: 0 | Có: 
+112. Row 128 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723237 | Tên: CH Thúy Loan(2):0814598018-Ngã 3 cầu đông thụ-trực thuận trực ninh | Nợ: 0 | Có: 
+113. Row 129 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Long định - ĐT: 0948226123 - 0703669678 (vợ) | Nợ: 0 | Có: 
+114. Row 130 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Quản Lan - Chợ Chùa  ĐT: 0916 161 013 | Nợ: 0 | Có: 
+115. Row 131 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Đình Nghĩa - Nam Trực | Nợ: 0 | Có: 
+116. Row 132 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Trường Hạt - Cầu Đen - Trực Nội - trực Ninh - ĐT: 0943273224 | Nợ: 0 | Có: 
+117. Row 133 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Luyến Phượng - Trực Đại - ĐT: 0343506317 | Nợ: 0 | Có: 
+118. Row 134 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Đôn Loan-0368080222-gần xuân dương | Nợ: 0 | Có: 
+119. Row 135 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: Chị Hằng  ( CH Thái Phương) - Nam trực - ĐT: 0942804483 | Nợ: 0 | Có: 
+120. Row 136 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Trang nghị -Cầu Ghềnh - Nam Trực  ĐT: 0365483279 | Nợ: 0 | Có: 
+121. Row 137 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Huyền Đệ - Cầu Điện Biên - Trung Lao - Trực Ninh | Nợ: 0 | Có: 
+122. Row 138 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723097 | Tên: CH Huyền Đệ(2) -0962629968 Cầu Điện Biên - Trung Lao - Trực Ninh | Nợ: 0 | Có: 
+123. Row 139 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723217 | Tên: CH Minh ánh (2)- Chợ Giá - Nam trực - ĐT: 0978 704 270 | Nợ: 0 | Có: 
+124. Row 140 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Thu Thủy  _cổ lễ , trực ninh - ĐT: 0976944119 | Nợ: 0 | Có: 
+125. Row 141 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Mãi Thu _Cổ Lễ_01278806880 | Nợ: 0 | Có: 
+126. Row 142 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Lại Hằng - Cổ Lễ - ĐT: 01234 610  880 | Nợ: 0 | Có: 
+127. Row 143 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723074 | Tên: CH Hinh Sáu - Xóm Già - Kim Thái - Vụ Bản - ĐT: 0962046225 | Nợ: 0 | Có: 
+128. Row 144 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723225 | Tên: CH Nhật Linh|(2) - Yên Lương - Ý Yên - ĐT: 0906 145 573 | Nợ: 0 | Có: 
+129. Row 145 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.3661412 | Tên: CH Trung Hiền(2) - Ý Yên - ĐT: 03503824801 - 0906 144 880 ( Gửi xe Thuận - bến Nông nghiệp) | Nợ: 0 | Có: 
+130. Row 146 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723254 | Tên: CH Yến nghị (2)- Chợ Lời - Vụ Bản - ĐT:0948229698 | Nợ: 0 | Có: 
+131. Row 147 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723103 | Tên: CH Đạt Huyền(2)-0985928698-yên khang , ý yên ( Gửi xe Kiên bến nông nghiệp) | Nợ: 0 | Có: 
+132. Row 148 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723246 | Tên: CH Bình Việt(2)-ngã 3 cát đằng-ý yên0983.359.577 | Nợ: 0 | Có: 
+133. Row 149 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723222 | Tên: CH Kỳ Dung (2) - Yên Đông - ý yên - ĐT: 0787487529 | Nợ: 0 | Có: 
+134. Row 150 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723215 | Tên: CH thắm Giang(2) - Yên Bình - Ý Yên - ĐT: 0944631262 | Nợ: 0 | Có: 
+135. Row 151 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723234 | Tên: CH Đăng Tâm(2) - Cầu Bát Di - Vụ Bản - ĐT: 02283 996 854 - 0949 661 057 | Nợ: 0 | Có: 
+136. Row 152 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Phương Quyên-0976645622 yên minh ý yên | Nợ: 0 | Có: 
+137. Row 153 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Xuân Tới - Yên Hưng - ý Yên | Nợ: 0 | Có: 
+138. Row 154 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Hùng Thanh - Ý Yên - (mới)  ĐT: 0973482490 | Nợ: 0 | Có: 
+139. Row 155 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Ngọc Viễn - Yên Lộc - ý Yên | Nợ: 0 | Có: 
+140. Row 156 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Đức Vân - Ý Yên - ĐT: 0976 146 861 | Nợ: 0 | Có: 
+141. Row 157 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Tấn Tùng ( mới) - Cát Đằng -Ý Yên - 0944751066 ( Gửi xe Hiếu Bằng - Bến mới) | Nợ: 0 | Có: 
+142. Row 158 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Đại Đồng - Yên Chính - Ý Yên - ĐT: 0228 6 577 424 ( gửi xe hiếu bằng) | Nợ: 0 | Có: 
+143. Row 159 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Tuấn Hiệp (Ngã tư chợ mụa)  - ý yên - ĐT 0988152739 | Nợ: 0 | Có: 
+144. Row 160 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Xuân Dũng - Thị trấn Lâm - Ý Yên - ĐT: 0915 753 580 | Nợ: 0 | Có: 
+145. Row 161 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Hùng Thoa - Ý Yên ( Gần đống Cao) | Nợ: 0 | Có: 
+146. Row 162 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Gia Huy - yên cường - Ý Yên - ĐT: 0972145566 | Nợ: 0 | Có: 
+147. Row 163 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Hạnh Nga -  ý yên ( gửi xe về Cầu Bo) - ĐT: 0367813445 | Nợ: 0 | Có: 
+148. Row 164 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Tài Hiền - Ý Yên | Nợ: 0 | Có: 
+149. Row 166 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Thọ Châu - Vụ Bản - ĐT: 0912 967 549 -0984377929( Gửi xe Viên Ngát - Bãi cơ khí nông nghiệp - ĐT xe: 0979 311 121 | Nợ: 0 | Có: 
+150. Row 167 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Tiến Sơn -Chợ Gạo -vụ bản -0968076767 | Nợ: 0 | Có: 
+151. Row 168 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Phán - Gôi (Trường Huy) - ĐT: 0911006886 | Nợ: 0 | Có: 
+152. Row 169 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Điện máy Phạm Hoàng - Cầu Ngăm - Minh Tân - Vụ Bản - ĐT: 0987229691 | Nợ: 0 | Có: 
+153. Row 170 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Phong Hằng - Minh Thuận - Vụ Bản - ĐT: 0978 287 579 | Nợ: 0 | Có: 
+154. Row 171 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Tình Hoa - Vụ Bản ĐT: 0388255966 | Nợ: 0 | Có: 
+155. Row 172 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Quốc Hiệu - Vụ Bản | Nợ: 0 | Có: 
+156. Row 173 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Xuân Đương - Xóm 8 - cao phương - liên bảo- Vụ Bản - ĐT: 0327252686 | Nợ: 0 | Có: 
+157. Row 174 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Phố Hà-0376615228-hợp hưng -vụ bản | Nợ: 0 | Có: 
+158. Row 175 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Cửu thắm - Vụ Bản (ngăm - 01685530079 | Nợ: 0 | Có: 
+159. Row 176 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Hùng Nhàn - Hiển Khánh - Vụ Bản - ĐT: 0971 909 636 | Nợ: 0 | Có: 
+160. Row 177 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Nam phương - Cầu An duyên | Nợ: 0 | Có: 
+161. Row 178 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723116 | Tên: CH Bình Hòa (2) - Gần cầu ngăm cạnh nhà Cửu thắm - ĐT: 0978679697 | Nợ: 0 | Có: 
+162. Row 179 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723051 | Tên: CH Lộc Hợi (2)- Xuân Phương - Xuân Trường ĐT: 0917 843 199 | Nợ: 0 | Có: 
+163. Row 180 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723146 | Tên: CH Khải Dung(2) - Xuân Trường - ĐT: 0968572087 | Nợ: 0 | Có: 
+164. Row 181 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723250 | Tên: CH Dũng Thủy(2) - Hành Thiện - Xuân Trường ĐT: 0942 094 303 | Nợ: 0 | Có: 
+165. Row 182 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723126 | Tên: CH Minh Hương (2)- Cầu Đen - Xuân Vinh - Xuân Trường - ĐT: 3 886 645 | Nợ: 0 | Có: 
+166. Row 183 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Đỗ Mười -  Xuân Trường | Nợ: 0 | Có: 
+167. Row 184 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Ngọc Hồi - Xuân Phú - Xuân Trường - ĐT: 094 508 8618 | Nợ: 0 | Có: 
+168. Row 185 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Hiếu Loan - Xuân trường - ĐT: 0918 870 638 - 0989743001 | Nợ: 0 | Có: 
+169. Row 186 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Việt Quang - Xuân Tiến - Xuân Trường - ĐT: 0914 483 143 | Nợ: 0 | Có: 
+170. Row 187 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Xuyến Thưởng - Lạc Quần | Nợ: 0 | Có: 
+171. Row 188 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Tấn Hà xóm 5 thôn đoài ngoại, xuân hòa, ĐT:0962960189-096637267CH Tấn Hà | Nợ: 0 | Có: 
+172. Row 189 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Đức Chính - Hành Thiện -  Xuân Trường - ĐT: 0914849498 - 03503 752 521 | Nợ: 0 | Có: 
+173. Row 190 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Hưng Mai - Hành Thiện - Xuân Trường - ĐT: 0824349829 | Nợ: 0 | Có: 
+174. Row 191 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã:  | Tên: CH Minh Tân - Xuân Tiến - Xuân Trường ĐT: 0947 203 144 - 03503 762 578 | Nợ: 0 | Có: 
+175. Row 192 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723035 | Tên: CH Phương Thay - Xuân Trường - ĐT: 0839940057 - 0984656830 | Nợ: 0 | Có: 
+176. Row 193 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723129 | Tên: Ch Dũng phương̣̣̣ 2-_ Xuân Hòa - Xuân Trường | Nợ: 0 | Có: 
+177. Row 197 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723079 | Tên: CH Hạnh Dân - Cây xăng Bình Minh - Thượng Nông - Bình Minh - Nam Trực - ĐT: 0942530116 | Nợ: 0 | Có: 
+178. Row 198 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723038 | Tên: CH Tứ Khuyên - Chợ Dần - Vụ Bản - ĐT: 0982 192 3163600 | Nợ: 0 | Có: 4496000
+179. Row 199 | Tuyến: NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG | Mã: KH.140723106 | Tên: CH Đoan Hằng  (2)- Trực thái - trực ninh- ĐT: 0944874236 | Nợ: 0 | Có: 86694000
+180. Row 210 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723039 | Tên: CH An Thuyên (2)- Giao An - Giao Thủy - ĐT: 0944315368 | Nợ: 83796500 | Có: 
+181. Row 211 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.110 | Tên: CH Tấn Tài - Bình Hòa | Nợ: 48061000 | Có: 
+182. Row 212 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723175 | Tên: CH Vĩnh Nhàn(2)-0966722629-Nam hoa-nam trực | Nợ: 42069000 | Có: 
+183. Row 213 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723089 | Tên: CH Hoàng nguyệt (2) - Thị trấn Ngô Đồng - Giao Thủy - ĐT: 0912 283 347 - | Nợ: 37099000 | Có: 
+184. Row 214 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723049 | Tên: CH Đức Dĩnh (2)- Hải Đông - Hải Hậu  ĐT:0972 685 775 - 03503875272 | Nợ: 34780000 | Có: 
+185. Row 215 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723066 | Tên: CH Thiệu Hường (2)- Nghĩa Hưng - ĐT: 0948076996 | Nợ: 34285520 | Có: 
+186. Row 216 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723094 | Tên: CH Hiển Tho (2)- Giao Châu 0988 418 257- DĐ: 0973 036 985 | Nợ: 30975800 | Có: 
+187. Row 217 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723230 | Tên: CH Hưng Tình(2):0984365870-Nghĩa minh-Nghĩa hưng | Nợ: 30518560 | Có: 
+188. Row 218 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723045 | Tên: CH Hà Thuỷ (2)- Ngã 3 Tam Thôn - ĐT: 0386447857 | Nợ: 29842000 | Có: 
+189. Row 219 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.0934860668 | Tên: CH Hảo Trang - Nghĩa Lạc - ĐT: 0934860668 | Nợ: 28780000 | Có: 
+190. Row 220 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.14235111 | Tên: CH Hùng Hường-hải phương -hh | Nợ: 27034000 | Có: 
+191. Row 221 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723124 | Tên: CH Hồng Đệ(2) - Chợ Đường - Liêm Hải Trực Ninh- ĐT: 0914 542 817 | Nợ: 19735000 | Có: 
+192. Row 222 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723123 | Tên: CH Tú Thoan (2) - Giao Yến - Giao thủy - ĐT: 0943714192 | Nợ: 17422500 | Có: 
+193. Row 223 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723093 | Tên: CH An Bình(2) - Xuân Vinh 0912850773 | Nợ: 16663000 | Có: 
+194. Row 224 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723177 | Tên: CH Duy Trực(2) - Chợ Trâu - Hải Hậu 0944206519 | Nợ: 16280240 | Có: 
+195. Row 225 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140578546 | Tên: CH Quang liên-XT | Nợ: 15675000 | Có: 
+196. Row 226 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.3571248 | Tên: CH Đức Thùy (2)- Giao Hải - 0986797020 | Nợ: 14747200 | Có: 
+197. Row 227 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723277 | Tên: CH Huy Linh(2) - Xóm 2 Hải Lộc - Hải Hậu ĐT: 0948 523 108 | Nợ: 13862200 | Có: 
+198. Row 228 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723322 | Tên: CH Việt Hưng(2):Thịnh long-hải hậu 0966239828 | Nợ: 12666200 | Có: 
+199. Row 229 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723005 | Tên: CH Hương Nga-cầu vòi-0942060095 | Nợ: 9187720 | Có: 
+200. Row 230 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723031 | Tên: CH Tuyết Tuân (2) - Đường đen - Trực Ninh -(TP) ĐT: 085 594 8364 - (Gửi xe buýt tải số 36) | Nợ: 8737000 | Có: 
+201. Row 231 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723076 | Tên: CH Hiệp Thơm (2) - Thị trấn Cồn - Hải Hậu- ĐT: 0972208139 | Nợ: 8162200 | Có: 
+202. Row 232 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.0913212818 | Tên: CH Đức Anh - BX cũ Liễu Đề | Nợ: 7965900 | Có: 
+203. Row 233 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723091 | Tên: CH Phúc Ân  (2)- Giao Yến - Giao Thủy - ĐT: | Nợ: 6694000 | Có: 
+204. Row 234 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723088 | Tên: Hải Trình (2)- Hoành Sơn -Giao Thủy(0942820166) | Nợ: 6648000 | Có: 
+205. Row 235 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723004 | Tên: CH Đông Anh (2) -Hải Phong -HH-0989640192 | Nợ: 6421600 | Có: 
+206. Row 236 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723296 | Tên: CH Trung Lan (2) - Xóm Tân Phong - Hải Triều - Hải Hậu - ĐT: 0335134053 | Nợ: 5909000 | Có: 
+207. Row 237 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723032 | Tên: CH Toản Hà - Hải Lạng - Nghĩa Hưng | Nợ: 5650160 | Có: 
+208. Row 238 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723009 | Tên: CH Tiển Huế  ( 2)- Cầu Bình lãng - Nghĩa Hưng - ĐT: 0912612060 | Nợ: 4333600 | Có: 
+209. Row 239 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.0373763012 | Tên: CH Hùng Linh - Thọ Nghiệp-Xuân trường - Đt: 0373763012 | Nợ: 3498000 | Có: 
+210. Row 240 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723330 | Tên: ch Sơn thuỷ (2) - Xóm 3 - Xã Trực Thái - Hải Hậu - ĐT: 0977684504 | Nợ: 3330000 | Có: 
+211. Row 241 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723063 | Tên: CH Xuân Dương (2) - Chợ giá - Nam TRực - ĐT: 0915411763 ( anh dương) - 02283883652 | Nợ: 3296500 | Có: 
+212. Row 242 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723211 | Tên: CH Tuyết Hùng (2) - Giao Nhân - Giao Thủy - ĐT: 0976 758 752 | Nợ: 2652600 | Có: 
+213. Row 243 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723147 | Tên: CH Ngọc Biên (2) - Nghĩa Hưng - ĐT: 0985510426 | Nợ: 1919800 | Có: 
+214. Row 244 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723070 | Tên: CH Thủy Tùng(2) -Nghĩa Lạc- Nghĩa Hưng - ĐT: 0945850925 | Nợ: 1028800 | Có: 
+215. Row 245 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723163 | Tên: CH Hoàng Hiệp (2) - Xóm 8 - Hải Vân - Hải Hậu - ĐT: 0901718063 | Nợ: 899000 | Có: 
+216. Row 246 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723073 | Tên: CH Thế Hải (2)- Hải Cường - Hải Hậu | Nợ: 780000 | Có: 
+217. Row 247 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723291 | Tên: CH Quang Học (2) - Quỹ Nhất - Nghĩa Hưng - ĐT: 0913605337 | Nợ: 780000 | Có: 
+218. Row 248 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140 | Tên: CH Mão Trang - (2) | Nợ: 538000 | Có: 
+219. Row 249 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723061 | Tên: CH Huân Thơm(2) - Bạch Long - Giao Thủy - ĐT: 03503 893 058 - 0972 998 081 - 0979122009 | Nợ: 518000 | Có: 
+220. Row 250 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723149 | Tên: CH Hồng Nhung(2) - Đường Vàng - Nam Giang- Nam Trực - ĐT: 097 895 3856 | Nợ: 300000 | Có: 
+221. Row 251 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723010 | Tên: CH Dung Giỏi - Quốc lộ 37B - Xã Đồng Thịnh - Tỉnh Ninh Bình - ĐT: 0943341983 | Nợ: 251000 | Có: 
+222. Row 252 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723165 | Tên: CH Lạng Hạnh(2)-Bình hoà -giao thuỷ-0907865384(đt bus 0917117101) | Nợ: 50000 | Có: 
+223. Row 253 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723110 | Tên: CH Khánh Tụ (2) -  cầu vô tình - cổ lễ - ĐT: 0348920427 | Nợ: 0 | Có: 
+224. Row 255 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723164 | Tên: CH Thứ Nga(2) - Hải Hậu - ĐT: 03503 874 055 - 0914791095 ( chú thứ) | Nợ: 0 | Có: 
+225. Row 256 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723320 | Tên: CH Thịnh Kế ( 2 )-tt cồn -hh-nđ-0989432618 | Nợ: 0 | Có: 
+226. Row 257 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723268 | Tên: CH Thành Đạt(2)-Giao phong -GT-0985611182 | Nợ: 0 | Có: 
+227. Row 258 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723092 | Tên: CH Kim Thư (2)- Giao Hải - ĐT: 0982 449 028 | Nợ: 0 | Có: 
+228. Row 259 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723165 | Tên: CH Tỵ Liên(2) - Giao Lạc - Giao Thủy | Nợ: 0 | Có: 
+229. Row 260 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723157 | Tên: CH Trang Huynh (2) -bạch long,giao thủy sdt:0382161002 | Nợ: 0 | Có: 
+230. Row 261 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723119 | Tên: CH Trần Độ(2) - Giao Châu - Giao Thủy-0977.738.920 | Nợ: 0 | Có: 
+231. Row 262 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Đức Cường - Hoành Sơn - Giao Thủy - ĐT: 01686630207 - 0944 654 423 ( Gửi xe buýt tải Đông A) | Nợ: 0 | Có: 
+232. Row 263 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Qúy Lan - chợ Bể - Giao Thủy - ĐT: 0912284317 | Nợ: 0 | Có: 
+233. Row 264 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Chung Thủy - Giao Thủy - ĐT: 0969756935Gửi xe buýt tải Đông A - Ngã tư Hồng Thuận | Nợ: 0 | Có: 
+234. Row 265 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Ngọc Tiện - Chợ Giao Thiện - Giao Thủy - ĐT:   0859167318 - 01246686701 (ĐT nhà xe 0913 117 101) | Nợ: 0 | Có: 
+235. Row 266 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Thịnh Phát - Giao Thịnh - Giao Thủy - ĐT: 0979 654 994 | Nợ: 0 | Có: 
+236. Row 267 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Xuân Bôn - Giao An - Giao Thủy - ĐT: 0988 837 476 - 03503 741 535 | Nợ: 0 | Có: 
+237. Row 268 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Minh Doanh - Quất Lâm - Giao Thủy - ĐT: 0966290636 ( Gửi xe bến trần hưng đạo - Xe số 12 | Nợ: 0 | Có: 
+238. Row 269 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Thành Hương - Giao Tiến - Giao Thủy: ĐT: 03503 895 620 | Nợ: 0 | Có: 
+239. Row 270 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Cẩn Liễu -  Giao Thanh _giao Thủy -ĐT: 01288 365 064 | Nợ: 0 | Có: 
+240. Row 271 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: Chính Hiền - Giao Tân - Giao Thủy  ĐT: 0974 861 428 | Nợ: 0 | Có: 
+241. Row 272 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Khoa Cương - Giao Tiến - Giao Thủy - ĐT: 0915878085 | Nợ: 0 | Có: 
+242. Row 273 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723284 | Tên: CH Quang Đảng(2) - Nghĩa Hưng - ĐT:0915708511 | Nợ: 0 | Có: 
+243. Row 274 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723109 | Tên: CH Qúy Lan (2) - chợ Bể - Giao Thủy - ĐT: 0836754357 ( vợ) - 0912284317 | Nợ: 0 | Có: 
+244. Row 275 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723263 | Tên: CH Thắm Yên (2) - 0971091807- Hồng thuận-giao thuỷ,NĐ | Nợ: 0 | Có: 
+245. Row 276 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723058 | Tên: CH Trọng quỳnh - Xóm 6 - Giao Hương - Giao Thủy - ĐT: 0974 422 346 | Nợ: 0 | Có: 
+246. Row 277 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723120 | Tên: CH Tiến Sang(2) - Nghĩa Lâm - Nghĩa Hưng - ĐT: 0976 583714(vợ) - 0392 225 129 | Nợ: 0 | Có: 
+247. Row 278 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.111 | Tên: CH Minh Anh - Hải Hậu | Nợ: 0 | Có: 
+248. Row 279 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723036 | Tên: CH Trọng Anh - Xóm 3 - Nghĩa Thành - Nghĩa Hưng - ĐT: 0989993234 - 0398162642, gửi xe 34 Trần Hưng Đạo. | Nợ: 0 | Có: 
+249. Row 280 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723065 | Tên: CH Thái Hạnh (2)- Nghĩa Thành - Nghĩa Hưng - ĐT: 0363668421 gửi xe  ngọc dư | Nợ: 0 | Có: 
+250. Row 281 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Hoàng Phương - Liễu Đề - Nghĩa Hưng - 0915063239 | Nợ: 0 | Có: 0
+251. Row 282 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723138 | Tên: CH Hoàng Hải(2)-0977419887-hải phong -hh | Nợ: 0 | Có: 
+252. Row 283 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723258 | Tên: CH Đại Tuyết (2) - Giao Thịnh - Giao Thủy | Nợ: 0 | Có: 
+253. Row 284 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723302 | Tên: CH Hạnh Huệ(2) - Nghĩa châu - Nghĩa Hưng - ĐT: 0913346321 | Nợ: 0 | Có: 
+254. Row 285 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Thêm Thùy - Hải Lạng - Nghĩa Hưng - ĐT: 0912675229 | Nợ: 0 | Có: 0
+255. Row 286 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723040 | Tên: CH Minh AÍ (2) - Xóm 8 - Hải Lộc - Hải Hậu  - ĐT: 0915068151 - 0918587798 | Nợ: 0 | Có: 
+256. Row 287 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723303 | Tên: CH Rồng Huế (2)- Quỹ nhất - Nghĩa Hưng - 03503872111 - 0944571298 - 0912410633 | Nợ: 0 | Có: 
+257. Row 288 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.3471093 | Tên: CH Hưng Cường(2)-hai thinh -hh | Nợ: 0 | Có: 
+258. Row 289 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723112 | Tên: CH Dũng Văn Điển (2) - Hải Hậu - ĐT: 03503 779 507 - DĐ: 0914 728 392 | Nợ: 0 | Có: 
+259. Row 290 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723166 | Tên: CH khuy trình (2)- Cầu hải quang - Hải hậu | Nợ: 0 | Có: 
+260. Row 291 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723036 | Tên: CH Sáng Duyên (2)-0943500589-hải vân hải hậu | Nợ: 0 | Có: 
+261. Row 292 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723232 | Tên: CH Vĩnh Thư(2)-0943620808-0913347104-hải bắc-hh | Nợ: 0 | Có: 
+262. Row 293 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.28115182 | Tên: CH Quốc Anh (2) - Cấu 12 - Hải Anh - Hải Hậu - ĐT: 0384393096 | Nợ: 0 | Có: 
+263. Row 294 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH1 | Tên: CH Hưng Hường-hải phương -HH | Nợ: 0 | Có: 
+264. Row 295 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Tú Lĩnh(2) - Hải Hậu - ĐT: 0329842485 | Nợ: 0 | Có: 
+265. Row 296 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723261 | Tên: CH Đức Nguyên (2) - Hải Triều -Hải Hậu | Nợ: 0 | Có: 
+266. Row 297 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723050 | Tên: CH Ngọc Khang - Cầu Tùng Lâm - Hải Hậu gửi xe buýt số 36 - ĐT  0915878591 - 0989342978 | Nợ: 0 | Có: 
+267. Row 298 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723150 | Tên: CH Tuấn Duyên(2) - Hải Anh - Hải Hậu - ĐT: 0912047159 | Nợ: 0 | Có: 
+268. Row 299 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723096 | Tên: CH Thái Học(2) - Hải Hậu - ĐT: 0978 460 914 | Nợ: 0 | Có: 
+269. Row 300 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723107 | Tên: CH Quảng Xuân (2) - Phú văn nam - Hải Châu - hải hậu - ĐT: 0909659799 - 0862883986 | Nợ: 0 | Có: 
+270. Row 301 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Phú Thanh - Nghĩa Bình - Nghĩa Hưng - ĐT: 0913084791 | Nợ: 0 | Có: 
+271. Row 302 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Hạnh Phát - Nghĩa Hải - Nghĩa Hưng - ĐT: 0966622769 | Nợ: 0 | Có: 
+272. Row 303 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Đức Tiện - Nghĩa Hải -Nghĩa Hưng  ĐT: 0912 849 592 | Nợ: 0 | Có: 
+273. Row 304 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Đức Lương _Hải Hậu _0948688480 | Nợ: 0 | Có: 
+274. Row 305 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Ánh Tĩnh-0368030774-0986554122 Số 97 TDP bắc trung nam -tt ninh cường-TN-NĐ | Nợ: 0 | Có: 
+275. Row 306 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Hòa Nguyệt - Hải Lý - Hải Hậu - ĐT: 01696 366 037 (vợ) - 0977 557 103 - 03503 789 686 - 0000000000 | Nợ: 0 | Có: 
+276. Row 307 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Tuấn Huế - Hải Hậu - ĐT: 0914881332 | Nợ: 0 | Có: 
+277. Row 308 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Kha Hằng(Phạm Kha) - Hải Hậu - ĐT: 0854537045 | Nợ: 0 | Có: 
+278. Row 309 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Đỉnh Thu - Hải Thịnh - Hải Hậu - ĐT: 0948 582 333 - 0944618233 ( vợ) - Gửi xe Liễu ở bến mới | Nợ: 0 | Có: 
+279. Row 310 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Minh Thực - Cầu Đôi - Hải Hưng - Hải Hậu - ĐT: 01689 203  478 | Nợ: 0 | Có: 
+280. Row 311 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Hoàng Hải-0977419887-hải phong -hh | Nợ: 0 | Có: 
+281. Row 312 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã:  | Tên: CH Hoài Cương - Yên Định - Hải Hậu | Nợ: 0 | Có: 
+282. Row 314 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723021 | Tên: CH Vũ Oánh:-0912555776-chợ đền hải quang -h2 | Nợ: 0 | Có: 
+283. Row 315 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.55916821 | Tên: CH Huyền Linh - Hải Cường - Hải Hậu - ĐT: 0384902923 - 0984081942 | Nợ: 0 | Có: 
+284. Row 317 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723042 | Tên: CH Hòa Nguyệt(2) - Hải Lý - Hải Hậu - ĐT: 0396 366 037 (vợ) - 0977 557 103 - 3 789 686 | Nợ: 0 | Có: 
+285. Row 318 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.3398456 | Tên: CH Thân Mỹ - Thị trấn Cồn - Hải Hậu  ĐT: 0849670866 | Nợ: 0 | Có: 
+286. Row 319 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.56178489 | Tên: CH Mão Trang - Xóm 1 - Hải Bắc -  Hải Hậu - ĐT: 0915648993 | Nợ: 0 | Có: 
+287. Row 320 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.4777701 | Tên: CH Thái Dương - Yên Định - Hải Hậu ( cạnh đại lý xe Việt Hương) - ĐT: 0912 821 998 - Gửi xe Hải Minh ( chú Tới - ĐT: 0915196390) | Nợ: 0 | Có: 
+288. Row 324 | Tuyến: GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU | Mã: KH.140723132 | Tên: oanh Nhì (2) -  Nghĩa Châu - Nghĩa Hưng ĐT: 03506 586 024 - 0966630937 | Nợ:  | Có: 9310600

@@ -9,6 +9,10 @@ public class ExportVoucherItem
     public int ProductId { get; set; }
     public Product Product { get; set; } = null!;
 
+    public string? UnitName { get; set; }
+    public decimal ConversionRate { get; set; } = 1;
+    public decimal BaseQuantity { get; set; } = 0;
+
     public decimal Quantity { get; set; } = 0;
     public decimal UnitCost { get; set; } = 0;
     public decimal SalePrice { get; set; } = 0;

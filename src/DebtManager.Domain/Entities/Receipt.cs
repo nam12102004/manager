@@ -5,6 +5,7 @@ public class Receipt
     public long Id { get; set; }
     public string ReceiptNumber { get; set; } = string.Empty;
     public DateTime Date { get; set; } = DateTime.UtcNow;
+    public string? Warehouse { get; set; } = "warehouse1";
 
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }

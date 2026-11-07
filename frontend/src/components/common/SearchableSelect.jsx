@@ -176,6 +176,17 @@ export default function SearchableSelect({
   };
 
   // Keyboard navigation inside dropdown
+  const scrollHighlightedIntoView = () => {
+    setTimeout(() => {
+      if (listRef.current) {
+        const item = listRef.current.querySelector(`[data-index="${highlightedIndex}"]`);
+        if (item) {
+          item.scrollIntoView({ block: 'nearest' });
+        }
+      }
+    }, 0);
+  };
+
   const handleKeyDown = (e) => {
     if (!isOpen) {
       if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === ' ') {
@@ -204,16 +215,6 @@ export default function SearchableSelect({
     }
   };
 
-  const scrollHighlightedIntoView = () => {
-    setTimeout(() => {
-      if (listRef.current) {
-        const item = listRef.current.querySelector(`[data-index="${highlightedIndex}"]`);
-        if (item) {
-          item.scrollIntoView({ block: 'nearest' });
-        }
-      }
-    }, 0);
-  };
 
   return (
     <div

@@ -21,7 +21,9 @@ public class SupplierService : ISupplierService
 
     public async Task<List<SupplierDto>> GetSuppliersAsync(string? search = null, CancellationToken ct = default)
     {
-        var query = _uow.Suppliers.Query().AsQueryable();
+        var query = _uow.Suppliers.Query()
+            .Include(s => s.WarehouseDebts)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -48,12 +50,15 @@ public class SupplierService : ISupplierService
         int pageSize = 15,
         string? fromDate = null,
         string? toDate = null,
+        string? priorityMetrics = null,
         CancellationToken ct = default)
     {
         page = Math.Max(1, page);
         pageSize = pageSize > 0 ? pageSize : 15;
 
-        var query = _uow.Suppliers.Query().AsQueryable();
+        var query = _uow.Suppliers.Query()
+            .Include(s => s.WarehouseDebts)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -83,14 +88,26 @@ public class SupplierService : ISupplierService
         }
 
         var totalCount = await query.CountAsync(ct);
-        var totalReceivables = await query.Where(sup => sup.Debt > 0).SumAsync(sup => (decimal?)sup.Debt, ct) ?? 0;
-        var totalPayables = await query.Where(sup => sup.Debt < 0).SumAsync(sup => (decimal?)Math.Abs(sup.Debt), ct) ?? 0;
+        var totalPayables = await query.Where(s => s.Debt < 0).SumAsync(s => (decimal?)Math.Abs(s.Debt), ct) ?? 0;
+        var totalPrepaid = await query.Where(s => s.Debt > 0).SumAsync(s => (decimal?)s.Debt, ct) ?? 0;
+
+        // Sorting (suppliers having data for the ticked metrics come first)
+        var priorityIds = BuildPrioritySupplierIds(query, priorityMetrics, fromDate, toDate);
+        IOrderedQueryable<Supplier> OrderFirst<TKey>(System.Linq.Expressions.Expression<Func<Supplier, TKey>> key, bool desc)
+        {
+            if (priorityIds == null)
+            {
+                return desc ? query.OrderByDescending(key) : query.OrderBy(key);
+            }
+            var prioritized = query.OrderByDescending(s => priorityIds.Contains(s.Id));
+            return desc ? prioritized.ThenByDescending(key) : prioritized.ThenBy(key);
+        }
 
         query = sortBy switch
         {
-            "payable_desc" => query.OrderBy(sup => sup.Debt).ThenByDescending(sup => sup.Id),
-            "payable_asc" => query.OrderByDescending(sup => sup.Debt).ThenByDescending(sup => sup.Id),
-            _ => query.OrderByDescending(sup => sup.Id)
+            "debt_desc" => OrderFirst(s => s.Debt, false).ThenByDescending(s => s.Id),
+            "debt_asc" => OrderFirst(s => s.Debt, true).ThenByDescending(s => s.Id),
+            _ => OrderFirst(s => s.Id, true)
         };
 
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -118,65 +135,55 @@ public class SupplierService : ISupplierService
             supplierImportsQuery = supplierImportsQuery.Where(v => v.Date <= endDate.Value);
         }
 
-        var supplierImportsGroup = await supplierImportsQuery
-            .GroupBy(v => new { v.SupplierId, Warehouse = v.Warehouse.ToLower() })
-            .Select(g => new { g.Key.SupplierId, g.Key.Warehouse, Total = g.Sum(x => x.TotalAmount) })
+        var supplierImports = await supplierImportsQuery
+            .Select(v => new { v.SupplierId, v.TotalAmount, v.Warehouse })
             .ToListAsync(ct);
 
-        var importsBySupplier = supplierImportsGroup
-            .GroupBy(x => x.SupplierId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.ToDictionary(x => x.Warehouse, x => x.Total, StringComparer.OrdinalIgnoreCase)
-            );
-
-        var paymentsQuery = _uow.Payments.Query()
-            .Where(p => p.SupplierId != null && supplierIds.Contains(p.SupplierId.Value) && p.Status != "cancelled");
+        var supplierPaymentsQuery = _uow.Payments.Query()
+            .Where(p => p.SupplierId.HasValue && supplierIds.Contains(p.SupplierId.Value) && p.Status != "cancelled");
         if (startDate.HasValue)
         {
-            paymentsQuery = paymentsQuery.Where(p => p.Date >= startDate.Value);
+            supplierPaymentsQuery = supplierPaymentsQuery.Where(p => p.Date >= startDate.Value);
         }
         if (endDate.HasValue)
         {
-            paymentsQuery = paymentsQuery.Where(p => p.Date <= endDate.Value);
+            supplierPaymentsQuery = supplierPaymentsQuery.Where(p => p.Date <= endDate.Value);
         }
 
-        var paymentsMap = await paymentsQuery
-            .GroupBy(p => p.SupplierId!.Value)
-            .Select(g => new { SupplierId = g.Key, Total = g.Sum(x => x.Amount) })
-            .ToDictionaryAsync(x => x.SupplierId, x => x.Total, ct);
+        var supplierPayments = await supplierPaymentsQuery
+            .Select(p => new { SupplierId = p.SupplierId!.Value, p.Amount })
+            .ToListAsync(ct);
 
-        var receiptsQuery = _uow.Receipts.Query()
-            .Where(r => r.SupplierId != null && supplierIds.Contains(r.SupplierId.Value));
+        var supplierReceiptsQuery = _uow.Receipts.Query()
+            .Where(r => r.SupplierId.HasValue && supplierIds.Contains(r.SupplierId.Value));
         if (startDate.HasValue)
         {
-            receiptsQuery = receiptsQuery.Where(r => r.Date >= startDate.Value);
+            supplierReceiptsQuery = supplierReceiptsQuery.Where(r => r.Date >= startDate.Value);
         }
         if (endDate.HasValue)
         {
-            receiptsQuery = receiptsQuery.Where(r => r.Date <= endDate.Value);
+            supplierReceiptsQuery = supplierReceiptsQuery.Where(r => r.Date <= endDate.Value);
         }
 
-        var receiptsMap = await receiptsQuery
-            .GroupBy(r => r.SupplierId!.Value)
-            .Select(g => new { SupplierId = g.Key, Total = g.Sum(x => x.Amount) })
-            .ToDictionaryAsync(x => x.SupplierId, x => x.Total, ct);
+        var supplierReceipts = await supplierReceiptsQuery
+            .Select(r => new { SupplierId = r.SupplierId!.Value, r.Amount })
+            .ToListAsync(ct);
 
         var dtos = items.Select(s =>
         {
             var dto = MapToDto(s);
-            if (importsBySupplier.TryGetValue(s.Id, out var whDict))
+            var myImports = supplierImports.Where(im => im.SupplierId == s.Id).ToList();
+            dto.TotalImportAmount = myImports.Sum(im => im.TotalAmount);
+            dto.TotalPaymentAmount = supplierPayments.Where(p => p.SupplierId == s.Id).Sum(p => p.Amount);
+            dto.TotalReceiptAmount = supplierReceipts.Where(r => r.SupplierId == s.Id).Sum(r => r.Amount);
+            dto.TotalExportAmount = 0;
+
+            foreach (var imp in myImports)
             {
-                dto.WarehouseImports = whDict;
-                dto.TotalImportAmount = whDict.Values.Sum();
+                var wh = imp.Warehouse;
+                dto.WarehouseImports[wh] = dto.WarehouseImports.GetValueOrDefault(wh) + imp.TotalAmount;
             }
-            else
-            {
-                dto.WarehouseImports = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-                dto.TotalImportAmount = 0;
-            }
-            dto.TotalPaymentAmount = paymentsMap.GetValueOrDefault(s.Id, 0);
-            dto.TotalReceiptAmount = receiptsMap.GetValueOrDefault(s.Id, 0);
+
             return dto;
         }).ToList();
 
@@ -186,24 +193,88 @@ public class SupplierService : ISupplierService
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize,
-            TotalReceivables = totalReceivables,
-            TotalPayables = totalPayables
+            TotalPayables = totalPayables,
+            TotalPrepaid = totalPrepaid
         };
+    }
+
+    /// <summary>
+    /// Builds a DB-side query of supplier ids that have data for any of the ticked metrics
+    /// (import / receipt / payment within the time range, or non-zero debt). Returns null when nothing is ticked.
+    /// </summary>
+    private IQueryable<int>? BuildPrioritySupplierIds(IQueryable<Supplier> filtered, string? priorityMetrics, string? fromDate, string? toDate)
+    {
+        var metrics = PriorityMetrics.Parse(priorityMetrics);
+        if (metrics.IsEmpty) return null;
+
+        var (start, end) = PriorityMetrics.ParseDateRange(fromDate, toDate);
+        IQueryable<int>? ids = null;
+        void Add(IQueryable<int> part) => ids = ids == null ? part : ids.Union(part);
+
+        var importWhs = metrics.Get("import");
+        if (importWhs.Count > 0)
+        {
+            var imports = _uow.ImportVouchers.Query().Where(v => v.Status != "cancelled");
+            if (start.HasValue) imports = imports.Where(v => v.Date >= start.Value);
+            if (end.HasValue) imports = imports.Where(v => v.Date <= end.Value);
+            if (!importWhs.Contains(PriorityMetrics.AllWarehouses))
+            {
+                var whs = importWhs.ToList();
+                imports = imports.Where(v => whs.Contains(v.Warehouse.ToLower()));
+            }
+            Add(imports.Select(v => v.SupplierId));
+        }
+
+        if (metrics.Has("receipt"))
+        {
+            var receipts = _uow.Receipts.Query().Where(r => r.SupplierId.HasValue);
+            if (start.HasValue) receipts = receipts.Where(r => r.Date >= start.Value);
+            if (end.HasValue) receipts = receipts.Where(r => r.Date <= end.Value);
+            Add(receipts.Select(r => r.SupplierId!.Value));
+        }
+
+        if (metrics.Has("payment"))
+        {
+            var payments = _uow.Payments.Query().Where(p => p.SupplierId.HasValue && p.Status != "cancelled");
+            if (start.HasValue) payments = payments.Where(p => p.Date >= start.Value);
+            if (end.HasValue) payments = payments.Where(p => p.Date <= end.Value);
+            Add(payments.Select(p => p.SupplierId!.Value));
+        }
+
+        var debtWhs = metrics.Get("debt");
+        if (debtWhs.Count > 0)
+        {
+            if (debtWhs.Contains(PriorityMetrics.AllWarehouses))
+            {
+                Add(filtered.Where(s => s.Debt != 0).Select(s => s.Id));
+            }
+            var whs = debtWhs.Where(w => w != PriorityMetrics.AllWarehouses).ToList();
+            if (whs.Count > 0)
+            {
+                Add(filtered.Where(s => s.WarehouseDebts.Any(d => d.Debt != 0 && whs.Contains(d.Warehouse.ToLower()))).Select(s => s.Id));
+            }
+        }
+
+        return ids;
     }
 
     public async Task<List<string>> GetRegionsAsync(CancellationToken ct = default)
     {
-        return await _uow.Suppliers.Query()
-            .Where(sup => sup.Region != null && sup.Region != "")
-            .Select(sup => sup.Region!)
+        var regions = await _uow.Suppliers.Query()
+            .Where(s => s.Region != null && s.Region != "")
+            .Select(s => s.Region!)
             .Distinct()
             .OrderBy(r => r)
             .ToListAsync(ct);
+
+        return regions;
     }
 
     public async Task<SupplierDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        var supplier = await _uow.Suppliers.GetByIdAsync(id, ct)
+        var supplier = await _uow.Suppliers.Query()
+            .Include(s => s.WarehouseDebts)
+            .FirstOrDefaultAsync(s => s.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {id}");
 
         return MapToDto(supplier);
@@ -230,7 +301,7 @@ public class SupplierService : ISupplierService
             AddressesJson = dto.AddressesJson?.Trim(),
             Region = dto.Region?.Trim(),
             CreditLimit = dto.CreditLimit,
-            Debt = dto.InitialDebt,
+            Debt = 0,
             BankAccount = dto.BankAccount?.Trim(),
             TaxNumber = dto.TaxNumber?.Trim(),
             Notes = dto.Notes?.Trim(),
@@ -243,9 +314,13 @@ public class SupplierService : ISupplierService
 
         if (dto.InitialDebt != 0)
         {
+            var wh = DebtHelper.NormalizeWarehouse(dto.InitialDebtWarehouse);
+            await DebtHelper.SetSupplierDebtAsync(_uow, supplier.Id, wh, dto.InitialDebt, ct);
+
             var history = new SupplierDebtHistory
             {
                 SupplierId = supplier.Id,
+                Warehouse = wh,
                 SourceType = "init",
                 Reason = "Khởi tạo công nợ ban đầu",
                 BeforeDebt = 0,
@@ -257,7 +332,7 @@ public class SupplierService : ISupplierService
             await _uow.SaveChangesAsync(ct);
         }
 
-        return MapToDto(supplier);
+        return await GetByIdAsync(supplier.Id, ct);
     }
 
     public async Task<SupplierDto> UpdateSupplierAsync(int id, UpdateSupplierDto dto, CancellationToken ct = default)
@@ -285,10 +360,10 @@ public class SupplierService : ISupplierService
         _uow.Suppliers.Update(supplier);
         await _uow.SaveChangesAsync(ct);
 
-        return MapToDto(supplier);
+        return await GetByIdAsync(supplier.Id, ct);
     }
 
-    public async Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
+    public async Task<List<SupplierDebtHistoryDto>> GetDebtHistoryAsync(int supplierId, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
     {
         var supplierExists = await _uow.Suppliers.Query().AnyAsync(s => s.Id == supplierId, ct);
         if (!supplierExists)
@@ -297,6 +372,11 @@ public class SupplierService : ISupplierService
         }
 
         var query = _uow.SupplierDebtHistories.Query().Where(h => h.SupplierId == supplierId);
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(h => h.Warehouse == warehouse.Trim());
+        }
 
         DateTime? startDate = null;
         DateTime? endDate = null;
@@ -342,6 +422,7 @@ public class SupplierService : ISupplierService
         {
             Id = h.Id,
             SupplierId = h.SupplierId,
+            Warehouse = h.Warehouse,
             SourceType = h.SourceType,
             ReferenceType = h.ReferenceType,
             ReferenceId = h.ReferenceId,
@@ -359,34 +440,39 @@ public class SupplierService : ISupplierService
         var supplier = await _uow.Suppliers.GetByIdAsync(supplierId, ct)
             ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {supplierId}");
 
-        var beforeDebt = supplier.Debt;
+        var wh = DebtHelper.NormalizeWarehouse(dto.Warehouse);
+
         decimal delta;
+        decimal beforeTotalDebt, afterTotalDebt;
+
         if (dto.NewDebt.HasValue)
         {
-            delta = dto.NewDebt.Value - beforeDebt;
+            var res = await DebtHelper.SetSupplierDebtAsync(_uow, supplierId, wh, dto.NewDebt.Value, ct);
+            delta = res.Delta;
+            beforeTotalDebt = res.BeforeTotalDebt;
+            afterTotalDebt = res.AfterTotalDebt;
         }
         else
         {
             delta = dto.Delta.GetValueOrDefault();
+            var res = await DebtHelper.ApplySupplierDebtAsync(_uow, supplierId, wh, delta, ct);
+            beforeTotalDebt = res.BeforeTotalDebt;
+            afterTotalDebt = res.AfterTotalDebt;
         }
-
-        var afterDebt = beforeDebt + delta;
-        supplier.Debt = afterDebt;
-        supplier.UpdatedAt = DateTime.UtcNow;
 
         var history = new SupplierDebtHistory
         {
             SupplierId = supplier.Id,
+            Warehouse = wh,
             SourceType = DomainConstants.SourceTypes.ManualAdjustment,
-            Reason = dto.Reason ?? "Điều chỉnh công nợ nhà cung cấp",
+            Reason = dto.Reason ?? $"Điều chỉnh công nợ nhà cung cấp ({wh})",
             Note = dto.Note,
-            BeforeDebt = beforeDebt,
+            BeforeDebt = beforeTotalDebt,
             Delta = delta,
-            AfterDebt = afterDebt,
+            AfterDebt = afterTotalDebt,
             CreatedAt = DateTime.UtcNow
         };
 
-        _uow.Suppliers.Update(supplier);
         await _uow.SupplierDebtHistories.AddAsync(history, ct);
         await _uow.SaveChangesAsync(ct);
 
@@ -459,12 +545,17 @@ public class SupplierService : ISupplierService
                 ImportAmount = im.TotalAmount,
                 ExportAmount = 0,
                 ReceiptAmount = 0,
-                PaymentAmount = 0
+                PaymentAmount = im.PaidAmount
             });
         }
 
         // 2. Payments (Chi tiền trả nợ NCC)
-        var paymentQuery = _uow.Payments.Query().Where(p => p.SupplierId == supplierId && p.Status != "cancelled");
+        var paymentQuery = _uow.Payments.Query()
+            .Where(p => p.SupplierId == supplierId && p.Status != "cancelled");
+        if (!isAllWh)
+        {
+            paymentQuery = paymentQuery.Where(p => p.Warehouse == wh);
+        }
         if (startDate.HasValue)
         {
             paymentQuery = paymentQuery.Where(p => p.Date >= startDate.Value);
@@ -476,6 +567,11 @@ public class SupplierService : ISupplierService
         var payments = await paymentQuery.ToListAsync(ct);
         foreach (var pm in payments)
         {
+            if (pm.RelatedVoucherType == "import_voucher" && imports.Any(i => i.VoucherNumber == pm.RelatedVoucherId))
+            {
+                continue;
+            }
+
             ledgerItems.Add(new EntityLedgerItemDto
             {
                 Id = pm.Id,
@@ -483,8 +579,8 @@ public class SupplierService : ISupplierService
                 VoucherNumber = pm.PaymentNumber,
                 VoucherType = "payment",
                 VoucherTypeLabel = "Phiếu chi",
-                Warehouse = isAllWh ? null : wh,
-                Description = string.IsNullOrWhiteSpace(pm.Notes) ? $"Chi tiền trả NCC ({pm.Method})" : pm.Notes,
+                Warehouse = pm.Warehouse,
+                Description = string.IsNullOrWhiteSpace(pm.Notes) ? $"Chi tiền thanh toán công nợ theo phiếu {pm.PaymentNumber}" : pm.Notes,
                 ImportAmount = 0,
                 ExportAmount = 0,
                 ReceiptAmount = 0,
@@ -492,30 +588,12 @@ public class SupplierService : ISupplierService
             });
         }
 
-        // Backward compatibility: tự động bổ sung dòng chi nếu có phiếu nhập trả ngay nhưng chưa có phiếu chi
-        foreach (var im in imports)
-        {
-            if (im.PaidAmount > 0 && !payments.Any(p => p.RelatedVoucherId == im.VoucherNumber))
-            {
-                ledgerItems.Add(new EntityLedgerItemDto
-                {
-                    Id = im.Id,
-                    Date = im.Date,
-                    VoucherNumber = $"PC-{im.VoucherNumber}",
-                    VoucherType = "payment",
-                    VoucherTypeLabel = "Phiếu chi",
-                    Warehouse = isAllWh ? null : wh,
-                    Description = $"Thanh toán tiền nhập hàng theo phiếu {im.VoucherNumber}",
-                    ImportAmount = 0,
-                    ExportAmount = 0,
-                    ReceiptAmount = 0,
-                    PaymentAmount = im.PaidAmount
-                });
-            }
-        }
-
         // 3. Receipts (Thu tiền NCC bồi hoàn/trả lại)
         var receiptQuery = _uow.Receipts.Query().Where(r => r.SupplierId == supplierId);
+        if (!isAllWh)
+        {
+            receiptQuery = receiptQuery.Where(r => r.Warehouse == wh);
+        }
         if (startDate.HasValue)
         {
             receiptQuery = receiptQuery.Where(r => r.Date >= startDate.Value);
@@ -534,7 +612,7 @@ public class SupplierService : ISupplierService
                 VoucherNumber = rc.ReceiptNumber,
                 VoucherType = "receipt",
                 VoucherTypeLabel = "Phiếu thu",
-                Warehouse = isAllWh ? null : wh,
+                Warehouse = rc.Warehouse,
                 Description = string.IsNullOrWhiteSpace(rc.Notes) ? $"Thu tiền NCC hoàn trả ({rc.Method})" : rc.Notes,
                 ImportAmount = 0,
                 ExportAmount = 0,
@@ -546,6 +624,10 @@ public class SupplierService : ISupplierService
         // 4. Manual Debt Adjustments (Điều chỉnh nợ thủ công)
         var historyQuery = _uow.SupplierDebtHistories.Query()
             .Where(h => h.SupplierId == supplierId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment);
+        if (!isAllWh)
+        {
+            historyQuery = historyQuery.Where(h => h.Warehouse == wh);
+        }
         if (startDate.HasValue)
         {
             historyQuery = historyQuery.Where(h => h.CreatedAt >= startDate.Value);
@@ -564,12 +646,12 @@ public class SupplierService : ISupplierService
                 VoucherNumber = h.ReferenceId ?? $"DC{h.Id:D5}",
                 VoucherType = "adjust",
                 VoucherTypeLabel = "Điều chỉnh",
-                Warehouse = isAllWh ? null : wh,
+                Warehouse = h.Warehouse,
                 Description = string.IsNullOrWhiteSpace(h.Note) ? (h.Reason ?? "Điều chỉnh công nợ") : $"{h.Reason} - {h.Note}",
-                ImportAmount = h.Delta > 0 ? h.Delta : 0,
+                ImportAmount = h.Delta < 0 ? -h.Delta : 0,
                 ExportAmount = 0,
                 ReceiptAmount = 0,
-                PaymentAmount = h.Delta < 0 ? -h.Delta : 0
+                PaymentAmount = h.Delta > 0 ? h.Delta : 0
             });
         }
 
@@ -577,23 +659,46 @@ public class SupplierService : ISupplierService
         decimal netChangeAfterEnd = 0;
         if (endDate.HasValue)
         {
-            var impAfter = await _uow.ImportVouchers.Query()
-                .Where(v => v.SupplierId == supplierId && v.Status != "cancelled" && v.Date >= endDate.Value)
-                .SumAsync(v => (decimal?)v.TotalAmount, ct) ?? 0;
-            var rcAfter = await _uow.Receipts.Query()
-                .Where(r => r.SupplierId == supplierId && r.Date >= endDate.Value)
-                .SumAsync(r => (decimal?)r.Amount, ct) ?? 0;
-            var pmAfter = await _uow.Payments.Query()
-                .Where(p => p.SupplierId == supplierId && p.Status != "cancelled" && p.Date >= endDate.Value)
-                .SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
-            var adjAfter = await _uow.SupplierDebtHistories.Query()
-                .Where(h => h.SupplierId == supplierId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment && h.CreatedAt >= endDate.Value)
-                .SumAsync(h => (decimal?)h.Delta, ct) ?? 0;
-            netChangeAfterEnd = impAfter + rcAfter - pmAfter + adjAfter;
+            var impAfterQuery = _uow.ImportVouchers.Query()
+                .Where(v => v.SupplierId == supplierId && v.Status != "cancelled" && v.Date >= endDate.Value);
+            var rcAfterQuery = _uow.Receipts.Query()
+                .Where(r => r.SupplierId == supplierId && r.Date >= endDate.Value);
+            var pmAfterQuery = _uow.Payments.Query()
+                .Where(p => p.SupplierId == supplierId && p.Status != "cancelled" && p.Date >= endDate.Value);
+            var adjAfterQuery = _uow.SupplierDebtHistories.Query()
+                .Where(h => h.SupplierId == supplierId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment && h.CreatedAt >= endDate.Value);
+
+            if (!isAllWh)
+            {
+                impAfterQuery = impAfterQuery.Where(v => v.Warehouse == wh);
+                rcAfterQuery = rcAfterQuery.Where(r => r.Warehouse == wh);
+                pmAfterQuery = pmAfterQuery.Where(p => p.Warehouse == wh);
+                adjAfterQuery = adjAfterQuery.Where(h => h.Warehouse == wh);
+            }
+
+            var impAfter = await impAfterQuery.SumAsync(v => (decimal?)v.TotalAmount, ct) ?? 0;
+            var rcAfter = await rcAfterQuery.SumAsync(r => (decimal?)r.Amount, ct) ?? 0;
+            var pmAfter = await pmAfterQuery.SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
+            var adjAfter = await adjAfterQuery.SumAsync(h => (decimal?)h.Delta, ct) ?? 0;
+            // Biến động nợ NCC sau kỳ: Nhập (-impAfter), Chi trả (+pmAfter), Thu hoàn (-rcAfter), Điều chỉnh (+adjAfter)
+            netChangeAfterEnd = -impAfter + pmAfter - rcAfter + adjAfter;
         }
 
-        var closingBalance = supplier.Debt - netChangeAfterEnd;
-        var periodNetChange = ledgerItems.Sum(i => (i.ImportAmount + i.ReceiptAmount) - (i.PaymentAmount + i.ExportAmount));
+        decimal currentBalance;
+        if (!isAllWh)
+        {
+            var whDebtRecord = await _uow.SupplierWarehouseDebts.Query()
+                .FirstOrDefaultAsync(w => w.SupplierId == supplierId && w.Warehouse == wh, ct);
+            currentBalance = whDebtRecord?.Debt ?? 0;
+        }
+        else
+        {
+            currentBalance = supplier.Debt;
+        }
+
+        var closingBalance = currentBalance - netChangeAfterEnd;
+        // Biến động nợ trong kỳ: Nhập (-ImportAmount), Chi trả (+PaymentAmount), Thu hoàn (-ReceiptAmount), Xuất trả (+ExportAmount)
+        var periodNetChange = ledgerItems.Sum(i => (i.PaymentAmount + i.ExportAmount) - (i.ImportAmount + i.ReceiptAmount));
         var openingBalance = closingBalance - periodNetChange;
 
         var sorted = ledgerItems.OrderBy(i => i.Date).ThenBy(i => i.Id).ToList();
@@ -611,10 +716,10 @@ public class SupplierService : ISupplierService
                 VoucherTypeLabel = "Số dư đầu",
                 Warehouse = isAllWh ? null : wh,
                 Description = startDate.HasValue ? "Số dư nợ đầu kỳ" : "Số dư công nợ ban đầu",
-                ImportAmount = openingBalance > 0 ? openingBalance : 0,
+                ImportAmount = openingBalance < 0 ? -openingBalance : 0,
                 ExportAmount = 0,
-                ReceiptAmount = 0,
-                PaymentAmount = openingBalance < 0 ? -openingBalance : 0,
+                ReceiptAmount = openingBalance > 0 ? openingBalance : 0,
+                PaymentAmount = 0,
                 Balance = openingBalance
             });
         }
@@ -624,7 +729,7 @@ public class SupplierService : ISupplierService
         for (int i = startIndex; i < sorted.Count; i++)
         {
             var item = sorted[i];
-            runningBalance += (item.ImportAmount + item.ReceiptAmount) - (item.PaymentAmount + item.ExportAmount);
+            runningBalance += (item.PaymentAmount + item.ExportAmount) - (item.ImportAmount + item.ReceiptAmount);
             item.Balance = runningBalance;
         }
 
@@ -640,7 +745,7 @@ public class SupplierService : ISupplierService
             TotalExport = resultList.Sum(i => i.ExportAmount),
             TotalReceipt = resultList.Sum(i => i.ReceiptAmount),
             TotalPayment = resultList.Sum(i => i.PaymentAmount),
-            CurrentBalance = supplier.Debt,
+            CurrentBalance = currentBalance,
             Items = resultList
         };
     }
@@ -656,6 +761,9 @@ public class SupplierService : ISupplierService
         AddressesJson = s.AddressesJson,
         Region = s.Region,
         Debt = s.Debt,
+        WarehouseDebts = s.WarehouseDebts != null && s.WarehouseDebts.Count > 0
+            ? s.WarehouseDebts.ToDictionary(w => w.Warehouse, w => w.Debt, StringComparer.OrdinalIgnoreCase)
+            : new(StringComparer.OrdinalIgnoreCase),
         CreditLimit = s.CreditLimit,
         BankAccount = s.BankAccount,
         TaxNumber = s.TaxNumber,

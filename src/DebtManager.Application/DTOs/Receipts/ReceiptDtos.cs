@@ -3,6 +3,7 @@ namespace DebtManager.Application.DTOs.Receipts;
 public class CreateReceiptDto
 {
     public DateTime? Date { get; set; }
+    public string? Warehouse { get; set; } = "warehouse1";
     public int? CustomerId { get; set; }
     public int? SupplierId { get; set; }
     public decimal Amount { get; set; }
@@ -17,6 +18,7 @@ public class ReceiptDto
     public long Id { get; set; }
     public string ReceiptNumber { get; set; } = string.Empty;
     public DateTime Date { get; set; }
+    public string? Warehouse { get; set; } = "warehouse1";
     public int? CustomerId { get; set; }
     public string? CustomerName { get; set; }
     public string? CustomerCode { get; set; }

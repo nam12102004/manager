@@ -665,12 +665,35 @@ export default function VoucherDetailModal({
                       </div>
                     )}
 
-                    {voucherData?.unpaidAmount != null && (
+                    {resolvedType === 'export' && voucherData?.unpaidAmount != null && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 700, color: voucherData.unpaidAmount > 0 ? '#ea580c' : 'var(--text-muted)' }}>
-                        <span>{resolvedType === 'export' ? 'Còn nợ lại đơn này:' : 'Còn nợ lại NCC đơn này:'}</span>
+                        <span>Còn nợ lại đơn này:</span>
                         <span className="mono">{formatVND(voucherData.unpaidAmount)}</span>
                       </div>
                     )}
+
+                    {resolvedType === 'export' && (() => {
+                      const cust = currentCustomer;
+                      let totalDebt = null;
+                      if (cust?.totalDebt != null) totalDebt = Number(cust.totalDebt);
+                      else if (cust?.warehouseDebts && typeof cust.warehouseDebts === 'object') {
+                        const vals = Object.values(cust.warehouseDebts);
+                        if (vals.length > 0) totalDebt = vals.reduce((sum, v) => sum + Number(v || 0), 0);
+                      }
+                      if (totalDebt == null && cust?.debt != null) totalDebt = Number(cust.debt);
+                      if (totalDebt == null && voucherData?.customerDebt != null) totalDebt = Number(voucherData.customerDebt);
+                      if (totalDebt == null) return null;
+                      const isNeg = totalDebt < 0;
+                      const label = isNeg ? 'Tổng công nợ còn lại (Cửa hàng nợ khách):' : 'Tổng công nợ còn lại của quý khách:';
+                      return (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 800, borderTop: '1px dashed var(--border-color, #cbd5e1)', paddingTop: '0.35rem', marginTop: '0.2rem' }}>
+                          <span>{label}</span>
+                          <span className="mono" style={{ color: isNeg ? '#0284c7' : (totalDebt > 0 ? '#dc2626' : 'var(--text-muted)') }}>
+                            {formatVND(totalDebt)}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

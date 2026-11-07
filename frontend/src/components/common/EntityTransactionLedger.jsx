@@ -471,16 +471,22 @@ export default function EntityTransactionLedger({
           <div className="mono" style={{ fontSize: '1.15rem', fontWeight: 800, color: '#9333ea', marginTop: '2px' }}>
             {entityType === 'product'
               ? `${formatNumber(ledgerData?.currentBalance || 0)}`
-              : formatVND(ledgerData?.currentBalance || 0)}
+              : formatVND(Math.abs(ledgerData?.currentBalance || 0))}
           </div>
           <div style={{ fontSize: '0.72rem', color: '#7e22ce' }}>
             {entityType === 'product'
               ? `Tồn ${selectedWarehouse === 'all' ? 'tất cả kho' : getWarehouseName(selectedWarehouse)}`
-              : ledgerData?.currentBalance > 0
-              ? entityType === 'customer'
-                ? 'Khách nợ cửa hàng'
-                : 'Cửa hàng nợ NCC'
-              : 'Dư trước / cân bằng'}
+              : entityType === 'customer'
+              ? (ledgerData?.currentBalance > 0
+                ? 'Khách nợ cửa hàng (Phải thu)'
+                : (ledgerData?.currentBalance < 0
+                  ? 'Cửa hàng nợ khách (Trả trước)'
+                  : 'Cân bằng nợ'))
+              : (ledgerData?.currentBalance < 0
+                ? 'Cửa hàng nợ NCC (Phải trả)'
+                : (ledgerData?.currentBalance > 0
+                  ? 'Đã ứng trước NCC (Phải thu)'
+                  : 'Cân bằng nợ'))}
           </div>
         </div>
       </div>

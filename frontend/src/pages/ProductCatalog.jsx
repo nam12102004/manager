@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Package,
   Plus,
@@ -31,6 +31,17 @@ import WarehouseMetricCheckboxes, { loadSavedMetrics, getMetricTimeParams } from
 import { productService, warehouseService } from '../services';
 import useDragScroll from '../hooks/useDragScroll';
 import TableScrollContainer from '../components/common/TableScrollContainer';
+import SubUnitsEditor from '../components/common/SubUnitsEditor';
+import {
+  getProductUnits,
+  getBaseUnit,
+  getPrimaryDisplayUnit,
+  saveDisplayUnitForProduct,
+  loadDisplayUnitsMap,
+  convertQtyToDisplayUnit,
+  getDisplayPrices,
+  formatStockDisplay,
+} from '../utils/uomHelper';
 
 const PRODUCT_SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp: Mặc định' },
@@ -92,6 +103,9 @@ export default function ProductCatalog() {
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSubUnitOpen, setIsSubUnitOpen] = useState(false);
+  const [productUnits, setProductUnits] = useState([]);
+  const [displayUnitOverrides, setDisplayUnitOverrides] = useState(() => loadDisplayUnitsMap());
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
@@ -226,6 +240,42 @@ export default function ProductCatalog() {
   const allSuppliersCount = Object.values(supplierCounts).reduce((sum, n) => sum + Number(n || 0), 0);
   const allCategoriesCount = Object.values(categoryCounts).reduce((sum, n) => sum + Number(n || 0), 0);
 
+  // Cascading horizontal filter logic:
+  // When category is selected, filter suppliers to only those with count > 0 (or selected).
+  // When unselected (ALL), restore all suppliers.
+  const visibleSuppliers = useMemo(() => {
+    if (selectedCategory === 'ALL') {
+      return suppliers;
+    }
+    return suppliers.filter((sup) => {
+      const supKey = String(sup.id);
+      const count = supplierCounts[supKey] || 0;
+      const isSelected = String(selectedSupplierId) === supKey;
+      return count > 0 || isSelected;
+    });
+  }, [suppliers, selectedCategory, supplierCounts, selectedSupplierId]);
+
+  const showNoneSupplier = selectedCategory !== 'ALL'
+    ? (supplierCounts.NONE || 0) > 0 || selectedSupplierId === 'NONE'
+    : (supplierCounts.NONE || 0) > 0;
+
+  // When supplier is selected, filter categories to only those with count > 0 (or selected).
+  // When unselected (''), restore all categories.
+  const visibleCategories = useMemo(() => {
+    if (!selectedSupplierId) {
+      return categories;
+    }
+    return categories.filter((cat) => {
+      const count = categoryCounts[cat.trim()] ?? categoryCounts[cat] ?? 0;
+      const isSelected = selectedCategory === cat || (selectedCategory && selectedCategory.trim() === cat.trim());
+      return count > 0 || isSelected;
+    });
+  }, [categories, selectedSupplierId, categoryCounts, selectedCategory]);
+
+  const showNoneCategory = Boolean(selectedSupplierId)
+    ? (categoryCounts.NONE || 0) > 0 || selectedCategory === 'NONE'
+    : (categoryCounts.NONE || 0) > 0;
+
   // Create Product Handlers
   const handleOpenCreate = () => {
     const randomSku = 'SP' + Math.floor(1000 + Math.random() * 9000);
@@ -241,6 +291,7 @@ export default function ProductCatalog() {
       retailPrice: 0,
       reorderPoint: 5,
     });
+    setProductUnits([{ unitName: 'Cái', conversionRate: 1, isBaseUnit: true }]);
     setIsCreateOpen(true);
   };
 
@@ -252,18 +303,25 @@ export default function ProductCatalog() {
     }
     setSubmitting(true);
     try {
-      await productService.create({
+      const chosenUom = formData.uom.trim() || 'Cái';
+      const created = await productService.create({
         sku: formData.sku.trim(),
         name: formData.name.trim(),
         category: formData.category.trim(),
-        uom: formData.uom.trim() || 'Cái',
+        uom: chosenUom,
         barcode: formData.barcode.trim(),
         supplierId: formData.supplierId ? Number(formData.supplierId) : null,
         unitCost: Number(formData.unitCost || 0),
         wholesalePrice: Number(formData.wholesalePrice || 0),
         retailPrice: Number(formData.retailPrice || 0),
         reorderPoint: Number(formData.reorderPoint || 0),
+        units: productUnits,
       });
+
+      if (created?.id) {
+        saveDisplayUnitForProduct(created.id, chosenUom);
+        setDisplayUnitOverrides(loadDisplayUnitsMap());
+      }
 
       notify.success('Thêm sản phẩm mới thành công!');
       setIsCreateOpen(false);
@@ -278,11 +336,12 @@ export default function ProductCatalog() {
   // Edit Product Handlers
   const handleOpenEdit = (p) => {
     setSelectedProduct(p);
+    const primaryUnit = getPrimaryDisplayUnit(p, displayUnitOverrides[String(p.id)]);
     setFormData({
       sku: p.sku || '',
       name: p.name || '',
       category: p.category || '',
-      uom: p.uom || 'Cái',
+      uom: primaryUnit?.unitName || p.uom || 'Cái',
       barcode: p.barcode || '',
       supplierId: p.supplierId ? String(p.supplierId) : '',
       unitCost: p.unitCost || 0,
@@ -290,28 +349,128 @@ export default function ProductCatalog() {
       retailPrice: p.retailPrice || 0,
       reorderPoint: p.reorderPoint || 0,
     });
+    setProductUnits(
+      p.units && p.units.length > 0
+        ? p.units
+        : [{ unitName: p.uom || 'Cái', conversionRate: 1, isBaseUnit: true }]
+    );
     setIsEditOpen(true);
+  };
+
+  const handleOpenSubUnits = (p) => {
+    setSelectedProduct(p);
+    const primaryUnit = getPrimaryDisplayUnit(p, displayUnitOverrides[String(p.id)]);
+    setFormData((prev) => ({
+      ...prev,
+      uom: primaryUnit?.unitName || p.uom || 'Cái',
+    }));
+    setProductUnits(
+      p.units && p.units.length > 0
+        ? p.units
+        : [{ unitName: p.uom || 'Cái', conversionRate: 1, isBaseUnit: true }]
+    );
+    setIsSubUnitOpen(true);
+  };
+
+  const handleSaveSubUnits = async () => {
+    if (!selectedProduct) return;
+    setSubmitting(true);
+    try {
+      const chosenUom = formData.uom?.trim() || selectedProduct.uom || 'Cái';
+      await productService.update(selectedProduct.id, {
+        sku: selectedProduct.sku,
+        name: selectedProduct.name,
+        category: selectedProduct.category,
+        uom: chosenUom,
+        barcode: selectedProduct.barcode,
+        supplierId: selectedProduct.supplierId ? Number(selectedProduct.supplierId) : null,
+        unitCost: Number(selectedProduct.unitCost || 0),
+        wholesalePrice: Number(selectedProduct.wholesalePrice || 0),
+        retailPrice: Number(selectedProduct.retailPrice || 0),
+        reorderPoint: Number(selectedProduct.reorderPoint || 0),
+        units: productUnits,
+      });
+      saveDisplayUnitForProduct(selectedProduct.id, chosenUom);
+      setDisplayUnitOverrides(loadDisplayUnitsMap());
+      notify.success('Cập nhật đơn vị tính & đơn vị hiển thị chính thành công!');
+      setIsSubUnitOpen(false);
+      loadData();
+    } catch (err) {
+      notify.error(err.message || 'Cập nhật đơn vị tính thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleChangeProductDisplayUnit = async (product, newUnitName) => {
+    if (!product || !newUnitName) return;
+    saveDisplayUnitForProduct(product.id, newUnitName);
+    setDisplayUnitOverrides((prev) => ({
+      ...prev,
+      [String(product.id)]: newUnitName,
+    }));
+    setProducts((prev) =>
+      prev.map((item) => (item.id === product.id ? { ...item, uom: newUnitName } : item))
+    );
+    try {
+      await productService.update(product.id, {
+        sku: product.sku,
+        name: product.name,
+        category: product.category,
+        uom: newUnitName,
+        barcode: product.barcode,
+        supplierId: product.supplierId ? Number(product.supplierId) : null,
+        unitCost: Number(product.unitCost || 0),
+        wholesalePrice: Number(product.wholesalePrice || 0),
+        retailPrice: Number(product.retailPrice || 0),
+        reorderPoint: Number(product.reorderPoint || 0),
+        units: product.units && product.units.length > 0 ? product.units : undefined,
+      });
+    } catch {
+      // Lựa chọn vẫn được giữ trong localStorage nếu mất kết nối tạm thời
+    }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.sku || !formData.sku.trim()) {
+      notify.warning('Vui lòng nhập mã SKU sản phẩm');
+      return;
+    }
     if (!formData.name.trim()) {
       notify.warning('Vui lòng nhập tên sản phẩm');
       return;
     }
     setSubmitting(true);
     try {
-      await productService.update(selectedProduct.id, {
+      const chosenUom = formData.uom.trim() || 'Cái';
+      const updated = await productService.update(selectedProduct.id, {
+        sku: formData.sku.trim(),
         name: formData.name.trim(),
         category: formData.category.trim(),
-        uom: formData.uom.trim() || 'Cái',
+        uom: chosenUom,
         barcode: formData.barcode.trim(),
         supplierId: formData.supplierId ? Number(formData.supplierId) : null,
         unitCost: Number(formData.unitCost || 0),
         wholesalePrice: Number(formData.wholesalePrice || 0),
         retailPrice: Number(formData.retailPrice || 0),
         reorderPoint: Number(formData.reorderPoint || 0),
+        units: productUnits,
       });
+      saveDisplayUnitForProduct(selectedProduct.id, chosenUom);
+      setDisplayUnitOverrides(loadDisplayUnitsMap());
+
+      if (ledgerProduct?.id === selectedProduct.id) {
+        setLedgerProduct((prev) =>
+          prev
+            ? {
+                ...prev,
+                sku: updated?.sku || formData.sku.trim(),
+                name: updated?.name || formData.name.trim(),
+              }
+            : prev
+        );
+      }
 
       notify.success('Cập nhật sản phẩm thành công!');
       setIsEditOpen(false);
@@ -429,7 +588,7 @@ export default function ProductCatalog() {
             <SearchableSelect
               options={[
                 { value: '', label: 'Tất cả Nhà Cung Cấp' },
-                ...suppliers.map((s) => ({ value: String(s.id), label: `${s.name} (${s.code || ''})` })),
+                ...visibleSuppliers.map((s) => ({ value: String(s.id), label: `${s.name} (${s.code || ''})` })),
               ]}
               value={selectedSupplierId}
               onChange={(val) => setSelectedSupplierId(val)}
@@ -444,6 +603,23 @@ export default function ProductCatalog() {
               onChange={(val) => setSortBy(val)}
             />
           </div>
+
+          {(searchQuery || selectedSupplierId || sortBy !== 'default' || selectedCategory !== 'ALL') && (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedSupplierId('');
+                setSortBy('default');
+                setSelectedCategory('ALL');
+              }}
+              title="Xóa bộ lọc để xem toàn bộ danh sách"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <Filter size={14} />
+              <span>Xóa lọc</span>
+            </button>
+          )}
         </div>
 
         {/* Metrics Checkbox Group */}
@@ -561,7 +737,7 @@ export default function ProductCatalog() {
             </span>
           </button>
 
-          {suppliers.map((sup) => {
+          {visibleSuppliers.map((sup) => {
             const supKey = String(sup.id);
             const isSelected = String(selectedSupplierId) === supKey;
             const count = supplierCounts[supKey] || 0;
@@ -569,7 +745,7 @@ export default function ProductCatalog() {
               <button
                 key={sup.id}
                 type="button"
-                onClick={() => setSelectedSupplierId(supKey)}
+                onClick={() => setSelectedSupplierId(isSelected ? '' : supKey)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -603,10 +779,10 @@ export default function ProductCatalog() {
             );
           })}
 
-          {(supplierCounts.NONE || 0) > 0 && (
+          {showNoneSupplier && (
             <button
               type="button"
-              onClick={() => setSelectedSupplierId('NONE')}
+              onClick={() => setSelectedSupplierId(selectedSupplierId === 'NONE' ? '' : 'NONE')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -759,14 +935,14 @@ export default function ProductCatalog() {
             </span>
           </button>
 
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            const count = categoryCounts[cat] || 0;
+          {visibleCategories.map((cat) => {
+            const isSelected = selectedCategory === cat || (selectedCategory && selectedCategory.trim() === cat.trim());
+            const count = categoryCounts[cat.trim()] ?? categoryCounts[cat] ?? 0;
             return (
               <button
                 key={cat}
                 type="button"
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => setSelectedCategory(isSelected ? 'ALL' : cat)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -799,6 +975,42 @@ export default function ProductCatalog() {
               </button>
             );
           })}
+          {showNoneCategory && (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(selectedCategory === 'NONE' ? 'ALL' : 'NONE')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.65rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: selectedCategory === 'NONE' ? 700 : 500,
+                color: selectedCategory === 'NONE' ? '#0f172a' : '#64748b',
+                backgroundColor: selectedCategory === 'NONE' ? '#ffffff' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderBottom: selectedCategory === 'NONE' ? '3px solid #16a34a' : '3px solid transparent',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+                fontStyle: 'italic',
+              }}
+            >
+              <span>Chưa phân danh mục</span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: selectedCategory === 'NONE' ? '#dcfce7' : '#e2e8f0',
+                  color: selectedCategory === 'NONE' ? '#166534' : '#475569',
+                  fontWeight: 600,
+                }}
+              >
+                {categoryCounts.NONE || 0}
+              </span>
+            </button>
+          )}
         </div>
 
         <button
@@ -880,6 +1092,13 @@ export default function ProductCatalog() {
                 const isSelected = ledgerProduct?.id === p.id;
                 const totalStock = Number(p.totalStock ?? p.currentStock ?? 0);
 
+                const allUnits = getProductUnits(p);
+                const baseUnit = getBaseUnit(p);
+                const displayUnit = getPrimaryDisplayUnit(p, displayUnitOverrides[String(p.id)]);
+                const displayUnitName = displayUnit?.unitName || p.uom || 'Cái';
+                const displayPrices = getDisplayPrices(p, displayUnit);
+                const displayTotalStock = convertQtyToDisplayUnit(totalStock, displayUnit);
+
                 return (
                   <tr
                     key={p.id}
@@ -905,17 +1124,79 @@ export default function ProductCatalog() {
                     <td>
                       <span className="badge badge-subtle">{p.category || 'Mặc định'}</span>
                     </td>
-                    <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      {p.uom || 'Cái'}
+                    <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: '105px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          {allUnits.length > 1 ? (
+                            <select
+                              className="form-select"
+                              style={{
+                                padding: '2px 22px 2px 6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                height: '26px',
+                                minWidth: '82px',
+                                color: 'var(--primary)',
+                                borderColor: 'rgba(37, 99, 235, 0.35)',
+                                backgroundColor: '#eff6ff',
+                              }}
+                              value={displayUnitName}
+                              onChange={(e) => handleChangeProductDisplayUnit(p, e.target.value)}
+                              title="Chọn đơn vị hiển thị chính cho sản phẩm này"
+                            >
+                              {allUnits.map((u) => (
+                                <option key={u.unitName} value={u.unitName}>
+                                  {u.unitName} {Number(u.conversionRate) > 1 ? `(x${u.conversionRate} ${baseUnit.unitName})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span style={{ fontWeight: 600 }}>{displayUnitName}</span>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-icon"
+                            style={{ width: '24px', height: '24px', color: 'var(--primary)', flexShrink: 0 }}
+                            title="Cấu hình đơn vị quy đổi (Thêm Hộp / Viên / Thùng...)"
+                            onClick={() => handleOpenSubUnits(p)}
+                          >
+                            <Layers size={13} />
+                          </button>
+                        </div>
+                        {allUnits.length > 1 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2px' }}>
+                            {allUnits
+                              .filter((u) => Number(u.conversionRate) > 1)
+                              .map((u) => (
+                                <span
+                                  key={u.id || u.unitName}
+                                  className="badge badge-neutral mono"
+                                  style={{ fontSize: '0.65rem', padding: '1px 5px' }}
+                                >
+                                  1 {u.unitName} = {u.conversionRate} {baseUnit.unitName}
+                                </span>
+                              ))}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right' }} className="mono">
-                      {formatVND(p.unitCost)}
+                      <div>{formatVND(displayPrices.unitCost)}</div>
+                      {allUnits.length > 1 && (
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>/{displayUnitName}</div>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right' }} className="mono">
-                      {formatVND(p.wholesalePrice)}
+                      <div>{formatVND(displayPrices.wholesalePrice)}</div>
+                      {allUnits.length > 1 && (
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>/{displayUnitName}</div>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right' }} className="mono">
-                      {formatVND(p.retailPrice)}
+                      <div>{formatVND(displayPrices.retailPrice)}</div>
+                      {allUnits.length > 1 && (
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>/{displayUnitName}</div>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right' }} className="mono">
                       <span
@@ -924,20 +1205,25 @@ export default function ProductCatalog() {
                           color: totalStock <= (p.reorderPoint || 0) ? 'var(--danger)' : 'var(--text-primary)',
                         }}
                       >
-                        {formatNumber(totalStock)}
+                        {formatNumber(displayTotalStock)} {displayUnitName}
                       </span>
+                      {allUnits.length > 1 && (
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {formatStockDisplay(totalStock, allUnits, baseUnit.unitName)}
+                        </div>
+                      )}
                     </td>
 
                     {/* Xuất theo từng kho: hiển thị cả SL & Thành tiền */}
                     {warehouses.map((wh) => {
                       if (!visibleMetrics.exportWarehouses?.[wh.id]) return null;
                       const metric = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
-                      const exportQty = metric?.exportQty || 0;
+                      const exportQty = convertQtyToDisplayUnit(metric?.exportQty || 0, displayUnit);
                       const exportAmount = metric?.exportAmount || 0;
                       return (
                         <td key={`td-cat-exp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
                           <div style={{ fontWeight: 700, color: exportQty > 0 ? '#ea580c' : 'var(--text-muted)' }}>
-                            SL: {formatNumber(exportQty)} {p.uom || ''}
+                            SL: {formatNumber(exportQty)} {displayUnitName}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: exportAmount > 0 ? '#c2410c' : 'var(--text-muted)' }}>
                             {formatVND(exportAmount)}
@@ -950,7 +1236,7 @@ export default function ProductCatalog() {
                     {visibleMetrics.exportTotal && (
                       <td style={{ textAlign: 'right' }} className="mono">
                         <div style={{ fontWeight: 800, color: (p.totalExportQty || 0) > 0 ? '#ea580c' : 'var(--text-muted)' }}>
-                          SL: {formatNumber(p.totalExportQty || 0)} {p.uom || ''}
+                          SL: {formatNumber(convertQtyToDisplayUnit(p.totalExportQty || 0, displayUnit))} {displayUnitName}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: (p.totalExportAmount || 0) > 0 ? '#c2410c' : 'var(--text-muted)' }}>
                           {formatVND(p.totalExportAmount || 0)}
@@ -962,12 +1248,12 @@ export default function ProductCatalog() {
                     {warehouses.map((wh) => {
                       if (!visibleMetrics.importWarehouses?.[wh.id]) return null;
                       const metric = p.warehouseMetrics?.[wh.id] || p.warehouseMetrics?.[wh.id.toLowerCase()];
-                      const importQty = metric?.importQty || 0;
+                      const importQty = convertQtyToDisplayUnit(metric?.importQty || 0, displayUnit);
                       const importAmount = metric?.importAmount || 0;
                       return (
                         <td key={`td-cat-imp-${wh.id}`} style={{ textAlign: 'right' }} className="mono">
                           <div style={{ fontWeight: 700, color: importQty > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
-                            SL: {formatNumber(importQty)} {p.uom || ''}
+                            SL: {formatNumber(importQty)} {displayUnitName}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: importAmount > 0 ? '#1e40af' : 'var(--text-muted)' }}>
                             {formatVND(importAmount)}
@@ -980,7 +1266,7 @@ export default function ProductCatalog() {
                     {visibleMetrics.importTotal && (
                       <td style={{ textAlign: 'right' }} className="mono">
                         <div style={{ fontWeight: 800, color: (p.totalImportQty || 0) > 0 ? '#1d4ed8' : 'var(--text-muted)' }}>
-                          SL: {formatNumber(p.totalImportQty || 0)} {p.uom || ''}
+                          SL: {formatNumber(convertQtyToDisplayUnit(p.totalImportQty || 0, displayUnit))} {displayUnitName}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: (p.totalImportAmount || 0) > 0 ? '#1e40af' : 'var(--text-muted)' }}>
                           {formatVND(p.totalImportAmount || 0)}
@@ -1150,133 +1436,159 @@ export default function ProductCatalog() {
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Thêm Sản Phẩm Mới"
-        maxWidth="650px"
+        title="Thêm Mới Sản Phẩm"
+        size="lg"
+        footer={
+          <>
+            <button type="button" className="btn btn-outline" onClick={() => setIsCreateOpen(false)} disabled={submitting}>
+              Hủy
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleCreateSubmit} disabled={submitting}>
+              {submitting ? 'Đang lưu...' : 'Thêm sản phẩm'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label className="form-label">Mã SKU <span className="text-danger">*</span></label>
+        <form onSubmit={handleCreateSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">
+                Mã SKU <span className="req">*</span>
+              </label>
               <input
                 type="text"
-                className="form-control mono"
+                className="form-input mono"
                 required
                 value={formData.sku}
                 onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                 placeholder="VD: SP001"
               />
             </div>
-            <div className="form-group flex-2">
-              <label className="form-label">Tên Sản Phẩm <span className="text-danger">*</span></label>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">
+                Tên Sản Phẩm <span className="req">*</span>
+              </label>
               <input
                 type="text"
-                className="form-control"
+                className="form-input"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nhập tên hàng hóa, quy cách..."
+                placeholder="VD: Nước giặt cao cấp 3.8kg"
               />
             </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label className="form-label">Danh Mục</label>
+            <div className="form-group">
+              <label className="form-label">Danh mục</label>
               <input
                 type="text"
-                className="form-control"
+                className="form-input"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="VD: Đồ uống, Bánh kẹo..."
+                placeholder="VD: Hóa mỹ phẩm"
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Đơn Vị Tính (ĐVT)</label>
+            <div className="form-group">
+              <label className="form-label">Đơn vị tính</label>
               <input
                 type="text"
-                className="form-control"
+                className="form-input"
                 value={formData.uom}
                 onChange={(e) => setFormData({ ...formData, uom: e.target.value })}
-                placeholder="Cái, Thùng, Hộp..."
+                placeholder="VD: Chai, Can, Hộp..."
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Mã Vạch (Barcode)</label>
+            <div className="form-group">
+              <label className="form-label">Mã vạch</label>
               <input
                 type="text"
-                className="form-control mono"
+                className="form-input mono"
                 value={formData.barcode}
                 onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                placeholder="Quét hoặc nhập mã vạch"
+                placeholder="VD: 893500123456"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nhà Cung Cấp Mặc Định</label>
+              <SearchableSelect
+                options={[
+                  { value: '', label: '-- Không chọn nhà cung cấp --' },
+                  ...suppliers.map((s) => ({
+                    id: s.id,
+                    value: String(s.id),
+                    label: s.name,
+                    code: s.code,
+                    phone: s.phone || '',
+                    subLabel: s.phone ? `SĐT: ${s.phone}` : '',
+                  })),
+                ]}
+                value={formData.supplierId}
+                onChange={(val) => setFormData({ ...formData, supplierId: val })}
+                placeholder="-- Chọn nhà cung cấp --"
+                searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
+                searchFields={['label', 'code', 'phone']}
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Nhà Cung Cấp Mặc Định</label>
-            <SearchableSelect
-              options={[
-                { value: '', label: '-- Không chọn nhà cung cấp --' },
-                ...suppliers.map((s) => ({ value: String(s.id), label: `${s.name} (${s.code || ''})` })),
-              ]}
-              value={formData.supplierId}
-              onChange={(val) => setFormData({ ...formData, supplierId: val })}
-              placeholder="Chọn nhà cung cấp chính..."
-            />
-          </div>
+          <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
 
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label className="form-label">Giá Vốn (VNĐ)</label>
+          <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.875rem' }}>
+            Thiết Lập Giá Bán
+          </h4>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label">Giá Vốn</label>
               <input
                 type="number"
-                className="form-control mono"
+                className="form-input mono"
                 min="0"
                 value={formData.unitCost}
                 onChange={(e) => setFormData({ ...formData, unitCost: e.target.value })}
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Giá Sỉ (VNĐ)</label>
+            <div className="form-group">
+              <label className="form-label">Giá Bán Sỉ</label>
               <input
                 type="number"
-                className="form-control mono"
+                className="form-input mono"
                 min="0"
                 value={formData.wholesalePrice}
                 onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Giá Lẻ (VNĐ)</label>
+            <div className="form-group">
+              <label className="form-label">Giá Bán Lẻ</label>
               <input
                 type="number"
-                className="form-control mono"
+                className="form-input mono"
                 min="0"
                 value={formData.retailPrice}
                 onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
               />
             </div>
+            <div className="form-group">
+              <label className="form-label">Định mức tồn tối thiểu</label>
+              <input
+                type="number"
+                className="form-input mono"
+                min="0"
+                placeholder="Cảnh báo khi dưới mức này"
+                value={formData.reorderPoint}
+                onChange={(e) => setFormData({ ...formData, reorderPoint: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Định mức tồn tối thiểu (Cảnh báo hết hàng)</label>
-            <input
-              type="number"
-              className="form-control mono"
-              min="0"
-              value={formData.reorderPoint}
-              onChange={(e) => setFormData({ ...formData, reorderPoint: e.target.value })}
-            />
-          </div>
+          <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" className="btn btn-outline" onClick={() => setIsCreateOpen(false)} disabled={submitting}>
-              Hủy bỏ
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Đang lưu...' : 'Thêm sản phẩm'}
-            </button>
-          </div>
+          <SubUnitsEditor
+            baseUom={formData.uom}
+            onBaseUomChange={(newUom) => setFormData((prev) => ({ ...prev, uom: newUom }))}
+            units={productUnits}
+            onChange={setProductUnits}
+            disabled={submitting}
+          />
         </form>
       </Modal>
 
@@ -1284,127 +1596,182 @@ export default function ProductCatalog() {
       <Modal
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
-        title={`Chỉnh Sửa Sản Phẩm: ${selectedProduct?.name || ''}`}
-        maxWidth="650px"
+        title={`Chỉnh Sửa Thông Tin: ${selectedProduct?.name || ''}`}
+        size="lg"
+        footer={
+          <>
+            <button type="button" className="btn btn-outline" onClick={() => setIsEditOpen(false)} disabled={submitting}>
+              Hủy
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleEditSubmit} disabled={submitting}>
+              {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label className="form-label">Mã SKU</label>
+        <form onSubmit={handleEditSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">
+                Mã SKU <span className="req">*</span>
+              </label>
               <input
                 type="text"
-                className="form-control mono"
-                disabled
+                className="form-input mono"
+                required
                 value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                placeholder="VD: SP001"
               />
             </div>
-            <div className="form-group flex-2">
-              <label className="form-label">Tên Sản Phẩm <span className="text-danger">*</span></label>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">
+                Tên Sản Phẩm <span className="req">*</span>
+              </label>
               <input
                 type="text"
-                className="form-control"
+                className="form-input"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label className="form-label">Danh Mục</label>
+            <div className="form-group">
+              <label className="form-label">Danh mục</label>
               <input
                 type="text"
-                className="form-control"
+                className="form-input"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Đơn Vị Tính (ĐVT)</label>
+            <div className="form-group">
+              <label className="form-label">Đơn vị tính hiển thị chính</label>
               <input
                 type="text"
-                className="form-control"
+                className="form-input"
                 value={formData.uom}
                 onChange={(e) => setFormData({ ...formData, uom: e.target.value })}
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Mã Vạch (Barcode)</label>
+            <div className="form-group">
+              <label className="form-label">Mã vạch</label>
               <input
                 type="text"
-                className="form-control mono"
+                className="form-input mono"
                 value={formData.barcode}
                 onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
               />
             </div>
+            <div className="form-group">
+              <label className="form-label">Nhà Cung Cấp Mặc Định</label>
+              <SearchableSelect
+                options={[
+                  { value: '', label: '-- Không chọn nhà cung cấp --' },
+                  ...suppliers.map((s) => ({
+                    id: s.id,
+                    value: String(s.id),
+                    label: s.name,
+                    code: s.code,
+                    phone: s.phone || '',
+                    subLabel: s.phone ? `SĐT: ${s.phone}` : '',
+                  })),
+                ]}
+                value={formData.supplierId}
+                onChange={(val) => setFormData({ ...formData, supplierId: val })}
+                placeholder="-- Không có / Chọn NCC --"
+                searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
+                searchFields={['label', 'code', 'phone']}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Nhà Cung Cấp Mặc Định</label>
-            <SearchableSelect
-              options={[
-                { value: '', label: '-- Không chọn nhà cung cấp --' },
-                ...suppliers.map((s) => ({ value: String(s.id), label: `${s.name} (${s.code || ''})` })),
-              ]}
-              value={formData.supplierId}
-              onChange={(val) => setFormData({ ...formData, supplierId: val })}
-            />
-          </div>
+          <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
 
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label className="form-label">Giá Vốn (VNĐ)</label>
+          <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.875rem' }}>
+            Thiết Lập Giá Bán
+          </h4>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label">Giá Vốn (Theo ĐV bé nhất)</label>
               <input
                 type="number"
-                className="form-control mono"
+                className="form-input mono"
                 min="0"
                 value={formData.unitCost}
                 onChange={(e) => setFormData({ ...formData, unitCost: e.target.value })}
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Giá Sỉ (VNĐ)</label>
+            <div className="form-group">
+              <label className="form-label">Giá Sỉ (Theo ĐV bé nhất)</label>
               <input
                 type="number"
-                className="form-control mono"
+                className="form-input mono"
                 min="0"
                 value={formData.wholesalePrice}
                 onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
               />
             </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Giá Lẻ (VNĐ)</label>
+            <div className="form-group">
+              <label className="form-label">Giá Lẻ (Theo ĐV bé nhất)</label>
               <input
                 type="number"
-                className="form-control mono"
+                className="form-input mono"
                 min="0"
                 value={formData.retailPrice}
                 onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
               />
             </div>
+            <div className="form-group">
+              <label className="form-label">Định mức tồn tối thiểu</label>
+              <input
+                type="number"
+                className="form-input mono"
+                min="0"
+                placeholder="Cảnh báo khi dưới mức này"
+                value={formData.reorderPoint}
+                onChange={(e) => setFormData({ ...formData, reorderPoint: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Định mức tồn tối thiểu (Cảnh báo hết hàng)</label>
-            <input
-              type="number"
-              className="form-control mono"
-              min="0"
-              value={formData.reorderPoint}
-              onChange={(e) => setFormData({ ...formData, reorderPoint: e.target.value })}
-            />
-          </div>
+          <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '1.25rem 0' }} />
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" className="btn btn-outline" onClick={() => setIsEditOpen(false)} disabled={submitting}>
-              Hủy bỏ
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Đang cập nhật...' : 'Lưu thay đổi'}
-            </button>
-          </div>
+          <SubUnitsEditor
+            baseUom={formData.uom}
+            onBaseUomChange={(newUom) => setFormData((prev) => ({ ...prev, uom: newUom }))}
+            units={productUnits}
+            onChange={setProductUnits}
+            disabled={submitting}
+          />
         </form>
+      </Modal>
+
+      {/* Modal Quản Lý Đơn Vị Tính Quy Đổi */}
+      <Modal
+        isOpen={isSubUnitOpen}
+        onClose={() => setIsSubUnitOpen(false)}
+        title={`Đơn Vị Tính & Đơn Vị Hiển Thị Chính: ${selectedProduct?.name || ''}`}
+        size="lg"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setIsSubUnitOpen(false)} disabled={submitting}>
+              Đóng
+            </button>
+            <button className="btn btn-primary" onClick={handleSaveSubUnits} disabled={submitting}>
+              {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </button>
+          </>
+        }
+      >
+        <SubUnitsEditor
+          baseUom={formData.uom || selectedProduct?.uom}
+          onBaseUomChange={(newUom) => setFormData((prev) => ({ ...prev, uom: newUom }))}
+          units={productUnits}
+          onChange={setProductUnits}
+          disabled={submitting}
+        />
       </Modal>
 
       {/* Confirm Delete Modal */}

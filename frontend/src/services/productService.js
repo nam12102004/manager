@@ -130,9 +130,9 @@ export const productService = {
     auditService.logAction({
       action: 'UPDATE',
       entityName: 'Product',
-      entityId: result?.sku || String(id),
+      entityId: result?.sku || data.sku || String(id),
       entityDisplayName: result?.name || data.name,
-      details: `Cập nhật thông tin sản phẩm: ${result?.name || data.name}`,
+      details: `Cập nhật thông tin sản phẩm: ${result?.name || data.name} (SKU: ${result?.sku || data.sku || id})`,
     });
     return result;
   },

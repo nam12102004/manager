@@ -256,16 +256,16 @@ async function main() {
       }
 
       // Công nợ NCC
-      if (unpaidAmount > 0) {
+      if (totalAmount > 0) {
         const curDebt = supplierDebts[supplier.id];
-        const newDebt = curDebt + unpaidAmount;
+        const newDebt = curDebt - totalAmount;
         supplierDebts[supplier.id] = newDebt;
 
         const sdId = nextSuppDebtId++;
         suppDebtRows.push(
           `(${sdId}, ${supplier.id}, 'import', 'import_voucher', ${sqlStr(voucherNumber)}, ` +
           `${sqlStr(`Ghi nhận nợ phải trả theo phiếu nhập ${voucherNumber}`)}, ${sqlStr(notes)}, ` +
-          `${sqlNum(curDebt)}, ${sqlNum(unpaidAmount)}, ${sqlNum(newDebt)}, ${sqlDate(voucherDate)})`
+          `${sqlNum(curDebt)}, ${sqlNum(-totalAmount)}, ${sqlNum(newDebt)}, ${sqlDate(voucherDate)})`
         );
       }
 
@@ -277,6 +277,17 @@ async function main() {
           `(${pmId}, ${sqlStr(pmNum)}, ${sqlDate(voucherDate)}, ${supplier.id}, NULL, ${sqlNum(paidAmount)}, ` +
           `'bank_transfer', 'completed', NULL, 'import_voucher', ${sqlStr(voucherNumber)}, ` +
           `${sqlStr(`Thanh toán tiền nhập hàng ${voucherNumber} - ${assignedEmp.name}`)}, ${sqlDate(voucherDate)})`
+        );
+
+        const curDebt = supplierDebts[supplier.id];
+        const newDebt = curDebt + paidAmount;
+        supplierDebts[supplier.id] = newDebt;
+
+        const sdId = nextSuppDebtId++;
+        suppDebtRows.push(
+          `(${sdId}, ${supplier.id}, 'payment', 'payment', ${sqlStr(pmNum)}, ` +
+          `${sqlStr(`Thanh toán tiền nhập hàng ${voucherNumber}`)}, ${sqlStr(notes)}, ` +
+          `${sqlNum(curDebt)}, ${sqlNum(paidAmount)}, ${sqlNum(newDebt)}, ${sqlDate(voucherDate)})`
         );
       }
     }
@@ -369,16 +380,16 @@ async function main() {
       }
 
       // Công nợ Khách hàng
-      if (unpaidAmount > 0) {
+      if (totalSale > 0) {
         const curDebt = customerDebts[customer.id];
-        const newDebt = curDebt + unpaidAmount;
+        const newDebt = curDebt + totalSale;
         customerDebts[customer.id] = newDebt;
 
         const cdId = nextCustDebtId++;
         custDebtRows.push(
           `(${cdId}, ${customer.id}, 'export', 'export_voucher', ${sqlStr(voucherNumber)}, ` +
-          `${sqlStr(`Xuất bán nợ theo phiếu ${voucherNumber}`)}, ${sqlStr(notes)}, ` +
-          `${sqlNum(curDebt)}, ${sqlNum(unpaidAmount)}, ${sqlNum(newDebt)}, ${sqlDate(voucherDate)})`
+          `${sqlStr(`Xuất bán hàng theo phiếu ${voucherNumber}`)}, ${sqlStr(notes)}, ` +
+          `${sqlNum(curDebt)}, ${sqlNum(totalSale)}, ${sqlNum(newDebt)}, ${sqlDate(voucherDate)})`
         );
       }
 
@@ -390,6 +401,17 @@ async function main() {
           `(${rcId}, ${sqlStr(rcNum)}, ${sqlDate(voucherDate)}, ${customer.id}, NULL, ${sqlNum(paidAmount)}, ` +
           `'cash', 'export_voucher', ${sqlStr(voucherNumber)}, ` +
           `${sqlStr(`Thu tiền bán hàng ${voucherNumber} - NV: ${assignedEmp.name}`)}, ${sqlDate(voucherDate)})`
+        );
+
+        const curDebt = customerDebts[customer.id];
+        const newDebt = curDebt - paidAmount;
+        customerDebts[customer.id] = newDebt;
+
+        const cdId = nextCustDebtId++;
+        custDebtRows.push(
+          `(${cdId}, ${customer.id}, 'receipt', 'receipt', ${sqlStr(rcNum)}, ` +
+          `${sqlStr(`Thu tiền bán hàng ${voucherNumber}`)}, ${sqlStr(notes)}, ` +
+          `${sqlNum(curDebt)}, ${sqlNum(-paidAmount)}, ${sqlNum(newDebt)}, ${sqlDate(voucherDate)})`
         );
       }
     }

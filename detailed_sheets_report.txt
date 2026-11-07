@@ -1,0 +1,422 @@
+
+======================================================================
+SHEET 1: 'đổ dữ liệu' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 569, Dòng ẩn: 6 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột AA (27)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'MÃ KHÁCH'                                    | Mẫu: ['KH.140723322', 'KH.140723320', 'KH.140723277']
+   B (cột  2): [HIỂN THỊ]             Header: 'TÊN KH / TỔNG CÔNG NỢ'                       | Mẫu: ['CH Việt Hưng(2): Thịnh long-hải hậu 0966239828', 'CH Thịnh Kế (2) -tt cồn -hh-nđ-0989432618', 'CH Huy Linh(2) - Xóm 2 Hải Lộc - Hải Hậu ĐT: 0948 523 108']
+   C (cột  3): >>> [ẨN - HIDDEN] <<<  Header: 'SĐT'                                         | (Trống hoặc ít giá trị)
+   D (cột  4): >>> [ẨN - HIDDEN] <<<  Header: ''                                            | (Trống hoặc ít giá trị)
+   E (cột  5): >>> [ẨN - HIDDEN] <<<  Header: 'Số dư nợ /đ kỳ'                              | Mẫu: ['20789200', '5076480', '21657860']
+   F (cột  6): >>> [ẨN - HIDDEN] <<<  Header: 'Số dư có đầu kỳ'                             | Mẫu: ['32763400', '48561602', '43600']
+   G (cột  7): [HIỂN THỊ]             Header: 'PS NỢ TRONG KỲ / 188006738'                  | Mẫu: ['720000', '1296000', '7200000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có TRONG KỲ / 95180500'                   | Mẫu: ['7200000', '7668000', '3600000']
+   I (cột  9): [HIỂN THỊ]             Header: 'nợ CK / 221797548'                           | Mẫu: ['21509200', '6372480', '24926060']
+   J (cột 10): [HIỂN THỊ]             Header: 'có  CK / 116966762'                          | Mẫu: ['22503400', '48331202', '46132160']
+   K (cột 11): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   L (cột 12): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   M (cột 13): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   N (cột 14): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   O (cột 15): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   P (cột 16): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   R (cột 18): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   S (cột 19): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   T (cột 20): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   U (cột 21): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   V (cột 22): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   W (cột 23): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   X (cột 24): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Y (cột 25): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Z (cột 26): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+  AA (cột 27): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+
+======================================================================
+SHEET 2: 'T11,2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 330, Dòng ẩn: 13 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Q (17)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / THÁNG 11 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): >>> [ẨN - HIDDEN] <<<  Header: 'MÃ KHÁCH / THÀNH PHỐ'                        | Mẫu: ['KH.140723099', 'KH.140723041', 'KH.140723218']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH'                                      | Mẫu: ['CH Bích Hường(2)', 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839', 'CH Hoàng chiều (2) - Phố Song Hào - ĐT:']
+   D (cột  4): >>> [ẨN - HIDDEN] <<<  Header: 'NỢ ĐK'                                       | Mẫu: ['140378200', '61076260', '25146800']
+   E (cột  5): >>> [ẨN - HIDDEN] <<<  Header: 'CÓ ĐK'                                       | Mẫu: ['0', '0', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['5689000', '5689000', '0']
+   G (cột  7): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['0', 'tiền thu', '180000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['0', '0', 'PS có \n( hàng trả lại, trừ giá…)']
+   I (cột  9): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['0', '0', '0']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['140378200', '61076260', '25146800']
+   K (cột 11): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['0', '0', '0']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['0', '0', '0']
+   N (cột 14): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | Mẫu: ['tt 15 triệu/2 kho', '12/9: ck: 20 triệu /2 kho', 'tt 7/7: 10 triệu /2 kho']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | (Trống hoặc ít giá trị)
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['5/9']
+
+======================================================================
+SHEET 3: 'THop' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 16, Dòng ẩn: 2 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột J (10)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'BẢNG TỔNG HỢP BÁN HÀNG VÀ THU TIỀN CÁC TUYẾN - KHO 2 / Từ 1/10 ĐẾN 31 Tháng 10/2026 / I / 1 / 2' | Mẫu: ['2', '4', '3']
+   B (cột  2): [HIỂN THỊ]             Header: 'CÁC TUYẾN / TP, Hà Nam / Nam Trực, Trực Ninh' | Mẫu: ['Nam Trực - Trực Ninh -  Ý Yên, Vụ Bản - Xuân trường', 'Xuân Trường', 'Giao Thủy - Nghĩa Hưng - Hải Hậu']
+   C (cột  3): [HIỂN THỊ]             Header: 'Doanh số bán hàng / 5689000 / 0'             | Mẫu: ['180000', '0', '18321000']
+   D (cột  4): [HIỂN THỊ]             Header: 'Tiền thu / 0'                                | Mẫu: ['180000', '0', '180000']
+   E (cột  5): [HIỂN THỊ]             Header: 'Tổng công nợ\n ( từ 26/2/2026 đến 17/09/2026) / 360885650 / 0' | Mẫu: ['1165443400', '0', '661266600']
+   F (cột  6): >>> [ẨN - HIDDEN] <<<  Header: '% thu theo tuyến / 63.435691685709266 / #DIV/0!' | Mẫu: ['6474.6855555555558', '#DIV/0!', '36.093368265924347']
+   G (cột  7): [HIỂN THỊ]             Header: 'Tổng tỷ lệ % DS thu/DS bán hàng toàn tuyến / 7.4410913600661431E-3' | (Trống hoặc ít giá trị)
+   H (cột  8): [HIỂN THỊ]             Header: 'nhật'                                        | Mẫu: ['thanh']
+   I (cột  9): [HIỂN THỊ]             Header: '1345886225'                                  | Mẫu: ['841709425', '2187595650']
+   J (cột 10): [HIỂN THỊ]             Header: '-7254000'                                    | Mẫu: ['-37835000', '-2708800']
+
+======================================================================
+SHEET 4: 'T10-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 337, Dòng ẩn: 0 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Q (17)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / THÁNG 10 / STT / 1' | Mẫu: ['1', '2', '3']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723099', 'KH.140723041', 'KH.140723218']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ'                          | Mẫu: ['CH Bích Hường(2)', 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839', 'CH Hoàng chiều (2) - Phố Song Hào - ĐT:']
+   D (cột  4): [HIỂN THỊ]             Header: 'NỢ ĐK'                                       | Mẫu: ['69135200', '56067260', '4567800']
+   E (cột  5): [HIỂN THỊ]             Header: 'CÓ ĐK'                                       | Mẫu: ['5597800', '0', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['101243000', '43249000', '20579000']
+   G (cột  7): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['30000000', '37000000', '30000000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['1240000', '308000', '627000']
+   I (cột  9): [HIỂN THỊ]             Header: 'kiểm tra'                                    | Mẫu: ['0', '0', '0']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['140378200', '61076260', '25146800']
+   K (cột 11): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['0', '0', '0']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['101243000', '43249000', '20579000']
+   N (cột 14): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | Mẫu: ['tt 15 triệu/2 kho', '12/9: ck: 20 triệu /2 kho', 'tt 7/7: 10 triệu /2 kho']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | (Trống hoặc ít giá trị)
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['đơn 972k ( kho 1)', '5/9']
+
+======================================================================
+SHEET 5: 'T9-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 489, Dòng ẩn: 204 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Q (17)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / T9,2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723099', 'KH.140723041', 'KH.140723052']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ'                          | Mẫu: ['CH Bích Hường(2)', 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839', 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(31/8/2026)'                     | Mẫu: ['72157200', '43677260', '94149600']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(31/8/2026)'                     | Mẫu: ['0', '0', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['78991000', '13246000', '2149000']
+   G (cột  7): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['80000000', '63898000', '5000000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['2013000', '856000', '5193000']
+   I (cột  9): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['0', '0', '0']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['69135200', '56067260', '27207600']
+   K (cột 11): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['0', '0', '0']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['78991000', '13246000', '2149000']
+   N (cột 14): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | Mẫu: ['tt 15 triệu/2 kho', '12/9: ck: 20 triệu /2 kho', 'tt 7/7: 10 triệu /2 kho']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | (Trống hoặc ít giá trị)
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+   Q (cột 17): >>> [ẨN - HIDDEN] <<<  Header: ''                                            | Mẫu: ['đơn 972k ( kho 1)', '5/9']
+
+======================================================================
+SHEET 6: 'T8-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 338, Dòng ẩn: 23 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột V (22)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / Thánh 8-2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723105', 'KH.3447385', 'KH.140723069']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ'                          | Mẫu: ['CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879', 'CH Thắng Hằng - Giải Phóng - TP Nam Định', 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(31/7/2026)'                     | Mẫu: ['19667500', '10488080', '13627200']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(31/7/2026)'                     | Mẫu: ['25057820', '0', '374400']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['2460000', '7079000', '97807000']
+   G (cột  7): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['2400000', '10036000', '5415000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['312000', '585000', '1600000']
+   I (cột  9): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['8898820', '0', '34600']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['19415500', '452080', '14706200']
+   K (cột 11): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['25057820', '374400', '7797800']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['2460000', '0', '7079000']
+   N (cột 14): [HIỂN THỊ]             Header: 'Ghi chú'                                     | Mẫu: ['đ/c đơn 28/8 sang t9 kho 1', 'tt 7/7: 10 triệu /2 kho']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | (Trống hoặc ít giá trị)
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   R (cột 18): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   S (cột 19): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   T (cột 20): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   U (cột 21): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   V (cột 22): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['0']
+
+======================================================================
+SHEET 7: 'T7-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 334, Dòng ẩn: 106 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột P (16)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / Thánh 7-2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723105', 'KH.3447385', 'KH.140723069']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ'                          | Mẫu: ['CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879', 'CH Thắng Hằng - Giải Phóng - TP Nam Định', 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(31/7/2026)'                     | Mẫu: ['14735900', '4284480', '11502200']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(31/7/2026)'                     | Mẫu: ['17420590', '25057820', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['10931600', '6203600', '17535000']
+   G (cột  7): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['6000000', '15000000', '15000000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['410000', '17000', '40']
+   I (cột  9): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['8898820', '0', '34600']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['19667500', '10488080', '13627200']
+   K (cột 11): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['25057820', '0', '374400']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['10931600', '6203600', '17535000']
+   N (cột 14): [HIỂN THỊ]             Header: 'Ghi chú'                                     | Mẫu: ['tt 7/7: 10 triệu /2 kho', 'bù trừ công nợ sang kho 1: 4.187.000']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | (Trống hoặc ít giá trị)
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+
+======================================================================
+SHEET 8: 'T6-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 334, Dòng ẩn: 105 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột P (16)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / Thánh 6-2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723037', 'KH.140723105', 'KH.3447385']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ - HÀ NAM'                 | Mẫu: ['CH Nam Huyền - Chợ Quắn - 0392388757', 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879', 'CH Thắng Hằng - Giải Phóng - TP Nam Định']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(31/7/2026)'                     | Mẫu: ['38982300', '16065900', '4284480']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(31/7/2026)'                     | Mẫu: ['87738090', '29627420', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['11005200', '5670000', '56416600']
+   G (cột  7): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['20000000', '7000000', '30000000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['2489500', '9360000', '255000']
+   I (cột  9): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['24815878', '8898820', '0']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['29987500', '14735900', '4284480']
+   K (cột 11): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['17420590', '25057820', '0']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['11005200', '5670000', '0']
+   N (cột 14): [HIỂN THỊ]             Header: 'Ghi chú'                                     | Mẫu: ['Bù trừ công nợ sang kho 1']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | (Trống hoặc ít giá trị)
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+
+======================================================================
+SHEET 9: 'T5-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 335, Dòng ẩn: 104 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Q (17)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / Từ 1/5/2026 đến 30/5/2026 / STT / 1' | Mẫu: ['II', 'II', 'x']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723037', 'KH.140723105', 'KH.3447385']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ - HÀ NAM'                 | Mẫu: ['CH Nam Huyền - Chợ Quắn - 0392388757', 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879', 'CH Thắng Hằng - Giải Phóng - TP Nam Định']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(31/7/2026)'                     | Mẫu: ['23862300', '46741700', '16351480']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(31/7/2026)'                     | Mẫu: ['121188090', '34535460', '374400']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['15120000', '8111000', '11467600']
+   G (cột  7): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['30000000', '20178000', '5836000']
+   H (cột  8): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['675800', '314400', '1001400']
+   I (cột  9): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['24815878', '8898820', '0']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['38982300', '16065900', '4284480']
+   K (cột 11): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['87738090', '29627420', '0']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['15120000', '0', '8111000']
+   N (cột 14): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | Mẫu: ['bù trừ công nợ sang kho 1']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | Mẫu: ['thu 13/5', 'thu 11/5', 'thu 5/5']
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['156592940', '416738080', '282235720']
+
+======================================================================
+SHEET 10: 'T4-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 338, Dòng ẩn: 7 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Q (17)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / TỪ 01/04/2026 - 31/04/2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723037', 'KH.140723105', 'KH.3447385']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ - HÀ NAM'                 | Mẫu: ['CH Nam Huyền - Chợ Quắn - 0392388757', 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879', 'CH Thắng Hằng - Giải Phóng - TP Nam Định']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(31/3/2026)'                     | Mẫu: ['25140000', '16898820', '15890480']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(31/03/2026)'                    | Mẫu: ['47914090', '46814720', '346400']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['420000', '37842880', '461000']
+   G (cột  7): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['1697700', '8000000', '0']
+   H (cột  8): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['24815878', '8898820', '0']
+   I (cột  9): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['23862300', '46741700', '16351480']
+   J (cột 10): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['125682090', '34535460', 'bù trừ công nợ sang kho 1']
+   K (cột 11): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['1697700', '855000', '460000']
+   L (cột 12): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['-1277700', '37842880', '461000']
+   M (cột 13): >>> [ẨN - HIDDEN] <<<  Header: 'Hóa đơn ngày'                                | Mẫu: ['HĐ 29/4', 'HĐ 8/4+10/4', 'HĐ 7/4']
+   N (cột 14): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | Mẫu: ['thu 8/4+10/4+12/4', 'thu 7/4', '7/4']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'mã'                                          | (Trống hoặc ít giá trị)
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | Mẫu: ['18/4 : trả lại 18/4', '7/4 trả 18916:2h', 'trả lại 4v điểm; trả lại 17/4']
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['Trừ 4.494.000 công nợ kho 1']
+
+======================================================================
+SHEET 11: 'T3-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 336, Dòng ẩn: 139 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột J (10)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / TỪ 01/03/2026 - 31/03/2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723037', 'KH.140723105', 'KH.3447385']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ - HÀ NAM'                 | Mẫu: ['CH Nam Huyền - Chợ Quắn - 0392388757', 'CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879', 'CH Thắng Hằng - Giải Phóng - TP Nam Định']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(28/2/2026)'                     | Mẫu: ['0', '0', '0']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(28/02/2026)'                    | Mẫu: ['346400', '374400', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['70045000', '17052420', '15890480']
+   G (cột  7): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['44905000', '153600', '0']
+   H (cột  8): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['25140000', '16898820', '15890480']
+   I (cột  9): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['25140000', '16898820', '15890480']
+   J (cột 10): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['47914090', '46814720', '346400']
+
+======================================================================
+SHEET 12: 'T2-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 337, Dòng ẩn: 64 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Z (26)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / TỪ 01/02/2026 - 28/02/2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): [HIỂN THỊ]             Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723037', 'KH.140723052', 'KH.140723133']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ - HÀ NAM'                 | Mẫu: ['CH Nam Huyền - Chợ Quắn - 0392388757', 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882', 'CH Thủy Vượng(2) - Đò Quan - TP Nam Định ĐT: 3 859 671 - 0948 598 993']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(28/2/2026)'                     | Mẫu: ['114250950', '72958545', '45652040']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(28/02/2026)'                    | Mẫu: ['0', '0', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['0', '0', '216800']
+   G (cột  7): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['114250950', '72958545', '45869465']
+   H (cột  8): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['0', '0', '0']
+   I (cột  9): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['0', '0', '-625']
+   J (cột 10): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['374400', '346400', '0']
+   K (cột 11): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   L (cột 12): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   M (cột 13): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   N (cột 14): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   O (cột 15): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   P (cột 16): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   R (cột 18): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   S (cột 19): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   T (cột 20): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   U (cột 21): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   V (cột 22): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   W (cột 23): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   X (cột 24): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Y (cột 25): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Z (cột 26): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['0']
+
+======================================================================
+SHEET 13: 'làm tên' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 20, Dòng ẩn: 7 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột L (12)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   B (cột  2): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / Năm 2026 / STT' | Mẫu: ['II', 'Tháng 3/2026', 'Tháng 4/2026']
+   C (cột  3): >>> [ẨN - HIDDEN] <<<  Header: 'MÃ KHÁCH'                                    | Mẫu: ['III', 'KH.140723044', 'KH.140723044']
+   D (cột  4): [HIỂN THỊ]             Header: 'Tên khách hàng: / TÊN KH'                    | Mẫu: ['NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG', 'CH Tòng Lăng - Yên Trị - ý yên - ĐT: 0856626888 - 0828 268 999', 'Cộng']
+   E (cột  5): [HIỂN THỊ]             Header: 'Nợ đầu kỳ ( T2/2026)'                        | Mẫu: ['0', '66879520', '61299520']
+   F (cột  6): [HIỂN THỊ]             Header: 'CH Tòng Lăng - Yên Trị - ý yên - ĐT: 0856626888 - 0828 268 999 / Có đầu kỳ (T2/2026)' | (Trống hoặc ít giá trị)
+   G (cột  7): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['107879520', '14420000', '64108000']
+   H (cột  8): [HIỂN THỊ]             Header: 'tiền thu'                                    | Mẫu: ['41000000', '20000000', '35000000']
+   I (cột  9): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['2199000', '6187200', '8386200']
+   J (cột 10): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['66879520', '61299520', '88208520']
+   K (cột 11): >>> [ẨN - HIDDEN] <<<  Header: 'CÓ CK'                                       | (Trống hoặc ít giá trị)
+   L (cột 12): [HIỂN THỊ]             Header: 'Phần trăm thu công nợ tháng'                 | Mẫu: ['0.38005360053511544', '0.54595370312597491', '0.51942655308539376']
+
+======================================================================
+SHEET 14: 'T1-2026' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 337, Dòng ẩn: 70 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Z (26)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / TỪ 01/02/2026 - 28/02/2026 / STT / 1' | Mẫu: ['II', 'II', 'III']
+   B (cột  2): >>> [ẨN - HIDDEN] <<<  Header: 'MÃ KHÁCH / I'                                | Mẫu: ['KH.140723037', 'KH.140723052', 'KH.140723133']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ - HÀ NAM'                 | Mẫu: ['CH Nam Huyền - Chợ Quắn - 0392388757', 'ch dương định - 549 Đặng Xuân Bảng - ĐT: 0824358882', 'CH Thủy Vượng(2) - Đò Quan - TP Nam Định ĐT: 3 859 671 - 0948 598 993']
+   D (cột  4): [HIỂN THỊ]             Header: 'Nợ đầu kỳ \n(31/12/2025)'                    | Mẫu: ['50194550', '82205840', '21815100']
+   E (cột  5): [HIỂN THỊ]             Header: 'Có đầu kỳ \n(31/12/2025)'                    | Mẫu: ['0', '0', '0']
+   F (cột  6): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / PS nợ'               | Mẫu: ['114056400', '11573505', '23836940']
+   G (cột  7): [HIỂN THỊ]             Header: 'PS có \n( hàng trả lại, trừ giá…)'           | Mẫu: ['50000000', '20820800', '0']
+   H (cột  8): >>> [ẨN - HIDDEN] <<<  Header: 'kiểm tra'                                    | Mẫu: ['114250950', '72958545', '45652665']
+   I (cột  9): [HIỂN THỊ]             Header: 'NỢ CK'                                       | Mẫu: ['114250950', '72958545', '45652040']
+   J (cột 10): [HIỂN THỊ]             Header: 'CÓ CK'                                       | Mẫu: ['0', '0', '0']
+   K (cột 11): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   L (cột 12): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   M (cột 13): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   N (cột 14): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   O (cột 15): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   P (cột 16): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   R (cột 18): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   S (cột 19): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   T (cột 20): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   U (cột 21): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   V (cột 22): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   W (cột 23): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   X (cột 24): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Y (cột 25): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Z (cột 26): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['0']
+
+======================================================================
+SHEET 15: 'tổng hợp công nợ tháng' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 168, Dòng ẩn: 13 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột AA (27)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / TỪ T2/2026- 31/12/2026 / STT / I' | Mẫu: ['1', '2', '3']
+   B (cột  2): >>> [ẨN - HIDDEN] <<<  Header: 'MÃ KHÁCH / THÀNH PHỐ - HÀ NAM'               | Mẫu: ['KH.140723105', 'KH.3447385', 'KH.140723069']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH'                                      | Mẫu: ['CH Tuấn Sinh(2) - 679 Đường Trường Chinh - ĐT: 0918481879', 'CH Thắng Hằng - Giải Phóng - TP Nam Định', 'CH Sơn Thảo-Làng hoàng mỹ lộc-0942125445']
+   D (cột  4): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / tháng 3'             | Mẫu: ['17052420', '15890480', '12357600']
+   E (cột  5): [HIỂN THỊ]             Header: 'tháng 4'                                     | Mẫu: ['37842880', '461000', '5836000']
+   F (cột  6): [HIỂN THỊ]             Header: 'DANH SÁCHCÔNG NỢ PHÁT SINH - KHO 2 / TỪ T2/2026- 31/12/2026 / tháng 5' | Mẫu: ['0', '8111000', '11467600']
+   G (cột  7): [HIỂN THỊ]             Header: 'tháng 6'                                     | Mẫu: ['5670000', '0', '0']
+   H (cột  8): [HIỂN THỊ]             Header: 'tháng 7'                                     | Mẫu: ['10931600', '6203600', '17535000']
+   I (cột  9): [HIỂN THỊ]             Header: 'tháng 8'                                     | Mẫu: ['2460000', '0', '7079000']
+   J (cột 10): [HIỂN THỊ]             Header: 'tháng 9'                                     | Mẫu: ['12612400', '0', '1993000']
+   K (cột 11): [HIỂN THỊ]             Header: 'tháng 10'                                    | Mẫu: ['480000', '1170000', '0']
+   L (cột 12): [HIỂN THỊ]             Header: 'tháng 11'                                    | Mẫu: ['0', '0']
+   M (cột 13): [HIỂN THỊ]             Header: 'tháng 12'                                    | Mẫu: ['0']
+   N (cột 14): [HIỂN THỊ]             Header: 'Tổng cộng'                                   | Mẫu: ['86569300', '30666080', '56268200']
+   O (cột 15): >>> [ẨN - HIDDEN] <<<  Header: 'Bảng tính ngoài / Trả lại , trừ giắ'         | Mẫu: ['0', '0', '0']
+   P (cột 16): >>> [ẨN - HIDDEN] <<<  Header: 'Tổng doanh số'                               | Mẫu: ['17052420', '15890480', '12357600']
+   Q (cột 17): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+   R (cột 18): >>> [ẨN - HIDDEN] <<<  Header: 'Thu'                                         | (Trống hoặc ít giá trị)
+   S (cột 19): >>> [ẨN - HIDDEN] <<<  Header: 'Ghi chú'                                     | (Trống hoặc ít giá trị)
+   T (cột 20): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   U (cột 21): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   V (cột 22): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   W (cột 23): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   X (cột 24): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Y (cột 25): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Z (cột 26): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+  AA (cột 27): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['0']
+
+======================================================================
+SHEET 16: 'Sheet1' (Trạng thái: visible)
+======================================================================
+- Tổng số dòng: 136, Dòng ẩn: 11 dòng
+- Phạm vi cột có dữ liệu: Cột A (1) đến Cột Q (17)
+
+--- DANH SÁCH CHI TIẾT CÁC CỘT ---
+   A (cột  1): [HIỂN THỊ]             Header: 'DOANH SỐ PHÁT SINH - KHO 2 / STT / 1'        | Mẫu: ['II', 'III']
+   B (cột  2): >>> [ẨN - HIDDEN] <<<  Header: 'MÃ KHÁCH / I / KH.140723099'                 | Mẫu: ['KH.140723218', 'KH.140723041', 'KH.140723062']
+   C (cột  3): [HIỂN THỊ]             Header: 'TÊN KH / THÀNH PHỐ - HÀ NAM / CH Bích Hường(2)' | Mẫu: ['CH Hoàng chiều (2) - Phố Song Hào - TP ( gần quán viitj Quỳnh Anh) - ĐT: 3 840 456', 'CH Anh Dũng ( Đông A - mới) - 524 Đường Điện Biên 0912151839', 'CH Tuấn Thoa (2)- 32 Trần Đăng Ninh - ĐT:039 9191 519  - 0855933170 (vợ)-  0988500259']
+   D (cột  4): [HIỂN THỊ]             Header: 'Phát sinh trong tháng / tháng 3 / 15120000'  | Mẫu: ['4300000', '7214960', '5085910']
+   E (cột  5): [HIỂN THỊ]             Header: 'tháng 4 / 23711600'                          | Mẫu: ['15119000', '12556600', '28232000']
+   F (cột  6): [HIỂN THỊ]             Header: 'tháng 5 / 6178000'                           | Mẫu: ['44008000', '18749000', '33560000']
+   G (cột  7): [HIỂN THỊ]             Header: 'tháng 6 / 24936800'                          | Mẫu: ['29309200', '56416600', '37152400']
+   H (cột  8): [HIỂN THỊ]             Header: 'tháng 7 / 33557600'                          | Mẫu: ['19959200', '19724000', '26344000']
+   I (cột  9): [HIỂN THỊ]             Header: 'tháng 8 / 112737600'                         | Mẫu: ['9701000', '16820000', '2691000']
+   J (cột 10): [HIỂN THỊ]             Header: 'tháng 9 / 78991000'                          | Mẫu: ['34822000', '13246000', '1110000']
+   K (cột 11): [HIỂN THỊ]             Header: 'Tổng cộng / 295232600'                       | Mẫu: ['157218400', '144727160', '134175310']
+   L (cột 12): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   M (cột 13): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   N (cột 14): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   O (cột 15): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   P (cột 16): [HIỂN THỊ]             Header: ''                                            | (Trống hoặc ít giá trị)
+   Q (cột 17): [HIỂN THỊ]             Header: ''                                            | Mẫu: ['0']

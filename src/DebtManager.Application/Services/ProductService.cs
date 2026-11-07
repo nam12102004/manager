@@ -23,6 +23,7 @@ public class ProductService : IProductService
     {
         var query = _uow.Products.Query()
             .Include(p => p.Supplier)
+            .Include(p => p.Units)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -32,6 +33,7 @@ public class ProductService : IProductService
                                      p.Sku.ToLower().Contains(s) ||
                                      (p.Category != null && p.Category.ToLower().Contains(s)) ||
                                      (p.Barcode != null && p.Barcode.ToLower().Contains(s)) ||
+                                     p.Units.Any(u => u.Barcode != null && u.Barcode.ToLower().Contains(s)) ||
                                      (p.Supplier != null && p.Supplier.Name.ToLower().Contains(s)));
         }
 
@@ -62,6 +64,7 @@ public class ProductService : IProductService
 
         var query = _uow.Products.Query()
             .Include(p => p.Supplier)
+            .Include(p => p.Units)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -71,6 +74,7 @@ public class ProductService : IProductService
                                      p.Sku.ToLower().Contains(s) ||
                                      (p.Category != null && p.Category.ToLower().Contains(s)) ||
                                      (p.Barcode != null && p.Barcode.ToLower().Contains(s)) ||
+                                     p.Units.Any(u => u.Barcode != null && u.Barcode.ToLower().Contains(s)) ||
                                      (p.Supplier != null && p.Supplier.Name.ToLower().Contains(s)));
         }
 
@@ -137,8 +141,6 @@ public class ProductService : IProductService
         }
 
         var wh = (warehouse ?? "overview").Trim().ToLower();
-        // Allow displaying products with zero or negative stock (out of stock / debt)
-        // No filtering by stock level - all products are shown
 
         var totalCount = await query.CountAsync(ct);
 
@@ -176,6 +178,16 @@ public class ProductService : IProductService
             totalRetailVal = await query.SumAsync(p => (decimal?)(p.TotalStock * p.RetailPrice), ct) ?? 0;
         }
 
+        // In-stock products (for the active warehouse) are always listed before out-of-stock ones,
+        // except when the user explicitly sorts by stock quantity.
+        var inStockFirst = wh switch
+        {
+            "warehouse1" => query.OrderByDescending(p => p.StockWarehouse1 > 0),
+            "warehouse2" => query.OrderByDescending(p => p.StockWarehouse2 > 0),
+            "warehouse3" => query.OrderByDescending(p => p.StockWarehouse3 > 0),
+            _ => query.OrderByDescending(p => p.TotalStock > 0)
+        };
+
         query = sortBy switch
         {
             "stock_desc" => wh switch
@@ -192,13 +204,13 @@ public class ProductService : IProductService
                 "warehouse3" => query.OrderBy(p => p.StockWarehouse3).ThenByDescending(p => p.Id),
                 _ => query.OrderBy(p => p.TotalStock).ThenByDescending(p => p.Id)
             },
-            "cost_desc" => query.OrderByDescending(p => p.UnitCost).ThenByDescending(p => p.Id),
-            "cost_asc" => query.OrderBy(p => p.UnitCost).ThenByDescending(p => p.Id),
-            "wholesale_desc" => query.OrderByDescending(p => p.WholesalePrice).ThenByDescending(p => p.Id),
-            "wholesale_asc" => query.OrderBy(p => p.WholesalePrice).ThenByDescending(p => p.Id),
-            "retail_desc" => query.OrderByDescending(p => p.RetailPrice).ThenByDescending(p => p.Id),
-            "retail_asc" => query.OrderBy(p => p.RetailPrice).ThenByDescending(p => p.Id),
-            _ => query.OrderByDescending(p => p.Id)
+            "cost_desc" => inStockFirst.ThenByDescending(p => p.UnitCost).ThenByDescending(p => p.Id),
+            "cost_asc" => inStockFirst.ThenBy(p => p.UnitCost).ThenByDescending(p => p.Id),
+            "wholesale_desc" => inStockFirst.ThenByDescending(p => p.WholesalePrice).ThenByDescending(p => p.Id),
+            "wholesale_asc" => inStockFirst.ThenBy(p => p.WholesalePrice).ThenByDescending(p => p.Id),
+            "retail_desc" => inStockFirst.ThenByDescending(p => p.RetailPrice).ThenByDescending(p => p.Id),
+            "retail_asc" => inStockFirst.ThenBy(p => p.RetailPrice).ThenByDescending(p => p.Id),
+            _ => inStockFirst.ThenByDescending(p => p.Id)
         };
 
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -303,6 +315,7 @@ public class ProductService : IProductService
     {
         var product = await _uow.Products.Query()
             .Include(p => p.Supplier)
+            .Include(p => p.Units)
             .FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy sản phẩm với ID {id}");
 
@@ -362,6 +375,65 @@ public class ProductService : IProductService
         await _uow.Products.AddAsync(product, ct);
         await _uow.SaveChangesAsync(ct);
 
+        // Multi-UOM setup
+        var baseUomName = !string.IsNullOrWhiteSpace(product.Uom) ? product.Uom.Trim() : "Cái";
+        if (dto.Units != null && dto.Units.Count > 0)
+        {
+            var validUnits = dto.Units
+                .Where(u => !string.IsNullOrWhiteSpace(u.UnitName))
+                .GroupBy(u => u.UnitName.Trim().ToLowerInvariant())
+                .Select(g => g.First())
+                .OrderBy(u => u.ConversionRate > 0 ? u.ConversionRate : 1m)
+                .ToList();
+
+            if (validUnits.Count > 0)
+            {
+                var minRate = validUnits[0].ConversionRate > 0 ? validUnits[0].ConversionRate : 1m;
+                for (int idx = 0; idx < validUnits.Count; idx++)
+                {
+                    var u = validUnits[idx];
+                    var unitName = u.UnitName.Trim();
+                    var isBase = idx == 0;
+                    var normalizedRate = isBase ? 1m : Math.Round((u.ConversionRate > 0 ? u.ConversionRate : 1m) / minRate, 4);
+
+                    var pUnit = new ProductUnit
+                    {
+                        ProductId = product.Id,
+                        UnitName = unitName,
+                        ConversionRate = normalizedRate,
+                        IsBaseUnit = isBase,
+                        Barcode = u.Barcode?.Trim(),
+                        RetailPrice = u.RetailPrice > 0 ? u.RetailPrice : (normalizedRate * product.RetailPrice),
+                        WholesalePrice = u.WholesalePrice > 0 ? u.WholesalePrice : (normalizedRate * product.WholesalePrice),
+                        CanSell = u.CanSell
+                    };
+                    await _uow.ProductUnits.AddAsync(pUnit, ct);
+                }
+
+                // If product.Uom is not among the defined units, default to the smallest base unit
+                if (!validUnits.Any(u => u.UnitName.Trim().Equals(baseUomName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    product.Uom = validUnits[0].UnitName.Trim();
+                    _uow.Products.Update(product);
+                }
+            }
+        }
+        else
+        {
+            var pUnit = new ProductUnit
+            {
+                ProductId = product.Id,
+                UnitName = baseUomName,
+                ConversionRate = 1,
+                IsBaseUnit = true,
+                RetailPrice = product.RetailPrice,
+                WholesalePrice = product.WholesalePrice,
+                CanSell = true
+            };
+            await _uow.ProductUnits.AddAsync(pUnit, ct);
+        }
+        await _uow.SaveChangesAsync(ct);
+
         // Record initial stock if any
         var allStocks = product.GetAllWarehouseStocks();
         bool hasInitialStock = false;
@@ -379,7 +451,6 @@ public class ProductService : IProductService
             await _uow.SaveChangesAsync(ct);
         }
 
-        // Reload with supplier details
         return await GetByIdAsync(product.Id, ct);
     }
 
@@ -402,6 +473,24 @@ public class ProductService : IProductService
             }
         }
 
+        var oldSku = product.Sku;
+        var oldName = product.Name;
+
+        if (!string.IsNullOrWhiteSpace(dto.Sku))
+        {
+            var newSku = dto.Sku.Trim();
+            if (!string.Equals(product.Sku, newSku, StringComparison.OrdinalIgnoreCase))
+            {
+                var skuExists = await _uow.Products.Query()
+                    .AnyAsync(p => p.Id != id && p.Sku.ToLower() == newSku.ToLower(), ct);
+                if (skuExists)
+                {
+                    throw new ValidationException($"Mã SKU '{newSku}' đã tồn tại trong hệ thống");
+                }
+            }
+            product.Sku = newSku;
+        }
+
         product.Name = dto.Name.Trim();
         product.Category = dto.Category?.Trim();
         product.Uom = dto.Uom?.Trim();
@@ -414,6 +503,107 @@ public class ProductService : IProductService
         product.UpdatedAt = DateTime.UtcNow;
 
         _uow.Products.Update(product);
+
+        if (product.Sku != oldSku || product.Name != oldName)
+        {
+            var importItems = await _uow.ImportVoucherItems.Query()
+                .Where(i => i.ProductId == id)
+                .ToListAsync(ct);
+            foreach (var item in importItems)
+            {
+                item.Sku = product.Sku;
+                item.ProductName = product.Name;
+                _uow.ImportVoucherItems.Update(item);
+            }
+        }
+
+        // Multi-UOM sync
+        if (dto.Units != null)
+        {
+            var existingUnits = await _uow.ProductUnits.Query()
+                .Where(u => u.ProductId == id)
+                .ToListAsync(ct);
+
+            var validUnits = dto.Units
+                .Where(u => !string.IsNullOrWhiteSpace(u.UnitName))
+                .GroupBy(u => u.UnitName.Trim().ToLowerInvariant())
+                .Select(g => g.First())
+                .OrderBy(u => u.ConversionRate > 0 ? u.ConversionRate : 1m)
+                .ToList();
+
+            var keptNames = validUnits.Select(u => u.UnitName.Trim().ToLowerInvariant()).ToHashSet();
+            var usedExistingIds = new HashSet<int>();
+
+            if (validUnits.Count > 0)
+            {
+                var minRate = validUnits[0].ConversionRate > 0 ? validUnits[0].ConversionRate : 1m;
+                for (int idx = 0; idx < validUnits.Count; idx++)
+                {
+                    var u = validUnits[idx];
+                    var unitName = u.UnitName.Trim();
+                    var isBase = idx == 0;
+                    var normalizedRate = isBase ? 1m : Math.Round((u.ConversionRate > 0 ? u.ConversionRate : 1m) / minRate, 4);
+
+                    // Match by UnitName first to prevent unique index conflicts on (ProductId, UnitName)
+                    var existing = existingUnits.FirstOrDefault(x =>
+                        !usedExistingIds.Contains(x.Id) &&
+                        x.UnitName.Equals(unitName, StringComparison.OrdinalIgnoreCase));
+
+                    // If not found by name, match by Id only if its old name is not being kept by another unit
+                    if (existing == null && u.Id.HasValue && u.Id.Value > 0)
+                    {
+                        existing = existingUnits.FirstOrDefault(x =>
+                            x.Id == u.Id.Value &&
+                            !usedExistingIds.Contains(x.Id) &&
+                            !keptNames.Contains(x.UnitName.ToLowerInvariant()));
+                    }
+
+                    if (existing != null)
+                    {
+                        usedExistingIds.Add(existing.Id);
+                        existing.UnitName = unitName;
+                        existing.ConversionRate = normalizedRate;
+                        existing.IsBaseUnit = isBase;
+                        existing.Barcode = u.Barcode?.Trim();
+                        existing.RetailPrice = u.RetailPrice;
+                        existing.WholesalePrice = u.WholesalePrice;
+                        existing.CanSell = u.CanSell;
+                        _uow.ProductUnits.Update(existing);
+                    }
+                    else
+                    {
+                        var newUnit = new ProductUnit
+                        {
+                            ProductId = id,
+                            UnitName = unitName,
+                            ConversionRate = normalizedRate,
+                            IsBaseUnit = isBase,
+                            Barcode = u.Barcode?.Trim(),
+                            RetailPrice = u.RetailPrice,
+                            WholesalePrice = u.WholesalePrice,
+                            CanSell = u.CanSell
+                        };
+                        await _uow.ProductUnits.AddAsync(newUnit, ct);
+                    }
+                }
+
+                // Ensure product.Uom matches one of the valid units (keeps primary display unit if valid, else defaults to smallest unit)
+                var currentUom = product.Uom?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(currentUom) ||
+                    !validUnits.Any(u => u.UnitName.Trim().Equals(currentUom, StringComparison.OrdinalIgnoreCase)))
+                {
+                    product.Uom = validUnits[0].UnitName.Trim();
+                    _uow.Products.Update(product);
+                }
+            }
+
+            var toRemove = existingUnits.Where(u => !usedExistingIds.Contains(u.Id) && !keptNames.Contains(u.UnitName.ToLowerInvariant())).ToList();
+            if (toRemove.Count > 0)
+            {
+                _uow.ProductUnits.RemoveRange(toRemove);
+            }
+        }
+
         await _uow.SaveChangesAsync(ct);
 
         return await GetByIdAsync(product.Id, ct);
@@ -449,7 +639,7 @@ public class ProductService : IProductService
             ProductId = product.Id,
             Warehouse = warehouse,
             SourceType = DomainConstants.SourceTypes.ManualAdjustment,
-            Reason = dto.Reason ?? "Điều chỉnh kiểm kê kho",
+            Reason = dto.Reason ?? "Điều chỉnh kho thủ công",
             Note = dto.Note,
             BeforeWarehouseStock = beforeWhStock,
             Delta = delta,
@@ -477,42 +667,35 @@ public class ProductService : IProductService
 
         var query = _uow.StockHistories.Query().Where(h => h.ProductId == productId);
 
-        DateTime? startDate = null;
-        DateTime? endDate = null;
-
         if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate.Trim(), out var pFrom))
         {
-            startDate = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+            var start = new DateTime(pFrom.Year, pFrom.Month, pFrom.Day, 0, 0, 0, DateTimeKind.Utc);
+            query = query.Where(h => h.ChangeDate >= start);
         }
+
         if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate.Trim(), out var pTo))
         {
-            endDate = new DateTime(pTo.Year, pTo.Month, pTo.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+            var end = new DateTime(pTo.Year, pTo.Month, pTo.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+            query = query.Where(h => h.ChangeDate <= end);
         }
 
         if (string.IsNullOrWhiteSpace(fromDate) && string.IsNullOrWhiteSpace(toDate) && !string.IsNullOrWhiteSpace(month))
         {
             if (DateTime.TryParseExact(month.Trim(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
-                startDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
-                endDate = startDate.Value.AddDays(1);
+                var start = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddDays(1);
+                query = query.Where(h => h.ChangeDate >= start && h.ChangeDate < end);
             }
             else if (DateTime.TryParseExact(month.Trim(), "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var parsedMonth))
             {
-                startDate = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                endDate = startDate.Value.AddMonths(1);
+                var start = new DateTime(parsedMonth.Year, parsedMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                query = query.Where(h => h.ChangeDate >= start && h.ChangeDate < end);
             }
         }
 
-        if (startDate.HasValue)
-        {
-            query = query.Where(h => h.ChangeDate >= startDate.Value);
-        }
-        if (endDate.HasValue)
-        {
-            query = query.Where(h => h.ChangeDate < endDate.Value);
-        }
-
-        var list = await query.OrderByDescending(h => h.ChangeDate)
+        var list = await query.OrderByDescending(h => h.CreatedAt)
                               .ThenByDescending(h => h.Id)
                               .ToListAsync(ct);
 
@@ -573,28 +756,87 @@ public class ProductService : IProductService
         StockWarehouse3 = p.StockWarehouse3,
         WarehouseStocks = p.GetAllWarehouseStocks(),
         TotalStock = p.TotalStock,
+        FormattedStock = FormatStockDisplay(p.TotalStock, p.Units, p.Uom),
         ReorderPoint = p.ReorderPoint,
         CreatedAt = p.CreatedAt,
-        UpdatedAt = p.UpdatedAt
+        UpdatedAt = p.UpdatedAt,
+        Units = p.Units != null && p.Units.Count > 0
+            ? p.Units.OrderBy(u => u.ConversionRate).Select(u => new ProductUnitDto
+            {
+                Id = u.Id,
+                ProductId = u.ProductId,
+                UnitName = u.UnitName,
+                ConversionRate = u.ConversionRate,
+                IsBaseUnit = u.IsBaseUnit,
+                Barcode = u.Barcode,
+                RetailPrice = u.RetailPrice > 0 ? u.RetailPrice : (u.ConversionRate * p.RetailPrice),
+                WholesalePrice = u.WholesalePrice > 0 ? u.WholesalePrice : (u.ConversionRate * p.WholesalePrice),
+                CanSell = u.CanSell
+            }).ToList()
+            : new List<ProductUnitDto>
+            {
+                new()
+                {
+                    ProductId = p.Id,
+                    UnitName = !string.IsNullOrWhiteSpace(p.Uom) ? p.Uom : "Cái",
+                    ConversionRate = 1,
+                    IsBaseUnit = true,
+                    RetailPrice = p.RetailPrice,
+                    WholesalePrice = p.WholesalePrice,
+                    CanSell = true
+                }
+            }
     };
+
+    private static string FormatStockDisplay(decimal totalStock, ICollection<ProductUnit>? units, string? baseUom)
+    {
+        var viCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+        var baseName = !string.IsNullOrWhiteSpace(baseUom) ? baseUom : "Cái";
+        if (units == null || units.Count <= 1)
+        {
+            return $"{Math.Round(totalStock, 2).ToString("#,##0.##", viCulture)} {baseName}";
+        }
+
+        var sortedUnits = units.OrderBy(u => u.ConversionRate).ToList();
+        var parts = new List<string>();
+        bool hasBase = sortedUnits.Any(u => u.IsBaseUnit || u.ConversionRate == 1);
+        if (!hasBase)
+        {
+            parts.Add($"{Math.Round(totalStock, 2).ToString("#,##0.##", viCulture)} {baseName}");
+        }
+
+        foreach (var u in sortedUnits)
+        {
+            var rate = u.ConversionRate > 0 ? u.ConversionRate : 1m;
+            if (u.IsBaseUnit || rate == 1m)
+            {
+                parts.Add($"{Math.Round(totalStock, 2).ToString("#,##0.##", viCulture)} {u.UnitName}");
+            }
+            else
+            {
+                decimal unitQty = Math.Round(totalStock / rate, 2);
+                parts.Add($"{unitQty.ToString("#,##0.##", viCulture)} {u.UnitName}");
+            }
+        }
+
+        return string.Join(" | ", parts);
+    }
 
     public async Task<List<string>> GetCategoriesAsync(CancellationToken ct = default)
     {
         var categories = await _uow.Products.Query()
-            .Where(p => p.Category != null && p.Category != "")
-            .Select(p => p.Category)
+            .Where(p => !string.IsNullOrWhiteSpace(p.Category))
+            .Select(p => p.Category!)
             .Distinct()
             .OrderBy(c => c)
             .ToListAsync(ct);
 
-        return categories ?? new List<string>();
+        return categories;
     }
 
     public async Task<EntityLedgerResponseDto> GetLedgerAsync(int productId, string? warehouse = null, string? month = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
     {
-        var product = await _uow.Products.Query()
-            .Include(p => p.Supplier)
-            .FirstOrDefaultAsync(p => p.Id == productId, ct)
+        var product = await _uow.Products.GetByIdAsync(productId, ct)
             ?? throw new NotFoundException($"Không tìm thấy sản phẩm với ID {productId}");
 
         var wh = (warehouse ?? "").Trim().ToLower();
@@ -628,7 +870,7 @@ public class ProductService : IProductService
 
         var ledgerItems = new List<EntityLedgerItemDto>();
 
-        // 1. Imports (Nhập kho)
+        // 1. Import voucher items
         var importQuery = _uow.ImportVoucherItems.Query()
             .Include(i => i.ImportVoucher)
                 .ThenInclude(v => v.Supplier)
@@ -645,9 +887,10 @@ public class ProductService : IProductService
         {
             importQuery = importQuery.Where(i => i.ImportVoucher.Date < endDate.Value);
         }
-        var imports = await importQuery.ToListAsync(ct);
-        foreach (var im in imports)
+        var importItems = await importQuery.ToListAsync(ct);
+        foreach (var im in importItems)
         {
+            var uName = !string.IsNullOrWhiteSpace(im.UnitName) ? im.UnitName : (product.Uom ?? "cái");
             ledgerItems.Add(new EntityLedgerItemDto
             {
                 Id = im.Id,
@@ -656,17 +899,17 @@ public class ProductService : IProductService
                 VoucherType = "import",
                 VoucherTypeLabel = "Phiếu nhập",
                 Warehouse = im.ImportVoucher.Warehouse,
-                Description = $"Nhập {im.Quantity} {product.Uom ?? "cái"} x {im.UnitPrice:N0}₫ từ {im.ImportVoucher.Supplier?.Name ?? "NCC"}",
-                ImportQty = im.Quantity,
+                Description = $"Nhập {im.Quantity} {uName} x {im.UnitPrice:N0}₫ từ {im.ImportVoucher.Supplier?.Name ?? "NCC"}",
+                ImportQty = im.BaseQuantity > 0 ? im.BaseQuantity : im.Quantity,
                 ImportAmount = im.LineTotal,
                 ExportQty = 0,
                 ExportAmount = 0,
                 ReceiptAmount = 0,
-                PaymentAmount = im.LineTotal
+                PaymentAmount = 0
             });
         }
 
-        // 2. Exports (Xuất kho)
+        // 2. Export voucher items
         var exportQuery = _uow.ExportVoucherItems.Query()
             .Include(i => i.ExportVoucher)
                 .ThenInclude(v => v.Customer)
@@ -683,9 +926,10 @@ public class ProductService : IProductService
         {
             exportQuery = exportQuery.Where(i => i.ExportVoucher.Date < endDate.Value);
         }
-        var exports = await exportQuery.ToListAsync(ct);
-        foreach (var ex in exports)
+        var exportItems = await exportQuery.ToListAsync(ct);
+        foreach (var ex in exportItems)
         {
+            var uName = !string.IsNullOrWhiteSpace(ex.UnitName) ? ex.UnitName : (product.Uom ?? "cái");
             ledgerItems.Add(new EntityLedgerItemDto
             {
                 Id = ex.Id,
@@ -694,17 +938,17 @@ public class ProductService : IProductService
                 VoucherType = "export",
                 VoucherTypeLabel = "Phiếu xuất",
                 Warehouse = ex.ExportVoucher.Warehouse,
-                Description = $"Xuất {ex.Quantity} {product.Uom ?? "cái"} x {ex.SalePrice:N0}₫ cho {ex.ExportVoucher.Customer?.Name ?? "Khách"}",
+                Description = $"Xuất {ex.Quantity} {uName} x {ex.SalePrice:N0}₫ cho {ex.ExportVoucher.Customer?.Name ?? "Khách lẻ"}",
                 ImportQty = 0,
                 ImportAmount = 0,
-                ExportQty = ex.Quantity,
+                ExportQty = ex.BaseQuantity > 0 ? ex.BaseQuantity : ex.Quantity,
                 ExportAmount = ex.LineTotal,
-                ReceiptAmount = ex.LineTotal,
+                ReceiptAmount = 0,
                 PaymentAmount = 0
             });
         }
 
-        // 3. Stock Adjustments
+        // 3. Manual adjustments
         var historyQuery = _uow.StockHistories.Query()
             .Where(h => h.ProductId == productId && h.SourceType == DomainConstants.SourceTypes.ManualAdjustment);
         if (!isAllWh)
@@ -722,7 +966,6 @@ public class ProductService : IProductService
         var histories = await historyQuery.ToListAsync(ct);
         foreach (var h in histories)
         {
-            var isPos = h.Delta > 0;
             var absQty = Math.Abs(h.Delta);
             var val = absQty * product.UnitCost;
             ledgerItems.Add(new EntityLedgerItemDto
@@ -731,15 +974,15 @@ public class ProductService : IProductService
                 Date = h.ChangeDate,
                 VoucherNumber = h.ReferenceId ?? $"KK{h.Id:D5}",
                 VoucherType = "adjust",
-                VoucherTypeLabel = isPos ? "Điều chỉnh tăng" : "Điều chỉnh giảm",
+                VoucherTypeLabel = "Kiểm kê",
                 Warehouse = h.Warehouse,
-                Description = string.IsNullOrWhiteSpace(h.Note) ? (h.Reason ?? "Kiểm kê điều chỉnh kho") : $"{h.Reason} - {h.Note}",
-                ImportQty = isPos ? absQty : 0,
-                ImportAmount = isPos ? val : 0,
-                ExportQty = !isPos ? absQty : 0,
-                ExportAmount = !isPos ? val : 0,
+                Description = string.IsNullOrWhiteSpace(h.Note) ? (h.Reason ?? "Kiểm kê kho") : $"{h.Reason} - {h.Note}",
+                ImportQty = h.Delta > 0 ? h.Delta : 0,
+                ImportAmount = h.Delta > 0 ? val : 0,
+                ExportQty = h.Delta < 0 ? -h.Delta : 0,
+                ExportAmount = h.Delta < 0 ? val : 0,
                 ReceiptAmount = 0,
-                PaymentAmount = isPos ? val : 0
+                PaymentAmount = 0
             });
         }
 

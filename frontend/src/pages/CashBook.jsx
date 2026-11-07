@@ -30,7 +30,7 @@ import TimeFilter from '../components/common/TimeFilter';
 import Pagination from '../components/common/Pagination';
 import PrintVoucherModal from '../components/common/PrintVoucherModal';
 import SearchableSelect from '../components/common/SearchableSelect';
-import { cashBookService } from '../services';
+import { cashBookService, warehouseService } from '../services';
 import useDragScroll from '../hooks/useDragScroll';
 import TableScrollContainer from '../components/common/TableScrollContainer';
 
@@ -59,6 +59,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
   const isFirstFilterChange = useRef(true);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState('all');
   const [timeMode, setTimeMode] = useState('month'); // 'month' | 'day' | 'range' | 'all'
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr());
   const [selectedDate, setSelectedDate] = useState(getCurrentDateStr());
@@ -80,6 +81,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
   const [receiptForm, setReceiptForm] = useState({
     partnerType: 'customer', // 'customer' | 'supplier'
     partnerId: '',
+    warehouse: 'warehouse1',
     amount: '',
     method: 'cash',
     notes: '',
@@ -89,6 +91,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
   const [paymentForm, setPaymentForm] = useState({
     partnerType: 'supplier', // 'supplier' | 'customer'
     partnerId: '',
+    warehouse: 'warehouse1',
     amount: '',
     method: 'bank_transfer',
     notes: '',
@@ -115,6 +118,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
         page,
         pageSize: 15,
         q: searchQuery || undefined,
+        warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : undefined,
         ...timeParams,
       });
 
@@ -133,7 +137,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách phiếu thu');
     }
-  }, [receiptsPage, searchQuery, getTimeParams, notify]);
+  }, [receiptsPage, searchQuery, selectedWarehouse, getTimeParams, notify]);
 
   // Load Payments via cashBookService
   const loadPayments = useCallback(async (page = paymentsPage) => {
@@ -143,6 +147,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
         page,
         pageSize: 15,
         q: searchQuery || undefined,
+        warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : undefined,
         ...timeParams,
       });
 
@@ -161,7 +166,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
     } catch (err) {
       notify.error(err.message || 'Không thể tải danh sách phiếu chi');
     }
-  }, [paymentsPage, searchQuery, getTimeParams, notify]);
+  }, [paymentsPage, searchQuery, selectedWarehouse, getTimeParams, notify]);
 
   // Load Dependencies
   const loadDependencies = async () => {
@@ -225,6 +230,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
     setReceiptForm({
       partnerType: 'customer',
       partnerId: customers.length > 0 ? String(customers[0].id) : '',
+      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'warehouse1',
       amount: '',
       method: 'cash',
       notes: '',
@@ -237,6 +243,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
     setPaymentForm({
       partnerType: 'supplier',
       partnerId: suppliers.length > 0 ? String(suppliers[0].id) : '',
+      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'warehouse1',
       amount: '',
       method: 'bank_transfer',
       notes: '',
@@ -253,6 +260,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
       notify.success('Lập phiếu thu thành công!');
       setIsCreateReceiptOpen(false);
       loadData();
+      loadDependencies();
 
       // Mở modal xem trước & in phiếu ngay lập tức một cách mượt mà
       if (created) {
@@ -275,6 +283,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
       notify.success('Lập phiếu chi thành công!');
       setIsCreatePaymentOpen(false);
       loadData();
+      loadDependencies();
 
       // Mở modal xem trước & in phiếu ngay lập tức một cách mượt mà
       if (created) {
@@ -391,6 +400,25 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           toDate={toDate}
           onToDateChange={setToDate}
         />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Kho:</span>
+          <select
+            className="form-select"
+            style={{ width: 'auto', minWidth: '140px' }}
+            value={selectedWarehouse}
+            onChange={(e) => {
+              setSelectedWarehouse(e.target.value);
+              setReceiptsPage(1);
+              setPaymentsPage(1);
+            }}
+          >
+            <option value="all">Tất cả kho</option>
+            <option value="warehouse1">Kho 1</option>
+            <option value="warehouse2">Kho 2</option>
+            <option value="warehouse3">Kho 3</option>
+          </select>
+        </div>
       </div>
 
       {/* Sub Tabs Toggle */}
@@ -440,6 +468,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                   <tr>
                     <th>Số Phiếu Thu</th>
                     <th>Thời Gian Thu</th>
+                    <th>Kho</th>
                     <th>Người Nộp Tiền</th>
                     <th>Phương Thức</th>
                     <th style={{ textAlign: 'right' }}>Số Tiền Thu</th>
@@ -463,6 +492,9 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                           {r.receiptNumber}
                         </td>
                         <td style={{ fontSize: '0.8125rem' }}>{formatDate(r.date || r.createdAt, true)}</td>
+                        <td>
+                          <span className="badge badge-neutral">{warehouseService.getWarehouseName(r.warehouse)}</span>
+                        </td>
                         <td>
                           <div style={{ fontWeight: 600 }}>{partnerName}</div>
                           {code && (
@@ -556,6 +588,7 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                   <tr>
                     <th>Số Phiếu Chi</th>
                     <th>Thời Gian Chi</th>
+                    <th>Kho</th>
                     <th>Người Nhận Tiền</th>
                     <th>Phương Thức</th>
                     <th style={{ textAlign: 'right' }}>Số Tiền Chi</th>
@@ -580,6 +613,9 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
                           {p.paymentNumber}
                         </td>
                         <td style={{ fontSize: '0.8125rem' }}>{formatDate(p.date || p.createdAt, true)}</td>
+                        <td>
+                          <span className="badge badge-neutral">{warehouseService.getWarehouseName(p.warehouse)}</span>
+                        </td>
                         <td>
                           <div style={{ fontWeight: 600 }}>{partnerName}</div>
                           {code && (
@@ -697,29 +733,50 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           </div>
 
           <div className="form-group">
+            <label className="form-label">Kho Ghi Nhận Công Nợ <span className="req">*</span></label>
+            <select
+              className="form-select"
+              value={receiptForm.warehouse}
+              onChange={(e) => setReceiptForm({ ...receiptForm, warehouse: e.target.value })}
+            >
+              <option value="warehouse1">Kho 1</option>
+              <option value="warehouse2">Kho 2</option>
+              <option value="warehouse3">Kho 3</option>
+            </select>
+          </div>
+
+          <div className="form-group">
             <label className="form-label">
               Chọn {receiptForm.partnerType === 'customer' ? 'Khách Hàng' : 'Nhà Cung Cấp'} <span className="req">*</span>
             </label>
             <SearchableSelect
               options={
                 receiptForm.partnerType === 'customer'
-                  ? customers.map((c) => ({
-                      id: c.id,
-                      value: c.id,
-                      label: c.name,
-                      code: c.code,
-                      phone: c.phone || '',
-                      debt: c.debt || 0,
-                      subLabel: `Nợ: ${formatVND(c.debt)}`,
-                    }))
-                  : suppliers.map((s) => ({
-                      id: s.id,
-                      value: s.id,
-                      label: s.name,
-                      code: s.code,
-                      phone: s.phone || '',
-                      subLabel: s.phone ? `SĐT: ${s.phone}` : '',
-                    }))
+                  ? customers.map((c) => {
+                      const curWh = receiptForm.warehouse || 'warehouse1';
+                      const whDebt = c.warehouseDebts?.[curWh] ?? 0;
+                      return {
+                        id: c.id,
+                        value: c.id,
+                        label: c.name,
+                        code: c.code,
+                        phone: c.phone || '',
+                        debt: c.debt || 0,
+                        subLabel: `Nợ tại kho: ${formatVND(whDebt)} (Tổng: ${formatVND(c.debt || 0)})`,
+                      };
+                    })
+                  : suppliers.map((s) => {
+                      const curWh = receiptForm.warehouse || 'warehouse1';
+                      const whDebt = s.warehouseDebts?.[curWh] ?? 0;
+                      return {
+                        id: s.id,
+                        value: s.id,
+                        label: s.name,
+                        code: s.code,
+                        phone: s.phone || '',
+                        subLabel: `Nợ tại kho: ${formatVND(whDebt < 0 ? Math.abs(whDebt) : 0)} (Tổng: ${formatVND(s.debt < 0 ? Math.abs(s.debt) : 0)})`,
+                      };
+                    })
               }
               value={receiptForm.partnerId}
               onChange={(val) => setReceiptForm({ ...receiptForm, partnerId: val })}
@@ -819,28 +876,49 @@ export default function CashBook({ initialOpenReceipt = false, initialOpenPaymen
           </div>
 
           <div className="form-group">
+            <label className="form-label">Kho Ghi Nhận Công Nợ <span className="req">*</span></label>
+            <select
+              className="form-select"
+              value={paymentForm.warehouse}
+              onChange={(e) => setPaymentForm({ ...paymentForm, warehouse: e.target.value })}
+            >
+              <option value="warehouse1">Kho 1</option>
+              <option value="warehouse2">Kho 2</option>
+              <option value="warehouse3">Kho 3</option>
+            </select>
+          </div>
+
+          <div className="form-group">
             <label className="form-label">
               Chọn {paymentForm.partnerType === 'supplier' ? 'Nhà Cung Cấp' : 'Khách Hàng'} <span className="req">*</span>
             </label>
             <SearchableSelect
               options={
                 paymentForm.partnerType === 'supplier'
-                  ? suppliers.map((s) => ({
-                      id: s.id,
-                      value: s.id,
-                      label: s.name,
-                      code: s.code,
-                      phone: s.phone || '',
-                      subLabel: `Nợ cần trả: ${formatVND(s.debt < 0 ? Math.abs(s.debt) : 0)}${s.phone ? ` | SĐT: ${s.phone}` : ''}`,
-                    }))
-                  : customers.map((c) => ({
-                      id: c.id,
-                      value: c.id,
-                      label: c.name,
-                      code: c.code,
-                      phone: c.phone || '',
-                      subLabel: c.phone ? `SĐT: ${c.phone}` : '',
-                    }))
+                  ? suppliers.map((s) => {
+                      const curWh = paymentForm.warehouse || 'warehouse1';
+                      const whDebt = s.warehouseDebts?.[curWh] ?? 0;
+                      return {
+                        id: s.id,
+                        value: s.id,
+                        label: s.name,
+                        code: s.code,
+                        phone: s.phone || '',
+                        subLabel: `Nợ tại kho: ${formatVND(whDebt < 0 ? Math.abs(whDebt) : 0)} (Tổng: ${formatVND(s.debt < 0 ? Math.abs(s.debt) : 0)})${s.phone ? ` | SĐT: ${s.phone}` : ''}`,
+                      };
+                    })
+                  : customers.map((c) => {
+                      const curWh = paymentForm.warehouse || 'warehouse1';
+                      const whDebt = c.warehouseDebts?.[curWh] ?? 0;
+                      return {
+                        id: c.id,
+                        value: c.id,
+                        label: c.name,
+                        code: c.code,
+                        phone: c.phone || '',
+                        subLabel: `Nợ tại kho: ${formatVND(whDebt)} (Tổng: ${formatVND(c.debt || 0)})${c.phone ? ` | SĐT: ${c.phone}` : ''}`,
+                      };
+                    })
               }
               value={paymentForm.partnerId}
               onChange={(val) => setPaymentForm({ ...paymentForm, partnerId: val })}

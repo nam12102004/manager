@@ -64,11 +64,37 @@ export const getMetricTimeParams = (visibleMetrics) => {
   return { fromDate: undefined, toDate: undefined };
 };
 
+/**
+ * Builds the `priorityMetrics` query value from the ticked metrics so the server can list
+ * records having data for those metrics first. Format: "export:all,export:warehouse1,receipt,debt:warehouse2".
+ * Returns undefined when nothing relevant is ticked.
+ */
+export const buildPriorityMetrics = (visibleMetrics, primaryDirection = 'export') => {
+  const tokens = [];
+  const pushWarehouses = (metric, total, perWarehouse) => {
+    if (total) tokens.push(`${metric}:all`);
+    Object.entries(perWarehouse || {}).forEach(([whId, on]) => {
+      if (on) tokens.push(`${metric}:${whId}`);
+    });
+  };
+  if (primaryDirection === 'import') {
+    pushWarehouses('import', visibleMetrics?.importTotal, visibleMetrics?.importWarehouses);
+  } else {
+    pushWarehouses('export', visibleMetrics?.exportTotal, visibleMetrics?.exportWarehouses);
+  }
+  if (visibleMetrics?.receipt) tokens.push('receipt');
+  if (visibleMetrics?.payment) tokens.push('payment');
+  pushWarehouses('debt', visibleMetrics?.debtTotal, visibleMetrics?.debtWarehouses);
+  return tokens.length > 0 ? tokens.sort().join(',') : undefined;
+};
+
 export const DEFAULT_VISIBLE_METRICS = {
   exportTotal: false,
   exportWarehouses: {},
   importTotal: false,
   importWarehouses: {},
+  debtTotal: true,
+  debtWarehouses: {},
   receipt: false,
   payment: false,
   timeMode: 'all', // 'all' | 'day' | 'week' | 'month' | 'range'
@@ -89,6 +115,8 @@ export const loadSavedMetrics = (storageKey, defaults = DEFAULT_VISIBLE_METRICS)
       exportWarehouses: parsed.exportWarehouses || defaults.exportWarehouses || {},
       importTotal: parsed.importTotal ?? parsed.import ?? defaults.importTotal ?? false,
       importWarehouses: parsed.importWarehouses || defaults.importWarehouses || {},
+      debtTotal: parsed.debtTotal ?? defaults.debtTotal ?? true,
+      debtWarehouses: parsed.debtWarehouses || defaults.debtWarehouses || {},
       receipt: parsed.receipt ?? defaults.receipt ?? false,
       payment: parsed.payment ?? defaults.payment ?? false,
       timeMode: parsed.timeMode || 'all',
@@ -117,6 +145,7 @@ export default function WarehouseMetricCheckboxes({
   visibleMetrics = DEFAULT_VISIBLE_METRICS,
   onChange,
   showCashBook = true,
+  showDebt = false,
   primaryDirection = 'export', // 'export' | 'import'
   storageKey,
 }) {
@@ -192,6 +221,23 @@ export default function WarehouseMetricCheckboxes({
     });
   };
 
+  const toggleDebtTotal = () => {
+    updateMetrics({
+      ...visibleMetrics,
+      debtTotal: !visibleMetrics.debtTotal,
+    });
+  };
+
+  const toggleDebtWh = (whId) => {
+    const cur = visibleMetrics.debtWarehouses || {};
+    updateMetrics({
+      ...visibleMetrics,
+      debtWarehouses: {
+        ...cur,
+        [whId]: !cur[whId],
+      },
+    });
+  };
   const setTimeMode = (mode) => {
     updateMetrics({
       ...visibleMetrics,
@@ -473,6 +519,122 @@ export default function WarehouseMetricCheckboxes({
     );
   };
 
+  const renderDebtSection = () => {
+    if (activeWarehouse) {
+      const wh = activeWarehouse;
+      const isChecked = !!visibleMetrics.debtWarehouses?.[wh.id];
+      return (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            padding: '0.2rem 0.55rem',
+            borderRadius: '6px',
+            backgroundColor: '#faf5ff',
+            border: '1px solid #e9d5ff',
+            fontSize: '0.8125rem',
+          }}
+          title={`Xem số liệu Công nợ tại ${wh.name}`}
+        >
+          <label
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+              color: '#7e22ce',
+              fontWeight: isChecked ? 700 : 600,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={() => {
+                const nextVal = !isChecked;
+                updateMetrics({
+                  ...visibleMetrics,
+                  debtWarehouses: {
+                    ...(visibleMetrics.debtWarehouses || {}),
+                    [wh.id]: nextVal,
+                  },
+                });
+              }}
+              style={{ cursor: 'pointer', accentColor: '#9333ea' }}
+            />
+            <span>Công nợ ({wh.shortName || wh.name})</span>
+          </label>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.45rem',
+          padding: '0.2rem 0.55rem',
+          borderRadius: '6px',
+          backgroundColor: '#faf5ff',
+          border: '1px solid #e9d5ff',
+          fontSize: '0.8125rem',
+        }}
+        title="Xem số liệu Công nợ theo từng kho hoặc tổng"
+      >
+        <span style={{ fontWeight: 700, color: '#7e22ce' }}>Công nợ:</span>
+        <label
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px',
+            cursor: 'pointer',
+            color: '#7e22ce',
+            fontWeight: visibleMetrics.debtTotal ? 700 : 500,
+          }}
+          title="Xem Tổng Công Nợ"
+        >
+          <input
+            type="checkbox"
+            checked={!!visibleMetrics.debtTotal}
+            onChange={toggleDebtTotal}
+            style={{ cursor: 'pointer', accentColor: '#9333ea' }}
+          />
+          <span>Tổng</span>
+        </label>
+
+        {warehouses.map((wh) => {
+          const isChecked = !!visibleMetrics.debtWarehouses?.[wh.id];
+          return (
+            <label
+              key={`debt-${wh.id}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                cursor: 'pointer',
+                color: isChecked ? '#6b21a8' : '#7e22ce',
+                fontWeight: isChecked ? 700 : 500,
+                padding: '1px 3px',
+                borderRadius: '3px',
+                backgroundColor: isChecked ? 'rgba(147, 51, 234, 0.12)' : 'transparent',
+              }}
+              title={`Xem Công nợ của ${wh.name}`}
+            >
+              <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={() => toggleDebtWh(wh.id)}
+                style={{ cursor: 'pointer', accentColor: '#9333ea' }}
+              />
+              <span>{wh.shortName || wh.name}</span>
+            </label>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderTimeFilterSection = () => (
     <div
       style={{
@@ -703,6 +865,8 @@ export default function WarehouseMetricCheckboxes({
           </label>
         </div>
       )}
+
+      {showDebt && renderDebtSection()}
 
       {renderTimeFilterSection()}
     </div>

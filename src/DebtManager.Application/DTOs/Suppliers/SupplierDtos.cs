@@ -11,6 +11,7 @@ public class SupplierDto
     public string? AddressesJson { get; set; }
     public string? Region { get; set; }
     public decimal Debt { get; set; }
+    public Dictionary<string, decimal> WarehouseDebts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public decimal CreditLimit { get; set; }
     public decimal TotalImportAmount { get; set; }
     public decimal TotalPaymentAmount { get; set; }
@@ -36,6 +37,7 @@ public class CreateSupplierDto
     public string? Region { get; set; }
     public decimal CreditLimit { get; set; } = 0;
     public decimal InitialDebt { get; set; } = 0;
+    public string? InitialDebtWarehouse { get; set; } = "warehouse1";
     public string? BankAccount { get; set; }
     public string? TaxNumber { get; set; }
     public string? Notes { get; set; }
@@ -57,6 +59,7 @@ public class UpdateSupplierDto
 
 public class SupplierDebtAdjustDto
 {
+    public string Warehouse { get; set; } = "warehouse1";
     public decimal? Delta { get; set; }
     public decimal? NewDebt { get; set; }
     public string? Reason { get; set; }
@@ -67,6 +70,7 @@ public class SupplierDebtHistoryDto
 {
     public long Id { get; set; }
     public int SupplierId { get; set; }
+    public string Warehouse { get; set; } = "warehouse1";
     public string SourceType { get; set; } = string.Empty;
     public string? ReferenceType { get; set; }
     public string? ReferenceId { get; set; }

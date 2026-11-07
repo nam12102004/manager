@@ -11,6 +11,7 @@ public class CustomerDto
     public string? AddressesJson { get; set; }
     public string? Region { get; set; }
     public decimal Debt { get; set; }
+    public Dictionary<string, decimal> WarehouseDebts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public decimal CreditLimit { get; set; }
     public decimal TotalExportAmount { get; set; }
     public decimal TotalReceiptAmount { get; set; }
@@ -34,6 +35,7 @@ public class CreateCustomerDto
     public string? Region { get; set; }
     public decimal CreditLimit { get; set; } = 0;
     public decimal InitialDebt { get; set; } = 0;
+    public string? InitialDebtWarehouse { get; set; } = "warehouse1";
     public string? Notes { get; set; }
 }
 
@@ -51,6 +53,7 @@ public class UpdateCustomerDto
 
 public class CustomerDebtAdjustDto
 {
+    public string Warehouse { get; set; } = "warehouse1";
     public decimal? Delta { get; set; }
     public decimal? NewDebt { get; set; }
     public string? Reason { get; set; }
@@ -61,6 +64,7 @@ public class CustomerDebtHistoryDto
 {
     public long Id { get; set; }
     public int CustomerId { get; set; }
+    public string Warehouse { get; set; } = "warehouse1";
     public string SourceType { get; set; } = string.Empty;
     public string? ReferenceType { get; set; }
     public string? ReferenceId { get; set; }

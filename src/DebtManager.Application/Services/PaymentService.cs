@@ -18,7 +18,7 @@ public class PaymentService : IPaymentService
         _uow = uow;
     }
 
-    public async Task<List<PaymentDto>> GetPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, CancellationToken ct = default)
+    public async Task<List<PaymentDto>> GetPaymentsAsync(int? supplierId = null, int? customerId = null, string? search = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? warehouse = null, CancellationToken ct = default)
     {
         var query = _uow.Payments.Query()
             .Include(p => p.Supplier)
@@ -27,6 +27,11 @@ public class PaymentService : IPaymentService
 
         if (supplierId.HasValue) query = query.Where(p => p.SupplierId == supplierId.Value);
         if (customerId.HasValue) query = query.Where(p => p.CustomerId == customerId.Value);
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(p => p.Warehouse == warehouse.Trim());
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -82,6 +87,7 @@ public class PaymentService : IPaymentService
         string? date = null,
         string? fromDate = null,
         string? toDate = null,
+        string? warehouse = null,
         int page = 1,
         int pageSize = 15,
         CancellationToken ct = default)
@@ -96,6 +102,11 @@ public class PaymentService : IPaymentService
 
         if (supplierId.HasValue) query = query.Where(p => p.SupplierId == supplierId.Value);
         if (customerId.HasValue) query = query.Where(p => p.CustomerId == customerId.Value);
+
+        if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
+        {
+            query = query.Where(p => p.Warehouse == warehouse.Trim());
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -137,13 +148,14 @@ public class PaymentService : IPaymentService
         }
 
         var totalCount = await query.CountAsync(ct);
-        var totalAmount = await query.Where(p => p.Status != "cancelled").SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
+        var totalAmount = await query.Where(p => p.Status != DomainConstants.VoucherStatuses.Cancelled)
+                                     .SumAsync(p => (decimal?)p.Amount, ct) ?? 0;
 
         var items = await query.OrderByDescending(p => p.Date)
-                               .ThenByDescending(p => p.Id)
-                               .Skip((page - 1) * pageSize)
-                               .Take(pageSize)
-                               .ToListAsync(ct);
+                              .ThenByDescending(p => p.Id)
+                              .Skip((page - 1) * pageSize)
+                              .Take(pageSize)
+                              .ToListAsync(ct);
 
         return new PaymentPagedResult
         {
@@ -177,12 +189,15 @@ public class PaymentService : IPaymentService
         try
         {
             var paymentNumber = $"PC{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 100000000):D8}";
+            var warehouse = DebtHelper.NormalizeWarehouse(dto.Warehouse);
+
             var payment = new Payment
             {
                 PaymentNumber = paymentNumber,
                 Date = dto.Date.HasValue
                     ? (dto.Date.Value.TimeOfDay == TimeSpan.Zero ? dto.Date.Value.Date.Add(DateTime.UtcNow.TimeOfDay) : dto.Date.Value)
                     : DateTime.UtcNow,
+                Warehouse = warehouse,
                 SupplierId = dto.SupplierId,
                 CustomerId = dto.CustomerId,
                 Amount = dto.Amount,
@@ -200,23 +215,21 @@ public class PaymentService : IPaymentService
                     ?? throw new InvalidOperationException("Không tìm thấy nhà cung cấp");
                 payment.Supplier = supplier;
 
-                var beforeDebt = supplier.Debt;
-                var delta = dto.Amount; // Chi tiền trả NCC làm nợ âm tiến về 0 (+delta)
-                var afterDebt = beforeDebt + delta;
-                supplier.Debt = afterDebt;
-                supplier.UpdatedAt = DateTime.UtcNow;
-                _uow.Suppliers.Update(supplier);
+                // Chi tiền trả NCC làm nợ âm tiến về 0 (+delta) tại đúng kho
+                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                    await DebtHelper.ApplySupplierDebtAsync(_uow, supplier.Id, warehouse, dto.Amount, ct);
 
                 await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                 {
                     SupplierId = supplier.Id,
+                    Warehouse = warehouse,
                     SourceType = DomainConstants.SourceTypes.Payment,
                     ReferenceType = DomainConstants.ReferenceTypes.Payment,
                     ReferenceId = paymentNumber,
                     Reason = $"Chi tiền trả nợ NCC theo phiếu {paymentNumber}",
-                    BeforeDebt = beforeDebt,
-                    Delta = delta,
-                    AfterDebt = afterDebt,
+                    BeforeDebt = beforeTotalDebt,
+                    Delta = dto.Amount,
+                    AfterDebt = afterTotalDebt,
                     CreatedAt = payment.Date
                 }, ct);
             }
@@ -226,23 +239,21 @@ public class PaymentService : IPaymentService
                     ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {dto.CustomerId.Value}");
                 payment.Customer = customer;
 
-                var beforeDebt = customer.Debt;
-                var delta = dto.Amount; // Chi tiền cho khách (hoàn tiền hoặc tăng phải thu): delta = +Amount
-                var afterDebt = beforeDebt + delta;
-                customer.Debt = afterDebt;
-                customer.UpdatedAt = DateTime.UtcNow;
-                _uow.Customers.Update(customer);
+                // Chi tiền cho khách (hoàn tiền hoặc tăng phải thu): delta = +Amount
+                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                    await DebtHelper.ApplyCustomerDebtAsync(_uow, customer.Id, warehouse, dto.Amount, ct);
 
                 await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
                 {
                     CustomerId = customer.Id,
+                    Warehouse = warehouse,
                     SourceType = DomainConstants.SourceTypes.Payment,
                     ReferenceType = DomainConstants.ReferenceTypes.Payment,
                     ReferenceId = paymentNumber,
                     Reason = $"Chi trả lại tiền cho khách theo phiếu {paymentNumber}",
-                    BeforeDebt = beforeDebt,
-                    Delta = delta,
-                    AfterDebt = afterDebt,
+                    BeforeDebt = beforeTotalDebt,
+                    Delta = dto.Amount,
+                    AfterDebt = afterTotalDebt,
                     CreatedAt = payment.Date
                 }, ct);
             }
@@ -273,54 +284,56 @@ public class PaymentService : IPaymentService
             throw new BusinessRuleException($"Hành động '{action}' không được hỗ trợ");
         }
 
+        if (payment.RelatedVoucherType == "import_voucher" && !string.IsNullOrWhiteSpace(payment.RelatedVoucherId))
+        {
+            throw new BusinessRuleException($"Phiếu chi {payment.PaymentNumber} được tạo tự động từ Phiếu nhập {payment.RelatedVoucherId}. Vui lòng hủy hoặc điều chỉnh trực tiếp trên Phiếu nhập tương ứng để đảm bảo toàn vẹn dữ liệu.");
+        }
+
         await _uow.BeginTransactionAsync(ct);
         try
         {
+            var warehouse = DebtHelper.NormalizeWarehouse(payment.Warehouse);
+
             if (action.Equals("cancel", StringComparison.OrdinalIgnoreCase))
             {
                 if (payment.Status == DomainConstants.VoucherStatuses.Cancelled) return true;
 
-                if (payment.SupplierId.HasValue && payment.Supplier != null)
+                if (payment.SupplierId.HasValue)
                 {
-                    var beforeDebt = payment.Supplier.Debt;
-                    var delta = -payment.Amount; // Re-debt to supplier
-                    var afterDebt = beforeDebt + delta;
-                    payment.Supplier.Debt = afterDebt;
-                    payment.Supplier.UpdatedAt = DateTime.UtcNow;
-                    _uow.Suppliers.Update(payment.Supplier);
+                    // Hoàn lại nợ NCC: -Amount
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplySupplierDebtAsync(_uow, payment.SupplierId.Value, warehouse, -payment.Amount, ct);
 
                     await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                     {
-                        SupplierId = payment.Supplier.Id,
+                        SupplierId = payment.SupplierId.Value,
+                        Warehouse = warehouse,
                         SourceType = "payment_cancelled",
                         ReferenceType = DomainConstants.ReferenceTypes.Payment,
                         ReferenceId = payment.PaymentNumber,
                         Reason = $"Khôi phục nợ NCC do hủy phiếu chi {payment.PaymentNumber}",
-                        BeforeDebt = beforeDebt,
-                        Delta = delta,
-                        AfterDebt = afterDebt,
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = -payment.Amount,
+                        AfterDebt = afterTotalDebt,
                         CreatedAt = payment.Date
                     }, ct);
                 }
-                else if (payment.CustomerId.HasValue && payment.Customer != null)
+                else if (payment.CustomerId.HasValue)
                 {
-                    var beforeDebt = payment.Customer.Debt;
-                    var delta = -payment.Amount; // Hủy phiếu chi cho khách: giảm nợ lại
-                    var afterDebt = beforeDebt + delta;
-                    payment.Customer.Debt = afterDebt;
-                    payment.Customer.UpdatedAt = DateTime.UtcNow;
-                    _uow.Customers.Update(payment.Customer);
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplyCustomerDebtAsync(_uow, payment.CustomerId.Value, warehouse, -payment.Amount, ct);
 
                     await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
                     {
-                        CustomerId = payment.Customer.Id,
+                        CustomerId = payment.CustomerId.Value,
+                        Warehouse = warehouse,
                         SourceType = "payment_cancelled",
                         ReferenceType = DomainConstants.ReferenceTypes.Payment,
                         ReferenceId = payment.PaymentNumber,
                         Reason = $"Hủy phiếu chi cho khách {payment.PaymentNumber}",
-                        BeforeDebt = beforeDebt,
-                        Delta = delta,
-                        AfterDebt = afterDebt,
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = -payment.Amount,
+                        AfterDebt = afterTotalDebt,
                         CreatedAt = payment.Date
                     }, ct);
                 }
@@ -332,47 +345,41 @@ public class PaymentService : IPaymentService
             {
                 if (payment.Status == DomainConstants.VoucherStatuses.Confirmed) return true;
 
-                if (payment.SupplierId.HasValue && payment.Supplier != null)
+                if (payment.SupplierId.HasValue)
                 {
-                    var beforeDebt = payment.Supplier.Debt;
-                    var delta = payment.Amount;
-                    var afterDebt = beforeDebt + delta;
-                    payment.Supplier.Debt = afterDebt;
-                    payment.Supplier.UpdatedAt = DateTime.UtcNow;
-                    _uow.Suppliers.Update(payment.Supplier);
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplySupplierDebtAsync(_uow, payment.SupplierId.Value, warehouse, payment.Amount, ct);
 
                     await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                     {
-                        SupplierId = payment.Supplier.Id,
+                        SupplierId = payment.SupplierId.Value,
+                        Warehouse = warehouse,
                         SourceType = "payment_restored",
                         ReferenceType = DomainConstants.ReferenceTypes.Payment,
                         ReferenceId = payment.PaymentNumber,
                         Reason = $"Trừ nợ NCC do khôi phục phiếu chi {payment.PaymentNumber}",
-                        BeforeDebt = beforeDebt,
-                        Delta = delta,
-                        AfterDebt = afterDebt,
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = payment.Amount,
+                        AfterDebt = afterTotalDebt,
                         CreatedAt = payment.Date
                     }, ct);
                 }
-                else if (payment.CustomerId.HasValue && payment.Customer != null)
+                else if (payment.CustomerId.HasValue)
                 {
-                    var beforeDebt = payment.Customer.Debt;
-                    var delta = payment.Amount; // Khôi phục phiếu chi cho khách: tăng lại
-                    var afterDebt = beforeDebt + delta;
-                    payment.Customer.Debt = afterDebt;
-                    payment.Customer.UpdatedAt = DateTime.UtcNow;
-                    _uow.Customers.Update(payment.Customer);
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplyCustomerDebtAsync(_uow, payment.CustomerId.Value, warehouse, payment.Amount, ct);
 
                     await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
                     {
-                        CustomerId = payment.Customer.Id,
+                        CustomerId = payment.CustomerId.Value,
+                        Warehouse = warehouse,
                         SourceType = "payment_restored",
                         ReferenceType = DomainConstants.ReferenceTypes.Payment,
                         ReferenceId = payment.PaymentNumber,
                         Reason = $"Khôi phục phiếu chi cho khách {payment.PaymentNumber}",
-                        BeforeDebt = beforeDebt,
-                        Delta = delta,
-                        AfterDebt = afterDebt,
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = payment.Amount,
+                        AfterDebt = afterTotalDebt,
                         CreatedAt = payment.Date
                     }, ct);
                 }
@@ -431,6 +438,7 @@ public class PaymentService : IPaymentService
         Id = p.Id,
         PaymentNumber = p.PaymentNumber,
         Date = p.Date,
+        Warehouse = p.Warehouse ?? "warehouse1",
         SupplierId = p.SupplierId,
         SupplierName = p.Supplier?.Name,
         SupplierCode = p.Supplier?.Code,

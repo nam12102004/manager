@@ -1,0 +1,17 @@
+Total valid customers: 287
+
+Tuyến: 'THÀNH PHỐ' (Số lượng KH: 57)
+  - Tổng Nợ ĐK: 355,196,650.00
+  - Tổng Có ĐK: 22,123,220.00
+Tuyến: 'NAM TRỰC - TRỰC NINH  - Ý YÊN - VỤ BẢN  - XUÂN TRƯỜNG' (Số lượng KH: 122)
+  - Tổng Nợ ĐK: 1,165,443,400.00
+  - Tổng Có ĐK: 91,190,000.00
+Tuyến: 'GIAO THUỶ-NGHĨA HƯNG -HẢI HẬU' (Số lượng KH: 108)
+  - Tổng Nợ ĐK: 635,877,700.00
+  - Tổng Có ĐK: 9,310,600.00
+
+=========================================
+Tổng Nợ ĐK tính được: 2,156,517,750.00 (Excel: 2,164,483,650.00)
+Tổng Có ĐK tính được: 122,623,820.00 (Excel:   122,623,820.00)
+Khớp Nợ ĐK: False
+Khớp Có ĐK: True
