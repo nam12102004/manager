@@ -41,7 +41,7 @@ public class ReportService : IReportService
             periodLabel = $"{start.Year:D4}-{start.Month:D2}";
         }
 
-        var products = await _uow.Products.Query().ToListAsync(ct);
+        var products = await _uow.Products.Query().Include(p => p.Units).ToListAsync(ct);
 
         var importItems = await _uow.ImportVoucherItems.Query()
             .Include(i => i.ImportVoucher)
@@ -314,7 +314,7 @@ public class ReportService : IReportService
         var imports = await importQuery.ToListAsync(ct);
 
         // 1. Product Sales
-        var allProducts = await _uow.Products.Query().ToListAsync(ct);
+        var allProducts = await _uow.Products.Query().Include(p => p.Units).ToListAsync(ct);
         var importItemsByProduct = imports
             .SelectMany(v => v.Items)
             .GroupBy(i => i.ProductId)

@@ -5,10 +5,10 @@ echo   CHAY TONG HOP TOAN BO DATABASE THANG 11 (1 TRANSACTION DUY NHAT)
 echo ======================================================================
 echo.
 echo Cac phan duoc tong hop:
-echo   1. seed_excel_products.sql     (Kho, NCC, San pham & Gia)
-echo   2. update_product_units.sql     (Don vi tinh & Quy doi ton kho)
-echo   3. seed_customers_month11.sql   (Khach hang & Cong no Kho 1)
-echo   4. import_customers_t11.sql     (Khach hang & Cong no Kho 2)
+echo   1. seed_excel_products.sql     (Kho, NCC, San pham ^& Gia)
+echo   2. update_product_units.sql     (Don vi tinh ^& Quy doi ton kho)
+echo   3. seed_customers_month11.sql   (Khach hang ^& Cong no Kho 1)
+echo   4. import_customers_t11.sql     (Khach hang ^& Cong no Kho 2)
 echo.
 echo * Luu y: Tat ca chay trong 1 TRANSACTION duy nhat.
 echo   Neu co bat ky loi nao, he thong se ROLLBACK ve nguyen trang.

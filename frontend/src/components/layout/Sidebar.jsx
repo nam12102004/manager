@@ -44,7 +44,6 @@ export default function Sidebar({
     { id: 'suppliers', label: 'Nhà cung cấp' },
     { id: 'employees', label: 'Nhân viên' },
     { id: 'cashbook', label: 'Thu - Chi' },
-    { id: 'reports', label: 'Báo cáo' },
     { id: 'excel-export', label: 'Xuất Excel' },
     ...(isAdmin
       ? [

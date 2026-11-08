@@ -95,22 +95,32 @@ public class ExcelExportService : IExcelExportService
                         case "products":
                             _jobManager.UpdateProgress(jobId, progress, "Đang xuất danh mục Sản phẩm, Đơn vị tính & Tồn kho...");
                             var prods = await uow.Products.Query().Include(p => p.Units).AsNoTracking().ToListAsync(ct);
-                            sheets["1.SanPham"] = prods.Select(p => new
+                            sheets["1.SanPham"] = prods.Select(p =>
                             {
-                                MaSKU = p.Sku,
-                                TenSanPham = p.Name,
-                                DVT_CoSo = p.Uom,
-                                CacDonViQuyDoi = p.Units != null && p.Units.Any(u => !u.IsBaseUnit)
-                                    ? string.Join(", ", p.Units.Where(u => !u.IsBaseUnit).Select(u => $"{u.UnitName} (x{u.ConversionRate:G29})"))
-                                    : "",
-                                DanhMuc = p.Category,
-                                GiaVon = p.UnitCost,
-                                GiaSi = p.WholesalePrice,
-                                GiaLe = p.RetailPrice,
-                                TonKho1 = p.StockWarehouse1,
-                                TonKho2 = p.StockWarehouse2,
-                                TonKho3 = p.StockWarehouse3,
-                                TongTonKhoCoSo = p.TotalStock
+                                var mainUnit = !string.IsNullOrWhiteSpace(p.Uom) ? p.Uom.Trim() : "Cái";
+                                var matched = p.Units?.FirstOrDefault(u => u.UnitName.Trim().Equals(mainUnit, StringComparison.OrdinalIgnoreCase));
+                                var rate = matched != null && matched.ConversionRate > 0 ? matched.ConversionRate : 1m;
+                                var cost = rate > 1 ? p.UnitCost * rate : p.UnitCost;
+                                var wholesale = rate > 1 && matched?.WholesalePrice > 0 ? matched.WholesalePrice : (rate > 1 ? p.WholesalePrice * rate : p.WholesalePrice);
+                                var retail = rate > 1 && matched?.RetailPrice > 0 ? matched.RetailPrice : (rate > 1 ? p.RetailPrice * rate : p.RetailPrice);
+
+                                return new
+                                {
+                                    MaSKU = p.Sku,
+                                    TenSanPham = p.Name,
+                                    DVT_Goc = mainUnit,
+                                    TonKho1 = rate > 1 ? Math.Round(p.StockWarehouse1 / rate, 2) : p.StockWarehouse1,
+                                    TonKho2 = rate > 1 ? Math.Round(p.StockWarehouse2 / rate, 2) : p.StockWarehouse2,
+                                    TonKho3 = rate > 1 ? Math.Round(p.StockWarehouse3 / rate, 2) : p.StockWarehouse3,
+                                    TongTonKho = rate > 1 ? Math.Round(p.TotalStock / rate, 2) : p.TotalStock,
+                                    GiaVon = cost,
+                                    GiaSi = wholesale,
+                                    GiaLe = retail,
+                                    DanhMuc = p.Category,
+                                    CacDonViQuyDoi = p.Units != null && p.Units.Any(u => !u.IsBaseUnit)
+                                        ? string.Join(", ", p.Units.Where(u => !u.IsBaseUnit).Select(u => $"{u.UnitName} (x{u.ConversionRate:G29})"))
+                                        : ""
+                                };
                             }).ToList();
 
                             // Sheet 1b: Danh sách chi tiết các Đơn vị tính quy đổi

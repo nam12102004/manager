@@ -638,6 +638,29 @@ public class ReportExportEngine
     // ==========================================
     // 1. SALES REPORT (Xuất Bán Hàng)
     // ==========================================
+
+    private static (string MainUnit, decimal ConversionRate, decimal DisplayCost) GetProductPrimaryUnitInfo(Domain.Entities.Product p)
+    {
+        var mainUnit = !string.IsNullOrWhiteSpace(p.Uom) ? p.Uom.Trim() : "Cái";
+        decimal rate = 1m;
+        if (p.Units != null && p.Units.Count > 0)
+        {
+            var matched = p.Units.FirstOrDefault(u => u.UnitName.Trim().Equals(mainUnit, StringComparison.OrdinalIgnoreCase));
+            if (matched != null && matched.ConversionRate > 0)
+            {
+                rate = matched.ConversionRate;
+            }
+        }
+        decimal displayCost = rate > 1 ? p.UnitCost * rate : p.UnitCost;
+        return (mainUnit, rate, displayCost);
+    }
+
+    private static decimal ConvertBaseQtyToMainUnit(decimal baseQty, decimal rate)
+    {
+        if (rate <= 1m) return baseQty;
+        return Math.Round(baseQty / rate, 2);
+    }
+
     private static async Task BuildSalesReportAsync(
         Dictionary<string, object> sheets,
         ExportReportRequestDto request,
@@ -2725,15 +2748,17 @@ public class ReportExportEngine
                 var whLabel = FormatWarehouseLabel(w);
                 foreach (var p in products)
                 {
-                    var st = p.GetWarehouseStock(w);
-                    var val = st * p.UnitCost;
-                    grandTotalStock += st;
+                    var (mainUnit, convRate, displayCost) = GetProductPrimaryUnitInfo(p);
+                    var stBase = p.GetWarehouseStock(w);
+                    var stInMain = ConvertBaseQtyToMainUnit(stBase, convRate);
+                    var val = stBase * p.UnitCost;
+                    grandTotalStock += stInMain;
                     grandTotalValue += val;
 
                     string status = "Bình thường";
-                    if (st <= 0)
-                        status = st < 0 ? "Âm kho" : "Hết hàng";
-                    else if (p.ReorderPoint > 0 && st <= p.ReorderPoint)
+                    if (stInMain <= 0)
+                        status = stInMain < 0 ? "Âm kho" : "Hết hàng";
+                    else if (p.ReorderPoint > 0 && stInMain <= p.ReorderPoint)
                         status = "Sắp hết";
 
                     var row = new Dictionary<string, object>
@@ -2743,11 +2768,11 @@ public class ReportExportEngine
                         ["Mã SKU"] = p.Sku,
                         ["Tên sản phẩm"] = p.Name,
                         ["Danh mục"] = p.Category ?? "Mặc định",
-                        ["ĐVT"] = p.Uom ?? ""
+                        ["ĐVT"] = mainUnit
                     };
 
-                    if (hasQty) row[$"{bName} (Tồn kho)"] = st;
-                    if (hasPrice) row[$"{bName} (Đơn giá vốn)"] = p.UnitCost;
+                    if (hasQty) row[$"{bName} (Tồn kho)"] = stInMain;
+                    if (hasPrice) row[$"{bName} (Đơn giá vốn)"] = displayCost;
                     if (hasAmt) row[$"{bName} (Giá trị tồn)"] = val;
                     row[$"{bName} (Trạng thái)"] = status;
 
@@ -2760,21 +2785,23 @@ public class ReportExportEngine
             for (int i = 0; i < products.Count; i++)
             {
                 var p = products[i];
+                var (mainUnit, convRate, displayCost) = GetProductPrimaryUnitInfo(p);
                 var row = new Dictionary<string, object>
                 {
                     ["STT"] = i + 1,
                     ["Mã SKU"] = p.Sku,
                     ["Tên sản phẩm"] = p.Name,
                     ["Danh mục"] = p.Category ?? "Mặc định",
-                    ["ĐVT"] = p.Uom ?? ""
+                    ["ĐVT"] = mainUnit
                 };
 
-                decimal pStock = request.Warehouses != null && request.Warehouses.Count > 0
+                decimal pStockBase = request.Warehouses != null && request.Warehouses.Count > 0
                     ? request.Warehouses.Sum(w => p.GetWarehouseStock(w))
                     : p.TotalStock;
 
-                decimal pValue = pStock * p.UnitCost;
-                grandTotalStock += pStock;
+                decimal pStockInMain = ConvertBaseQtyToMainUnit(pStockBase, convRate);
+                decimal pValue = pStockBase * p.UnitCost;
+                grandTotalStock += pStockInMain;
                 grandTotalValue += pValue;
 
                 if (isWhBreakdown)
@@ -2784,23 +2811,24 @@ public class ReportExportEngine
                         foreach (var w in whs)
                         {
                             var whLabel = FormatWarehouseLabel(w);
-                            var st = p.GetWarehouseStock(w);
-                            whTotals[w] += st;
-                            row[$"{bName} ({whLabel})"] = st;
+                            var stBase = p.GetWarehouseStock(w);
+                            var stInMain = ConvertBaseQtyToMainUnit(stBase, convRate);
+                            whTotals[w] += stInMain;
+                            row[$"{bName} ({whLabel})"] = stInMain;
                         }
-                        row[$"{bName} (Tổng tồn)"] = pStock;
+                        row[$"{bName} (Tổng tồn)"] = pStockInMain;
                     }
                     if (hasPrice)
                     {
-                        row[$"{bName} (Đơn giá vốn)"] = p.UnitCost;
+                        row[$"{bName} (Đơn giá vốn)"] = displayCost;
                     }
                     if (hasAmt)
                     {
                         foreach (var w in whs)
                         {
                             var whLabel = FormatWarehouseLabel(w);
-                            var st = p.GetWarehouseStock(w);
-                            var valW = st * p.UnitCost;
+                            var stBase = p.GetWarehouseStock(w);
+                            var valW = stBase * p.UnitCost;
                             whValueTotals[w] += valW;
                             row[$"{bName} Giá trị ({whLabel})"] = valW;
                         }
@@ -2809,15 +2837,15 @@ public class ReportExportEngine
                 }
                 else
                 {
-                    if (hasQty) row[$"{bName} (Tồn kho)"] = pStock;
-                    if (hasPrice) row[$"{bName} (Đơn giá vốn)"] = p.UnitCost;
+                    if (hasQty) row[$"{bName} (Tồn kho)"] = pStockInMain;
+                    if (hasPrice) row[$"{bName} (Đơn giá vốn)"] = displayCost;
                     if (hasAmt) row[$"{bName} (Giá trị tồn)"] = pValue;
                 }
 
                 string status = "Bình thường";
-                if (pStock <= 0)
-                    status = pStock < 0 ? "Âm kho" : "Hết hàng";
-                else if (p.ReorderPoint > 0 && pStock <= p.ReorderPoint)
+                if (pStockInMain <= 0)
+                    status = pStockInMain < 0 ? "Âm kho" : "Hết hàng";
+                else if (p.ReorderPoint > 0 && pStockInMain <= p.ReorderPoint)
                     status = "Sắp hết";
 
                 row[$"{bName} (Trạng thái)"] = status;
@@ -2882,10 +2910,12 @@ public class ReportExportEngine
             int dIdx = 1;
             foreach (var p in products)
             {
+                var (mainUnit, convRate, displayCost) = GetProductPrimaryUnitInfo(p);
                 foreach (var w in whs)
                 {
-                    var st = p.GetWarehouseStock(w);
-                    string stStatus = st <= 0 ? (st < 0 ? "Âm kho" : "Hết hàng") : (p.ReorderPoint > 0 && st <= p.ReorderPoint ? "Sắp hết" : "Bình thường");
+                    var stBase = p.GetWarehouseStock(w);
+                    var stInMain = ConvertBaseQtyToMainUnit(stBase, convRate);
+                    string stStatus = stInMain <= 0 ? (stInMain < 0 ? "Âm kho" : "Hết hàng") : (p.ReorderPoint > 0 && stInMain <= p.ReorderPoint ? "Sắp hết" : "Bình thường");
                     detailRows.Add(new Dictionary<string, object>
                     {
                         ["STT"] = dIdx++,
@@ -2893,11 +2923,11 @@ public class ReportExportEngine
                         ["Mã SKU"] = p.Sku,
                         ["Tên sản phẩm"] = p.Name,
                         ["Danh mục"] = p.Category ?? "Mặc định",
-                        ["ĐVT"] = p.Uom ?? "",
-                        ["Số lượng tồn"] = st,
+                        ["ĐVT"] = mainUnit,
+                        ["Số lượng tồn"] = stInMain,
                         ["Định mức tối thiểu"] = p.ReorderPoint,
-                        ["Đơn giá vốn"] = p.UnitCost,
-                        ["Giá trị tồn"] = st * p.UnitCost,
+                        ["Đơn giá vốn"] = displayCost,
+                        ["Giá trị tồn"] = stBase * p.UnitCost,
                         ["Trạng thái"] = stStatus
                     });
                 }
