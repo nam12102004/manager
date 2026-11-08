@@ -1738,21 +1738,37 @@ export default function Exports({ initialOpenCreate = false }) {
         {selectedExport && (
           <div id="print-section" style={{ padding: '0.5rem' }}>
             {/* Header info */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.25rem', gap: '1rem', flexWrap: 'wrap' }}>
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{ownerInfo?.info || 'CỬA HÀNG / KHO HÀNG'}</h3>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>HÓA ĐƠN BÁN HÀNG KIÊM PHIẾU XUẤT KHO</p>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>CÔNG TY CP SX VÀ TM NAM SƠN</h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Mỹ Xá - Nam Định - ĐT: 0913 018 881</p>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '2px' }}>HÓA ĐƠN BÁN HÀNG KIÊM PHIẾU XUẤT KHO</p>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Mã phiếu: <strong>{selectedExport.voucherNumber}</strong></p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '0.8125rem' }}>Thời gian lập: <strong>{formatDate(selectedExport.date || selectedExport.createdAt, true)}</strong></p>
-                <p style={{ fontSize: '0.8125rem' }}>Kho xuất: <strong>{warehouseService.getWarehouseName(selectedExport.warehouse, warehouses)}</strong></p>
-                {selectedExport.employeeName && (
-                  <p style={{ fontSize: '0.8125rem' }}>Nhân viên: <strong>{selectedExport.employeeName}</strong></p>
-                )}
-                <span className={`badge badge-${selectedExport.status === 'cancelled' ? 'danger' : 'success'}`}>
-                  {selectedExport.status === 'cancelled' ? 'Đã hủy' : 'Hoạt động'}
-                </span>
+                <div style={{ 
+                  background: 'rgba(239, 68, 68, 0.08)', 
+                  border: '1px dashed #ef4444', 
+                  borderRadius: '6px', 
+                  padding: '6px 12px', 
+                  marginBottom: '8px',
+                  display: 'inline-block',
+                  textAlign: 'right'
+                }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#dc2626' }}>Chủ tài khoản: Trần Thị Sợi</div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>STK: 320 320 5077 264 - NH Agribank</div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>STK: 1048 7900 2567 - NH Vietinbank</div>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.8125rem' }}>Thời gian lập: <strong>{formatDate(selectedExport.date || selectedExport.createdAt, true)}</strong></p>
+                  <p style={{ fontSize: '0.8125rem' }}>Kho xuất: <strong>{warehouseService.getWarehouseName(selectedExport.warehouse, warehouses)}</strong></p>
+                  {selectedExport.employeeName && (
+                    <p style={{ fontSize: '0.8125rem' }}>Nhân viên: <strong>{selectedExport.employeeName}</strong></p>
+                  )}
+                  <span className={`badge badge-${selectedExport.status === 'cancelled' ? 'danger' : 'success'}`}>
+                    {selectedExport.status === 'cancelled' ? 'Đã hủy' : 'Hoạt động'}
+                  </span>
+                </div>
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-﻿import { formatVND, formatDate, formatNumber, numberToWordsVN } from './formatters';
+import { formatVND, formatDate, formatNumber, numberToWordsVN } from './formatters';
 import { warehouseService } from '../services/warehouseService';
 
 /**
@@ -6,11 +6,11 @@ import { warehouseService } from '../services/warehouseService';
  */
 function parseOwner(ownerInfo) {
   let storeName = 'CÔNG TY CỔ PHẦN SẢN XUẤT VÀ THƯƠNG MẠI NAM SƠN';
-  let storeAddress = '';
-  let storePhone = '';
-  let bankName = '';
-  let bankAccount = '';
-  let accountHolder = '';
+  let storeAddress = 'Mỹ Xá - Nam Định';
+  let storePhone = '0913 018 881';
+  let bankName = 'NH Agribank / NH Vietinbank';
+  let bankAccount = '320 320 5077 264 / 1048 7900 2567';
+  let accountHolder = 'Trần Thị Sợi';
 
   // Return fixed values - no parsing needed
   return {
@@ -117,36 +117,58 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
       margin: 0 auto;
     }
     
-    /* Top Header Company Info */
-    .company-header {
-      text-align: center;
+    /* Top Header: Left company info, Right bank accounts */
+    .header-layout {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
       margin-bottom: 8px;
     }
+    .header-left {
+      text-align: left;
+      flex: 1;
+      max-width: 54%;
+    }
     .company-name {
-      font-size: 13pt;
+      font-size: 12pt;
       font-weight: bold;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      color: #c5221f;
       margin-bottom: 2px;
+      line-height: 1.3;
     }
     .company-contact {
-      font-size: 11pt;
-      margin-bottom: 3px;
+      font-size: 10.5pt;
+      color: #c5221f;
+      line-height: 1.3;
     }
-    .bank-info-line {
-      font-size: 11.5pt;
-      margin-top: 2px;
+    .header-right {
+      text-align: right;
+      flex-shrink: 0;
+      color: #c5221f;
+      line-height: 1.45;
+    }
+    .bank-account-holder {
+      font-size: 11pt;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .bank-account-item {
+      font-size: 10.5pt;
+      font-weight: bold;
     }
 
     /* Voucher Title */
     .voucher-title-section {
       text-align: center;
-      margin: 12px 0 10px 0;
+      margin: 10px 0 10px 0;
     }
     .voucher-title {
       font-size: 18pt;
       font-weight: bold;
       letter-spacing: 1.5px;
+      color: #c5221f;
     }
     .voucher-date-code {
       display: flex;
@@ -170,13 +192,14 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
       margin: 10px 0 14px 0;
     }
     .items-table th, .items-table td {
-      border: 1px solid #000000;
+      border: 1px solid #c5221f;
       padding: 6px 8px;
       font-size: 11.5pt;
       vertical-align: middle;
     }
     .items-table th {
-      background-color: #f4f4f4;
+      background-color: #fdf2f2;
+      color: #c5221f;
       font-weight: bold;
       text-align: center;
     }
@@ -256,16 +279,17 @@ export function generateExportHtml({ exportData, ownerInfo = null, customer = nu
 </head>
 <body>
   <div class="print-container">
-    <!-- Header Thông tin Công ty / Cửa hàng -->
-    <div class="company-header">
-      <div class="company-name">${store.storeName}</div>
-      ${store.storeAddress ? `<div class="company-contact">Đ/C: ${store.storeAddress} ${store.storePhone ? ` - ĐT: ${store.storePhone}` : ''}</div>` : (store.storePhone ? `<div class="company-contact">ĐT: ${store.storePhone}</div>` : '')}
-      ${store.bankAccount ? `
-        <div class="bank-info-line">
-          ${store.accountHolder ? `Chủ Tài khoản: <strong>${store.accountHolder}</strong> - ` : ''}
-          STK: <strong>${store.bankAccount}</strong> ${store.bankName ? ` - Tại Ngân hàng ${store.bankName}` : ''}
-        </div>
-      ` : ''}
+    <!-- Header Thông tin Đơn vị (Trái) & STK Ngân Hàng (Phải) -->
+    <div class="header-layout">
+      <div class="header-left">
+        <div class="company-name">${store.storeName}</div>
+        <div class="company-contact">Đ/C: ${store.storeAddress || 'Mỹ Xá - Nam Định'} ${store.storePhone ? ` - ĐT: ${store.storePhone}` : ' - ĐT: 0913 018 881'}</div>
+      </div>
+      <div class="header-right">
+        <div class="bank-account-holder">Chủ tài khoản: <strong>Trần Thị Sợi</strong></div>
+        <div class="bank-account-item">STK: <strong>320 320 5077 264 - NH Agribank</strong></div>
+        <div class="bank-account-item">STK: <strong>1048 7900 2567 - NH Vietinbank</strong></div>
+      </div>
     </div>
 
     <!-- Tiêu đề phiếu -->

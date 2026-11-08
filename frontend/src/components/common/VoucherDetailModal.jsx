@@ -510,6 +510,31 @@ export default function VoucherDetailModal({
                     </div>
                   )}
                 </div>
+
+                {/* Box 3: Thông tin chuyển khoản nhận tiền nếu là Phiếu Xuất */}
+                {resolvedType === 'export' && (
+                  <div
+                    style={{
+                      padding: '0.85rem 1rem',
+                      backgroundColor: 'rgba(239, 68, 68, 0.04)',
+                      borderRadius: '8px',
+                      border: '1px dashed #ef4444',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' }}>
+                      Tài Khoản Nhận Thanh Toán
+                    </div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#dc2626', marginTop: '4px' }}>
+                      Chủ tài khoản: Trần Thị Sợi
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: '#b91c1c', marginTop: '2px', fontWeight: 600 }}>
+                      STK: 320 320 5077 264 - NH Agribank
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: '#b91c1c', marginTop: '2px', fontWeight: 600 }}>
+                      STK: 1048 7900 2567 - NH Vietinbank
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Box 3: Biến động công nợ của phiếu này */}
