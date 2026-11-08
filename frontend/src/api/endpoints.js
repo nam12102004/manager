@@ -167,6 +167,10 @@ export const exportsApi = {
     const res = await api.post('/exports', data);
     return res.data; // ExportVoucherDto
   },
+  update: async (id, data) => {
+    const res = await api.put(`/exports/${id}`, data);
+    return res.data; // ExportVoucherDto
+  },
   updateStatus: async (id, action = 'cancel') => {
     const res = await api.patch(`/exports/${id}/status`, { action });
     return res.data; // boolean
@@ -191,6 +195,10 @@ export const importsApi = {
   },
   create: async (data) => {
     const res = await api.post('/imports', data);
+    return res.data; // ImportVoucherDto
+  },
+  update: async (id, data) => {
+    const res = await api.put(`/imports/${id}`, data);
     return res.data; // ImportVoucherDto
   },
   updateStatus: async (id, action = 'cancel') => {

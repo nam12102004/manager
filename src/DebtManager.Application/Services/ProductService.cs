@@ -874,6 +874,8 @@ public class ProductService : IProductService
         var importQuery = _uow.ImportVoucherItems.Query()
             .Include(i => i.ImportVoucher)
                 .ThenInclude(v => v.Supplier)
+            .Include(i => i.ImportVoucher)
+                .ThenInclude(v => v.Customer)
             .Where(i => i.ProductId == productId && i.ImportVoucher.Status != "cancelled");
         if (!isAllWh)
         {
@@ -891,6 +893,8 @@ public class ProductService : IProductService
         foreach (var im in importItems)
         {
             var uName = !string.IsNullOrWhiteSpace(im.UnitName) ? im.UnitName : (product.Uom ?? "cái");
+            var partnerName = (im.ImportVoucher.PartnerType == "customer" ? im.ImportVoucher.Customer?.Name : im.ImportVoucher.Supplier?.Name)
+                ?? im.ImportVoucher.Supplier?.Name ?? im.ImportVoucher.Customer?.Name ?? "Đối tác";
             ledgerItems.Add(new EntityLedgerItemDto
             {
                 Id = im.Id,
@@ -899,7 +903,7 @@ public class ProductService : IProductService
                 VoucherType = "import",
                 VoucherTypeLabel = "Phiếu nhập",
                 Warehouse = im.ImportVoucher.Warehouse,
-                Description = $"Nhập {im.Quantity} {uName} x {im.UnitPrice:N0}₫ từ {im.ImportVoucher.Supplier?.Name ?? "NCC"}",
+                Description = $"Nhập {im.Quantity} {uName} x {im.UnitPrice:N0}₫ từ {partnerName}",
                 ImportQty = im.BaseQuantity > 0 ? im.BaseQuantity : im.Quantity,
                 ImportAmount = im.LineTotal,
                 ExportQty = 0,
@@ -913,6 +917,8 @@ public class ProductService : IProductService
         var exportQuery = _uow.ExportVoucherItems.Query()
             .Include(i => i.ExportVoucher)
                 .ThenInclude(v => v.Customer)
+            .Include(i => i.ExportVoucher)
+                .ThenInclude(v => v.Supplier)
             .Where(i => i.ProductId == productId && i.ExportVoucher.Status != "cancelled");
         if (!isAllWh)
         {
@@ -930,6 +936,8 @@ public class ProductService : IProductService
         foreach (var ex in exportItems)
         {
             var uName = !string.IsNullOrWhiteSpace(ex.UnitName) ? ex.UnitName : (product.Uom ?? "cái");
+            var partnerName = (ex.ExportVoucher.PartnerType == "supplier" ? ex.ExportVoucher.Supplier?.Name : ex.ExportVoucher.Customer?.Name)
+                ?? ex.ExportVoucher.Customer?.Name ?? ex.ExportVoucher.Supplier?.Name ?? "Khách lẻ";
             ledgerItems.Add(new EntityLedgerItemDto
             {
                 Id = ex.Id,
@@ -938,7 +946,7 @@ public class ProductService : IProductService
                 VoucherType = "export",
                 VoucherTypeLabel = "Phiếu xuất",
                 Warehouse = ex.ExportVoucher.Warehouse,
-                Description = $"Xuất {ex.Quantity} {uName} x {ex.SalePrice:N0}₫ cho {ex.ExportVoucher.Customer?.Name ?? "Khách lẻ"}",
+                Description = $"Xuất {ex.Quantity} {uName} x {ex.SalePrice:N0}₫ cho {partnerName}",
                 ImportQty = 0,
                 ImportAmount = 0,
                 ExportQty = ex.BaseQuantity > 0 ? ex.BaseQuantity : ex.Quantity,

@@ -7,8 +7,11 @@ public class ImportVoucher
     public DateTime Date { get; set; } = DateTime.UtcNow;
     public string Warehouse { get; set; } = "warehouse1";
 
-    public int SupplierId { get; set; }
-    public Supplier Supplier { get; set; } = null!;
+    public string PartnerType { get; set; } = "supplier"; // "supplier" | "customer"
+    public int? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+    public int? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
 
     public decimal SubtotalAmount { get; set; } = 0;
     public decimal DiscountAmount { get; set; } = 0;

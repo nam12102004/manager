@@ -11,7 +11,25 @@ public class CreateExportItemDto
 
 public class CreateExportDto
 {
-    public int CustomerId { get; set; }
+    public string PartnerType { get; set; } = "customer"; // "customer" | "supplier"
+    public int? CustomerId { get; set; }
+    public int? SupplierId { get; set; }
+    public int? EmployeeId { get; set; }
+    public string? EmployeeName { get; set; }
+    public string Warehouse { get; set; } = "warehouse1";
+    public DateTime? Date { get; set; }
+    public decimal? DiscountPercent { get; set; }
+    public decimal? DiscountValue { get; set; }
+    public decimal PaidAmount { get; set; } = 0;
+    public string? Notes { get; set; }
+    public List<CreateExportItemDto> Items { get; set; } = new();
+}
+
+public class UpdateExportDto
+{
+    public string PartnerType { get; set; } = "customer"; // "customer" | "supplier"
+    public int? CustomerId { get; set; }
+    public int? SupplierId { get; set; }
     public int? EmployeeId { get; set; }
     public string? EmployeeName { get; set; }
     public string Warehouse { get; set; } = "warehouse1";
@@ -45,9 +63,14 @@ public class ExportVoucherDto
     public string VoucherNumber { get; set; } = string.Empty;
     public DateTime Date { get; set; }
     public string Warehouse { get; set; } = string.Empty;
-    public int CustomerId { get; set; }
+    public string PartnerType { get; set; } = "customer";
+    public int? CustomerId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public decimal CustomerDebt { get; set; }
+    public int? SupplierId { get; set; }
+    public string SupplierName { get; set; } = string.Empty;
+    public string PartnerName { get; set; } = string.Empty;
+    public decimal PartnerDebt { get; set; }
     public int? EmployeeId { get; set; }
     public string? EmployeeName { get; set; }
     public decimal SubtotalSale { get; set; }

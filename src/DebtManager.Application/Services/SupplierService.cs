@@ -125,7 +125,7 @@ public class SupplierService : ISupplierService
         }
 
         var supplierImportsQuery = _uow.ImportVouchers.Query()
-            .Where(v => supplierIds.Contains(v.SupplierId) && v.Status != "cancelled");
+            .Where(v => v.SupplierId.HasValue && supplierIds.Contains(v.SupplierId.Value) && v.Status != "cancelled");
         if (startDate.HasValue)
         {
             supplierImportsQuery = supplierImportsQuery.Where(v => v.Date >= startDate.Value);
@@ -136,7 +136,7 @@ public class SupplierService : ISupplierService
         }
 
         var supplierImports = await supplierImportsQuery
-            .Select(v => new { v.SupplierId, v.TotalAmount, v.Warehouse })
+            .Select(v => new { SupplierId = v.SupplierId!.Value, v.TotalAmount, v.Warehouse })
             .ToListAsync(ct);
 
         var supplierPaymentsQuery = _uow.Payments.Query()
@@ -222,7 +222,7 @@ public class SupplierService : ISupplierService
                 var whs = importWhs.ToList();
                 imports = imports.Where(v => whs.Contains(v.Warehouse.ToLower()));
             }
-            Add(imports.Select(v => v.SupplierId));
+            Add(imports.Where(v => v.SupplierId.HasValue).Select(v => v.SupplierId!.Value));
         }
 
         if (metrics.Has("receipt"))

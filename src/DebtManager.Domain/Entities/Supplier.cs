@@ -21,6 +21,7 @@ public class Supplier
     public ICollection<SupplierWarehouseDebt> WarehouseDebts { get; set; } = new List<SupplierWarehouseDebt>();
     public ICollection<SupplierDebtHistory> DebtHistories { get; set; } = new List<SupplierDebtHistory>();
     public ICollection<ImportVoucher> ImportVouchers { get; set; } = new List<ImportVoucher>();
+    public ICollection<ExportVoucher> ExportVouchers { get; set; } = new List<ExportVoucher>();
     public ICollection<Product> Products { get; set; } = new List<Product>();
     public ICollection<Receipt> Receipts { get; set; } = new List<Receipt>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

@@ -7,8 +7,11 @@ public class ExportVoucher
     public DateTime Date { get; set; } = DateTime.UtcNow;
     public string Warehouse { get; set; } = "warehouse1";
 
-    public int CustomerId { get; set; }
-    public Customer Customer { get; set; } = null!;
+    public string PartnerType { get; set; } = "customer"; // "customer" | "supplier"
+    public int? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
+    public int? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
 
     public int? EmployeeId { get; set; }
     public Employee? Employee { get; set; }

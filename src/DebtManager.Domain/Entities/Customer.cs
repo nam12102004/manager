@@ -19,6 +19,7 @@ public class Customer
     public ICollection<CustomerWarehouseDebt> WarehouseDebts { get; set; } = new List<CustomerWarehouseDebt>();
     public ICollection<CustomerDebtHistory> DebtHistories { get; set; } = new List<CustomerDebtHistory>();
     public ICollection<ExportVoucher> ExportVouchers { get; set; } = new List<ExportVoucher>();
+    public ICollection<ImportVoucher> ImportVouchers { get; set; } = new List<ImportVoucher>();
     public ICollection<Receipt> Receipts { get; set; } = new List<Receipt>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }

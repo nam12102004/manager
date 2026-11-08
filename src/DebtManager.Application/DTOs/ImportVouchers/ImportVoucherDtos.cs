@@ -11,7 +11,22 @@ public class CreateImportItemDto
 
 public class CreateImportDto
 {
-    public int SupplierId { get; set; }
+    public string PartnerType { get; set; } = "supplier"; // "supplier" | "customer"
+    public int? SupplierId { get; set; }
+    public int? CustomerId { get; set; }
+    public string Warehouse { get; set; } = "warehouse1";
+    public DateTime? Date { get; set; }
+    public decimal DiscountAmount { get; set; } = 0;
+    public decimal PaidAmount { get; set; } = 0;
+    public string? Notes { get; set; }
+    public List<CreateImportItemDto> Items { get; set; } = new();
+}
+
+public class UpdateImportDto
+{
+    public string PartnerType { get; set; } = "supplier"; // "supplier" | "customer"
+    public int? SupplierId { get; set; }
+    public int? CustomerId { get; set; }
     public string Warehouse { get; set; } = "warehouse1";
     public DateTime? Date { get; set; }
     public decimal DiscountAmount { get; set; } = 0;
@@ -41,8 +56,12 @@ public class ImportVoucherDto
     public string VoucherNumber { get; set; } = string.Empty;
     public DateTime Date { get; set; }
     public string Warehouse { get; set; } = string.Empty;
-    public int SupplierId { get; set; }
+    public string PartnerType { get; set; } = "supplier";
+    public int? SupplierId { get; set; }
     public string SupplierName { get; set; } = string.Empty;
+    public int? CustomerId { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string PartnerName { get; set; } = string.Empty;
     public decimal SubtotalAmount { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TotalAmount { get; set; }

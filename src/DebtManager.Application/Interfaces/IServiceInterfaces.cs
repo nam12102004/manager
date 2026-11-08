@@ -62,10 +62,11 @@ public interface ISupplierService
 
 public interface IExportService
 {
-    Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, int? employeeId = null, string? search = null, CancellationToken ct = default);
-    Task<ExportPagedResult> GetPagedExportsAsync(int? customerId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? search = null, string? warehouse = null, int page = 1, int pageSize = 15, int? employeeId = null, CancellationToken ct = default);
+    Task<List<ExportVoucherDto>> GetExportsAsync(int? customerId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, int? employeeId = null, string? search = null, int? supplierId = null, CancellationToken ct = default);
+    Task<ExportPagedResult> GetPagedExportsAsync(int? customerId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? search = null, string? warehouse = null, int page = 1, int pageSize = 15, int? employeeId = null, int? supplierId = null, CancellationToken ct = default);
     Task<ExportVoucherDto> GetByIdAsync(long id, CancellationToken ct = default);
     Task<ExportVoucherDto> CreateExportAsync(CreateExportDto dto, CancellationToken ct = default);
+    Task<ExportVoucherDto> UpdateExportAsync(long id, UpdateExportDto dto, CancellationToken ct = default);
     Task<bool> UpdateStatusAsync(long id, string action, CancellationToken ct = default);
     Task<bool> DeleteExportAsync(long id, CancellationToken ct = default);
 }
@@ -81,10 +82,11 @@ public interface IEmployeeService
 
 public interface IImportService
 {
-    Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, string? search = null, CancellationToken ct = default);
-    Task<ImportPagedResult> GetPagedImportsAsync(int? supplierId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? search = null, string? warehouse = null, int page = 1, int pageSize = 15, CancellationToken ct = default);
+    Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, string? search = null, int? customerId = null, int? productId = null, CancellationToken ct = default);
+    Task<ImportPagedResult> GetPagedImportsAsync(int? supplierId = null, string? month = null, string? date = null, string? fromDate = null, string? toDate = null, string? search = null, string? warehouse = null, int page = 1, int pageSize = 15, int? customerId = null, int? productId = null, CancellationToken ct = default);
     Task<ImportVoucherDto> GetByIdAsync(long id, CancellationToken ct = default);
     Task<ImportVoucherDto> CreateImportAsync(CreateImportDto dto, CancellationToken ct = default);
+    Task<ImportVoucherDto> UpdateImportAsync(long id, UpdateImportDto dto, CancellationToken ct = default);
     Task<bool> UpdateStatusAsync(long id, string action, CancellationToken ct = default);
     Task<bool> DeleteImportAsync(long id, CancellationToken ct = default);
 }

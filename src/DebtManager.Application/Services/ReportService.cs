@@ -366,7 +366,8 @@ public class ReportService : IReportService
         // 2. Customer Sales
         var allCustomers = await _uow.Customers.Query().ToListAsync(ct);
         var exportsByCustomer = exports
-            .GroupBy(v => v.CustomerId)
+            .Where(v => v.CustomerId.HasValue)
+            .GroupBy(v => v.CustomerId!.Value)
             .ToDictionary(g => g.Key, g => new
             {
                 Count = g.Count(),
@@ -406,7 +407,8 @@ public class ReportService : IReportService
         // 3. Supplier Sales
         var allSuppliers = await _uow.Suppliers.Query().ToListAsync(ct);
         var importsBySupplier = imports
-            .GroupBy(v => v.SupplierId)
+            .Where(v => v.SupplierId.HasValue)
+            .GroupBy(v => v.SupplierId!.Value)
             .ToDictionary(g => g.Key, g => new
             {
                 Count = g.Count(),

@@ -124,7 +124,7 @@ public class CustomerService : ICustomerService
         }
 
         var customerExportsQuery = _uow.ExportVouchers.Query()
-            .Where(v => customerIds.Contains(v.CustomerId) && v.Status != "cancelled");
+            .Where(v => v.CustomerId.HasValue && customerIds.Contains(v.CustomerId.Value) && v.Status != "cancelled");
         if (startDate.HasValue)
         {
             customerExportsQuery = customerExportsQuery.Where(v => v.Date >= startDate.Value);
@@ -135,7 +135,7 @@ public class CustomerService : ICustomerService
         }
 
         var customerExports = await customerExportsQuery
-            .Select(v => new { v.CustomerId, v.TotalSale, v.Warehouse })
+            .Select(v => new { CustomerId = v.CustomerId!.Value, v.TotalSale, v.Warehouse })
             .ToListAsync(ct);
 
         var customerReceiptsQuery = _uow.Receipts.Query()
@@ -221,7 +221,7 @@ public class CustomerService : ICustomerService
                 var whs = exportWhs.ToList();
                 exports = exports.Where(v => whs.Contains(v.Warehouse.ToLower()));
             }
-            Add(exports.Select(v => v.CustomerId));
+            Add(exports.Where(v => v.CustomerId.HasValue).Select(v => v.CustomerId!.Value));
         }
 
         if (metrics.Has("receipt"))

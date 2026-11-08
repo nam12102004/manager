@@ -177,7 +177,7 @@ public class ReportExportEngine
                 var q = uow.ImportVoucherItems.Query()
                     .Where(i => i.ImportVoucher.Status != "cancelled" && i.ImportVoucher.Date >= rangeStart && i.ImportVoucher.Date < rangeEndExclusive);
                 if (request.SupplierIds.Count > 0)
-                    q = q.Where(i => request.SupplierIds.Contains(i.ImportVoucher.SupplierId));
+                    q = q.Where(i => i.ImportVoucher.SupplierId.HasValue && request.SupplierIds.Contains(i.ImportVoucher.SupplierId.Value));
                 if (request.ProductIds.Count > 0)
                     q = q.Where(i => request.ProductIds.Contains(i.ProductId));
                 activeWarehouses = await q
@@ -191,7 +191,7 @@ public class ReportExportEngine
                 var q = uow.ExportVoucherItems.Query()
                     .Where(i => i.ExportVoucher.Status != "cancelled" && i.ExportVoucher.Date >= rangeStart && i.ExportVoucher.Date < rangeEndExclusive);
                 if (request.CustomerIds.Count > 0)
-                    q = q.Where(i => request.CustomerIds.Contains(i.ExportVoucher.CustomerId));
+                    q = q.Where(i => i.ExportVoucher.CustomerId.HasValue && request.CustomerIds.Contains(i.ExportVoucher.CustomerId.Value));
                 if (request.ProductIds.Count > 0)
                     q = q.Where(i => request.ProductIds.Contains(i.ProductId));
                 activeWarehouses = await q
@@ -674,7 +674,7 @@ public class ReportExportEngine
             .Where(i => i.ExportVoucher.Status != "cancelled" && i.ExportVoucher.Date >= start && i.ExportVoucher.Date < end);
 
         if (request.CustomerIds.Count > 0)
-            itemQuery = itemQuery.Where(i => request.CustomerIds.Contains(i.ExportVoucher.CustomerId));
+            itemQuery = itemQuery.Where(i => i.ExportVoucher.CustomerId.HasValue && request.CustomerIds.Contains(i.ExportVoucher.CustomerId.Value));
         if (request.Warehouses.Count > 0)
             itemQuery = itemQuery.Where(i => request.Warehouses.Contains(i.ExportVoucher.Warehouse));
         if (request.ProductIds.Count > 0)
@@ -711,7 +711,7 @@ public class ReportExportEngine
                 ProductSku = r.ProductSku,
                 ProductName = r.ProductName,
                 Unit = r.Unit,
-                PartnerId = r.CustomerId,
+                PartnerId = r.CustomerId ?? 0,
                 PartnerCode = r.CustomerCode,
                 PartnerName = r.CustomerName,
                 EmployeeId = r.EmployeeId,
@@ -769,7 +769,7 @@ public class ReportExportEngine
             .Where(i => i.ImportVoucher.Status != "cancelled" && i.ImportVoucher.Date >= start && i.ImportVoucher.Date < end);
 
         if (request.SupplierIds.Count > 0)
-            itemQuery = itemQuery.Where(i => request.SupplierIds.Contains(i.ImportVoucher.SupplierId));
+            itemQuery = itemQuery.Where(i => i.ImportVoucher.SupplierId.HasValue && request.SupplierIds.Contains(i.ImportVoucher.SupplierId.Value));
         if (request.Warehouses.Count > 0)
             itemQuery = itemQuery.Where(i => request.Warehouses.Contains(i.ImportVoucher.Warehouse));
         if (request.ProductIds.Count > 0)
@@ -800,7 +800,7 @@ public class ReportExportEngine
                 ProductSku = r.ProductSku,
                 ProductName = r.ProductName,
                 Unit = r.Unit,
-                PartnerId = r.SupplierId,
+                PartnerId = r.SupplierId ?? 0,
                 PartnerCode = r.SupplierCode,
                 PartnerName = r.SupplierName,
                 Warehouse = r.Warehouse,

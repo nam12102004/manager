@@ -19,6 +19,8 @@ public class ImportsController : BaseApiController
     [HttpGet]
     public async Task<IActionResult> GetImports(
         [FromQuery] int? supplierId,
+        [FromQuery] int? customerId,
+        [FromQuery] int? productId,
         [FromQuery] string? month,
         [FromQuery] string? date,
         [FromQuery] string? fromDate,
@@ -32,11 +34,11 @@ public class ImportsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _importService.GetPagedImportsAsync(supplierId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, ct);
+            var paged = await _importService.GetPagedImportsAsync(supplierId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, customerId, productId, ct);
             return Success(paged);
         }
 
-        var list = await _importService.GetImportsAsync(supplierId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, q, ct);
+        var list = await _importService.GetImportsAsync(supplierId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, q, customerId, productId, ct);
         return Success(list);
     }
 
@@ -53,6 +55,16 @@ public class ImportsController : BaseApiController
     {
         var voucher = await _importService.CreateImportAsync(dto, ct);
         return Created(nameof(GetById), new { id = voucher.Id }, voucher, "Tạo phiếu nhập thành công");
+    }
+
+    [HttpPut("{id:long}")]
+    public async Task<ActionResult<ApiResponse<ImportVoucherDto>>> UpdateImport(
+        long id,
+        [FromBody] UpdateImportDto dto,
+        CancellationToken ct)
+    {
+        var voucher = await _importService.UpdateImportAsync(id, dto, ct);
+        return Success(voucher, "Cập nhật phiếu nhập thành công");
     }
 
     [HttpPatch("{id:long}/status")]

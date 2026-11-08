@@ -257,15 +257,24 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);
             entity.Property(e => e.TotalSale).HasPrecision(18, 2);
             entity.Property(e => e.PaidAmount).HasPrecision(18, 2);
+            entity.Property(e => e.PartnerType).HasMaxLength(20).HasDefaultValue("customer");
             entity.Property(e => e.UnpaidAmount).HasPrecision(18, 2);
             entity.Property(e => e.TotalCost).HasPrecision(18, 2);
 
             entity.HasIndex(e => new { e.CustomerId, e.Date });
+            entity.HasIndex(e => new { e.SupplierId, e.Date });
             entity.HasIndex(e => new { e.EmployeeId, e.Date });
 
             entity.HasOne(e => e.Customer)
                 .WithMany(c => c.ExportVouchers)
                 .HasForeignKey(e => e.CustomerId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Supplier)
+                .WithMany(s => s.ExportVouchers)
+                .HasForeignKey(e => e.SupplierId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Employee)
@@ -305,6 +314,7 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.VoucherNumber).HasMaxLength(50).IsRequired();
             entity.HasIndex(e => e.VoucherNumber).IsUnique();
             entity.Property(e => e.Warehouse).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.PartnerType).HasMaxLength(20).HasDefaultValue("supplier");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("confirmed");
             entity.Property(e => e.Notes).HasMaxLength(1000);
 
@@ -315,10 +325,18 @@ public class DebtManagerDbContext : DbContext
             entity.Property(e => e.UnpaidAmount).HasPrecision(18, 2);
 
             entity.HasIndex(e => new { e.SupplierId, e.Date });
+            entity.HasIndex(e => new { e.CustomerId, e.Date });
 
             entity.HasOne(e => e.Supplier)
                 .WithMany(s => s.ImportVouchers)
                 .HasForeignKey(e => e.SupplierId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Customer)
+                .WithMany(c => c.ImportVouchers)
+                .HasForeignKey(e => e.CustomerId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

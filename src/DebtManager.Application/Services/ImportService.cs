@@ -18,10 +18,11 @@ public class ImportService : IImportService
         _uow = uow;
     }
 
-    public async Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, string? search = null, CancellationToken ct = default)
+    public async Task<List<ImportVoucherDto>> GetImportsAsync(int? supplierId = null, string? month = null, string? fromDate = null, string? toDate = null, string? warehouse = null, string? search = null, int? customerId = null, int? productId = null, CancellationToken ct = default)
     {
         var query = _uow.ImportVouchers.Query()
             .Include(v => v.Supplier)
+            .Include(v => v.Customer)
             .Include(v => v.Items)
                 .ThenInclude(i => i.Product)
             .AsQueryable();
@@ -29,6 +30,16 @@ public class ImportService : IImportService
         if (supplierId.HasValue)
         {
             query = query.Where(v => v.SupplierId == supplierId.Value);
+        }
+
+        if (customerId.HasValue)
+        {
+            query = query.Where(v => v.CustomerId == customerId.Value);
+        }
+
+        if (productId.HasValue)
+        {
+            query = query.Where(v => v.Items.Any(i => i.ProductId == productId.Value));
         }
 
         if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
@@ -41,6 +52,7 @@ public class ImportService : IImportService
             var s = search.Trim().ToLower();
             query = query.Where(v => v.VoucherNumber.ToLower().Contains(s) ||
                                      (v.Supplier != null && v.Supplier.Name.ToLower().Contains(s)) ||
+                                     (v.Customer != null && v.Customer.Name.ToLower().Contains(s)) ||
                                      (v.Notes != null && v.Notes.ToLower().Contains(s)) ||
                                      v.Items.Any(i =>
                                          (i.Sku != null && i.Sku.ToLower().Contains(s)) ||
@@ -98,6 +110,8 @@ public class ImportService : IImportService
         string? warehouse = null,
         int page = 1,
         int pageSize = 15,
+        int? customerId = null,
+        int? productId = null,
         CancellationToken ct = default)
     {
         page = Math.Max(1, page);
@@ -105,6 +119,7 @@ public class ImportService : IImportService
 
         var query = _uow.ImportVouchers.Query()
             .Include(v => v.Supplier)
+            .Include(v => v.Customer)
             .Include(v => v.Items)
                 .ThenInclude(i => i.Product)
             .AsQueryable();
@@ -112,6 +127,16 @@ public class ImportService : IImportService
         if (supplierId.HasValue)
         {
             query = query.Where(v => v.SupplierId == supplierId.Value);
+        }
+
+        if (customerId.HasValue)
+        {
+            query = query.Where(v => v.CustomerId == customerId.Value);
+        }
+
+        if (productId.HasValue)
+        {
+            query = query.Where(v => v.Items.Any(i => i.ProductId == productId.Value));
         }
 
         if (!string.IsNullOrWhiteSpace(warehouse) && warehouse != "all" && warehouse != "overview")
@@ -124,6 +149,7 @@ public class ImportService : IImportService
             var s = search.Trim().ToLower();
             query = query.Where(v => v.VoucherNumber.ToLower().Contains(s) ||
                                      (v.Supplier != null && v.Supplier.Name.ToLower().Contains(s)) ||
+                                     (v.Customer != null && v.Customer.Name.ToLower().Contains(s)) ||
                                      (v.Notes != null && v.Notes.ToLower().Contains(s)) ||
                                      v.Items.Any(i =>
                                          (i.Sku != null && i.Sku.ToLower().Contains(s)) ||
@@ -200,6 +226,7 @@ public class ImportService : IImportService
     {
         var voucher = await _uow.ImportVouchers.Query()
             .Include(v => v.Supplier)
+            .Include(v => v.Customer)
             .Include(v => v.Items)
                 .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(v => v.Id == id, ct)
@@ -215,12 +242,27 @@ public class ImportService : IImportService
             throw new ValidationException("Phiếu nhập phải có ít nhất 1 sản phẩm");
         }
 
+        var isCustomer = dto.PartnerType?.ToLower() == "customer" || (!dto.SupplierId.HasValue && dto.CustomerId.HasValue);
+
         await _uow.BeginTransactionAsync(ct);
         var voucherDate = DateTime.UtcNow;
         try
         {
-            var supplier = await _uow.Suppliers.GetByIdAsync(dto.SupplierId, ct)
-                ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {dto.SupplierId}");
+            Supplier? supplier = null;
+            Customer? customer = null;
+
+            if (isCustomer)
+            {
+                var custId = dto.CustomerId ?? throw new ValidationException("Vui lòng chọn khách hàng");
+                customer = await _uow.Customers.GetByIdAsync(custId, ct)
+                    ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {custId}");
+            }
+            else
+            {
+                var suppId = dto.SupplierId ?? throw new ValidationException("Vui lòng chọn nhà cung cấp");
+                supplier = await _uow.Suppliers.GetByIdAsync(suppId, ct)
+                    ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {suppId}");
+            }
 
             var warehouse = string.IsNullOrWhiteSpace(dto.Warehouse) ? DomainConstants.Warehouses.Warehouse1 : dto.Warehouse;
             voucherDate = dto.Date.HasValue
@@ -233,7 +275,11 @@ public class ImportService : IImportService
                 VoucherNumber = voucherNumber,
                 Date = voucherDate,
                 Warehouse = warehouse,
-                SupplierId = supplier.Id,
+                PartnerType = isCustomer ? "customer" : "supplier",
+                SupplierId = supplier?.Id,
+                Supplier = supplier,
+                CustomerId = customer?.Id,
+                Customer = customer,
                 Status = DomainConstants.VoucherStatuses.Confirmed,
                 Notes = dto.Notes?.Trim(),
                 CreatedAt = DateTime.UtcNow
@@ -279,9 +325,10 @@ public class ImportService : IImportService
                 _uow.Products.Update(product);
 
                 // Stock history
+                var partnerDesc = isCustomer ? $"từ KH {customer!.Name}" : $"từ NCC {supplier!.Name}";
                 var reasonDesc = convRate > 1
-                    ? $"Nhập hàng theo phiếu {voucherNumber} ({itemDto.Quantity} {itemDto.UnitName} = {baseQty} {product.Uom ?? "đv"})"
-                    : $"Nhập hàng theo phiếu {voucherNumber}";
+                    ? $"Nhập hàng {partnerDesc} theo phiếu {voucherNumber} ({itemDto.Quantity} {itemDto.UnitName} = {baseQty} {product.Uom ?? "đv"})"
+                    : $"Nhập hàng {partnerDesc} theo phiếu {voucherNumber}";
 
                 await _uow.StockHistories.AddAsync(new StockHistory
                 {
@@ -312,68 +359,480 @@ public class ImportService : IImportService
             voucher.PaidAmount = paidAmount;
             voucher.UnpaidAmount = unpaidAmount;
 
-            // 1. Ghi nhận toàn bộ giá trị hàng nhập vào công nợ NCC (Nợ phải trả tăng, debt âm hơn: -TotalAmount)
-            if (totalAmount > 0)
+            // Debt & Payment handling
+            if (isCustomer)
             {
-                var delta = -totalAmount; // Negative debt = we owe supplier
-                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
-                    await DebtHelper.ApplySupplierDebtAsync(_uow, supplier.Id, warehouse, delta, ct);
-
-                await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
+                // Customer debt: importing goods from customer decreases customer debt (-totalAmount)
+                if (totalAmount > 0)
                 {
-                    SupplierId = supplier.Id,
-                    Warehouse = warehouse,
-                    SourceType = DomainConstants.SourceTypes.Import,
-                    ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
-                    ReferenceId = voucherNumber,
-                    Reason = $"Ghi nhận nợ phải trả theo phiếu nhập {voucherNumber}",
-                    BeforeDebt = beforeTotalDebt,
-                    Delta = delta,
-                    AfterDebt = afterTotalDebt,
-                    CreatedAt = voucherDate
-                }, ct);
+                    var delta = -totalAmount;
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplyCustomerDebtAsync(_uow, customer!.Id, warehouse, delta, ct);
+
+                    await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                    {
+                        CustomerId = customer.Id,
+                        Warehouse = warehouse,
+                        SourceType = DomainConstants.SourceTypes.Import,
+                        ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                        ReferenceId = voucherNumber,
+                        Reason = $"Ghi nhận hàng nhập/trả từ khách theo phiếu {voucherNumber}",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = delta,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = voucherDate
+                    }, ct);
+                }
+
+                // If paid/refunded to customer immediately: Payment creates cash out, customer debt increases back (+paidAmount)
+                if (paidAmount > 0)
+                {
+                    var paymentNumber = $"PC{voucherDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                    var payment = new Payment
+                    {
+                        PaymentNumber = paymentNumber,
+                        Date = voucherDate,
+                        Warehouse = warehouse,
+                        CustomerId = customer!.Id,
+                        Customer = customer,
+                        Amount = paidAmount,
+                        Method = "cash",
+                        Status = DomainConstants.VoucherStatuses.Confirmed,
+                        RelatedVoucherType = "import_voucher",
+                        RelatedVoucherId = voucherNumber,
+                        Notes = $"Hoàn tiền nhập hàng/trả hàng theo phiếu {voucherNumber}",
+                        CreatedAt = voucherDate
+                    };
+                    await _uow.Payments.AddAsync(payment, ct);
+
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplyCustomerDebtAsync(_uow, customer.Id, warehouse, paidAmount, ct);
+
+                    await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                    {
+                        CustomerId = customer.Id,
+                        Warehouse = warehouse,
+                        SourceType = DomainConstants.SourceTypes.Payment,
+                        ReferenceType = DomainConstants.ReferenceTypes.Payment,
+                        ReferenceId = paymentNumber,
+                        Reason = $"Hoàn tiền nhập hàng theo phiếu {voucherNumber}",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = paidAmount,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = voucherDate.AddMilliseconds(1)
+                    }, ct);
+                }
             }
-
-            // 2. Tự động ghi nhận Phiếu chi (Payment) và giảm nợ phải trả NCC cho khoản thanh toán ngay (Nợ phải trả giảm, debt dương lên về 0: +PaidAmount)
-            if (paidAmount > 0)
+            else
             {
-                var paymentNumber = $"PC{voucherDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
-                var payment = new Payment
+                // Supplier debt: we owe supplier (-totalAmount)
+                if (totalAmount > 0)
                 {
-                    PaymentNumber = paymentNumber,
-                    Date = voucherDate,
-                    Warehouse = warehouse,
-                    SupplierId = supplier.Id,
-                    Supplier = supplier,
-                    Amount = paidAmount,
-                    Method = "bank_transfer",
-                    Status = DomainConstants.VoucherStatuses.Confirmed,
-                    RelatedVoucherType = "import_voucher",
-                    RelatedVoucherId = voucherNumber,
-                    Notes = $"Thanh toán tiền nhập hàng theo phiếu {voucherNumber}",
-                    CreatedAt = voucherDate
-                };
-                await _uow.Payments.AddAsync(payment, ct);
+                    var delta = -totalAmount;
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplySupplierDebtAsync(_uow, supplier!.Id, warehouse, delta, ct);
 
-                var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
-                    await DebtHelper.ApplySupplierDebtAsync(_uow, supplier.Id, warehouse, paidAmount, ct);
+                    await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
+                    {
+                        SupplierId = supplier.Id,
+                        Warehouse = warehouse,
+                        SourceType = DomainConstants.SourceTypes.Import,
+                        ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                        ReferenceId = voucherNumber,
+                        Reason = $"Ghi nhận nợ phải trả theo phiếu nhập {voucherNumber}",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = delta,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = voucherDate
+                    }, ct);
+                }
 
-                await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
+                // If paid immediately: Payment creates cash out to supplier (+paidAmount)
+                if (paidAmount > 0)
                 {
-                    SupplierId = supplier.Id,
-                    Warehouse = warehouse,
-                    SourceType = DomainConstants.SourceTypes.Payment,
-                    ReferenceType = DomainConstants.ReferenceTypes.Payment,
-                    ReferenceId = paymentNumber,
-                    Reason = $"Thanh toán tiền nhập hàng theo phiếu {voucherNumber}",
-                    BeforeDebt = beforeTotalDebt,
-                    Delta = paidAmount,
-                    AfterDebt = afterTotalDebt,
-                    CreatedAt = voucherDate.AddMilliseconds(1)
-                }, ct);
+                    var paymentNumber = $"PC{voucherDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                    var payment = new Payment
+                    {
+                        PaymentNumber = paymentNumber,
+                        Date = voucherDate,
+                        Warehouse = warehouse,
+                        SupplierId = supplier!.Id,
+                        Supplier = supplier,
+                        Amount = paidAmount,
+                        Method = "bank_transfer",
+                        Status = DomainConstants.VoucherStatuses.Confirmed,
+                        RelatedVoucherType = "import_voucher",
+                        RelatedVoucherId = voucherNumber,
+                        Notes = $"Thanh toán tiền nhập hàng theo phiếu {voucherNumber}",
+                        CreatedAt = voucherDate
+                    };
+                    await _uow.Payments.AddAsync(payment, ct);
+
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplySupplierDebtAsync(_uow, supplier.Id, warehouse, paidAmount, ct);
+
+                    await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
+                    {
+                        SupplierId = supplier.Id,
+                        Warehouse = warehouse,
+                        SourceType = DomainConstants.SourceTypes.Payment,
+                        ReferenceType = DomainConstants.ReferenceTypes.Payment,
+                        ReferenceId = paymentNumber,
+                        Reason = $"Thanh toán tiền nhập hàng theo phiếu {voucherNumber}",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = paidAmount,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = voucherDate.AddMilliseconds(1)
+                    }, ct);
+                }
             }
 
             await _uow.ImportVouchers.AddAsync(voucher, ct);
+            await _uow.SaveChangesAsync(ct);
+            await _uow.CommitAsync(ct);
+
+            return MapToDto(voucher);
+        }
+        catch
+        {
+            await _uow.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<ImportVoucherDto> UpdateImportAsync(long id, UpdateImportDto dto, CancellationToken ct = default)
+    {
+        if (dto.Items == null || dto.Items.Count == 0)
+        {
+            throw new ValidationException("Phiếu nhập phải có ít nhất 1 sản phẩm");
+        }
+
+        var voucher = await _uow.ImportVouchers.Query()
+            .Include(v => v.Supplier)
+            .Include(v => v.Customer)
+            .Include(v => v.Items)
+                .ThenInclude(i => i.Product)
+            .FirstOrDefaultAsync(v => v.Id == id, ct)
+            ?? throw new NotFoundException($"Không tìm thấy phiếu nhập có ID {id}");
+
+        if (voucher.Status == DomainConstants.VoucherStatuses.Cancelled)
+        {
+            throw new BusinessRuleException("Không thể chỉnh sửa phiếu nhập đã bị hủy. Hãy khôi phục trước khi sửa.");
+        }
+
+        await _uow.BeginTransactionAsync(ct);
+        var voucherDate = DateTime.UtcNow;
+        try
+        {
+            var oldWarehouse = voucher.Warehouse;
+            var oldPartnerType = voucher.PartnerType ?? (voucher.CustomerId.HasValue ? "customer" : "supplier");
+            var oldSupplierId = voucher.SupplierId;
+            var oldCustomerId = voucher.CustomerId;
+            var oldTotalAmount = voucher.TotalAmount;
+            var oldPaidAmount = voucher.PaidAmount;
+
+            // 1. REVERT OLD STOCK
+            foreach (var item in voucher.Items)
+            {
+                var product = await _uow.Products.GetByIdAsync(item.ProductId, ct);
+                if (product == null) continue;
+
+                var rate = item.ConversionRate > 0 ? item.ConversionRate : 1m;
+                var baseQty = item.BaseQuantity > 0 ? item.BaseQuantity : (item.Quantity * rate);
+
+                decimal beforeWhStock = product.GetWarehouseStock(oldWarehouse);
+                var delta = -baseQty; // Revert import = deduct stock
+                var afterWhStock = beforeWhStock + delta;
+                var beforeTotal = product.TotalStock;
+
+                product.SetWarehouseStock(oldWarehouse, afterWhStock);
+                var afterTotal = product.TotalStock;
+                product.UpdatedAt = DateTime.UtcNow;
+                _uow.Products.Update(product);
+
+                await _uow.StockHistories.AddAsync(new StockHistory
+                {
+                    ProductId = product.Id,
+                    Warehouse = oldWarehouse,
+                    SourceType = "import_updated_revert",
+                    ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                    ReferenceId = voucher.VoucherNumber,
+                    Reason = $"Hoàn kho dòng cũ do sửa phiếu nhập {voucher.VoucherNumber}",
+                    BeforeWarehouseStock = beforeWhStock,
+                    Delta = delta,
+                    AfterWarehouseStock = afterWhStock,
+                    BeforeTotalStock = beforeTotal,
+                    AfterTotalStock = afterTotal,
+                    ChangeDate = DateTime.UtcNow,
+                    CreatedAt = voucherDate
+                }, ct);
+            }
+
+            // 2. REVERT OLD DEBT & LINKED PAYMENTS
+            if (oldPartnerType == "customer" && oldCustomerId.HasValue)
+            {
+                if (oldTotalAmount > 0)
+                {
+                    await DebtHelper.ApplyCustomerDebtAsync(_uow, oldCustomerId.Value, oldWarehouse, oldTotalAmount, ct);
+                }
+                if (oldPaidAmount > 0)
+                {
+                    await DebtHelper.ApplyCustomerDebtAsync(_uow, oldCustomerId.Value, oldWarehouse, -oldPaidAmount, ct);
+                }
+            }
+            else if (oldSupplierId.HasValue)
+            {
+                if (oldTotalAmount > 0)
+                {
+                    await DebtHelper.ApplySupplierDebtAsync(_uow, oldSupplierId.Value, oldWarehouse, oldTotalAmount, ct);
+                }
+                if (oldPaidAmount > 0)
+                {
+                    await DebtHelper.ApplySupplierDebtAsync(_uow, oldSupplierId.Value, oldWarehouse, -oldPaidAmount, ct);
+                }
+            }
+
+            var oldLinkedPayments = await _uow.Payments.Query()
+                .Where(p => p.RelatedVoucherId == voucher.VoucherNumber && p.RelatedVoucherType == "import_voucher")
+                .ToListAsync(ct);
+            if (oldLinkedPayments.Count > 0)
+            {
+                _uow.Payments.RemoveRange(oldLinkedPayments);
+            }
+
+            // 3. REMOVE OLD ITEMS
+            _uow.ImportVoucherItems.RemoveRange(voucher.Items);
+            voucher.Items.Clear();
+
+            // 4. PREPARE NEW PARTNER & DETAILS
+            var isNewCustomer = dto.PartnerType?.ToLower() == "customer" || (!dto.SupplierId.HasValue && dto.CustomerId.HasValue);
+            Supplier? newSupplier = null;
+            Customer? newCustomer = null;
+
+            if (isNewCustomer)
+            {
+                var custId = dto.CustomerId ?? throw new ValidationException("Vui lòng chọn khách hàng");
+                newCustomer = await _uow.Customers.GetByIdAsync(custId, ct)
+                    ?? throw new NotFoundException($"Không tìm thấy khách hàng với ID {custId}");
+            }
+            else
+            {
+                var suppId = dto.SupplierId ?? throw new ValidationException("Vui lòng chọn nhà cung cấp");
+                newSupplier = await _uow.Suppliers.GetByIdAsync(suppId, ct)
+                    ?? throw new NotFoundException($"Không tìm thấy nhà cung cấp với ID {suppId}");
+            }
+
+            var newWarehouse = string.IsNullOrWhiteSpace(dto.Warehouse) ? DomainConstants.Warehouses.Warehouse1 : dto.Warehouse;
+            var newDate = dto.Date.HasValue
+                ? (dto.Date.Value.TimeOfDay == TimeSpan.Zero ? dto.Date.Value.Date.Add(DateTime.UtcNow.TimeOfDay) : dto.Date.Value)
+                : voucher.Date;
+
+            voucher.Warehouse = newWarehouse;
+            voucher.Date = newDate;
+            voucher.PartnerType = isNewCustomer ? "customer" : "supplier";
+            voucher.SupplierId = newSupplier?.Id;
+            voucher.Supplier = newSupplier;
+            voucher.CustomerId = newCustomer?.Id;
+            voucher.Customer = newCustomer;
+            voucher.Notes = dto.Notes?.Trim();
+
+            // 5. ADD NEW ITEMS & APPLY NEW STOCK
+            decimal newSubtotal = 0;
+            foreach (var itemDto in dto.Items)
+            {
+                var product = await _uow.Products.GetByIdAsync(itemDto.ProductId, ct)
+                    ?? throw new InvalidOperationException($"Không tìm thấy sản phẩm với ID {itemDto.ProductId}");
+
+                var convRate = itemDto.ConversionRate.HasValue && itemDto.ConversionRate.Value > 0 ? itemDto.ConversionRate.Value : 1m;
+                var baseQty = itemDto.Quantity * convRate;
+                var lineTotal = itemDto.Quantity * itemDto.UnitPrice;
+                newSubtotal += lineTotal;
+
+                var voucherItem = new ImportVoucherItem
+                {
+                    ImportVoucher = voucher,
+                    ProductId = product.Id,
+                    ProductName = product.Name,
+                    Sku = product.Sku,
+                    Quantity = itemDto.Quantity,
+                    UnitName = itemDto.UnitName ?? product.Uom,
+                    ConversionRate = convRate,
+                    BaseQuantity = baseQty,
+                    UnitPrice = itemDto.UnitPrice,
+                    LineTotal = lineTotal
+                };
+                voucher.Items.Add(voucherItem);
+
+                // Add stock in base unit
+                decimal beforeWhStock = product.GetWarehouseStock(newWarehouse);
+                var delta = baseQty; // Positive for import
+                var afterWhStock = beforeWhStock + delta;
+                var beforeTotal = product.TotalStock;
+
+                product.SetWarehouseStock(newWarehouse, afterWhStock);
+                var afterTotal = product.TotalStock;
+                product.UpdatedAt = DateTime.UtcNow;
+                _uow.Products.Update(product);
+
+                var partnerDesc = isNewCustomer ? $"từ KH {newCustomer!.Name}" : $"từ NCC {newSupplier!.Name}";
+                var reasonDesc = convRate > 1
+                    ? $"Cập nhật nhập hàng {partnerDesc} phiếu {voucher.VoucherNumber} ({itemDto.Quantity} {itemDto.UnitName} = {baseQty} {product.Uom ?? "đv"})"
+                    : $"Cập nhật nhập hàng {partnerDesc} phiếu {voucher.VoucherNumber}";
+
+                await _uow.StockHistories.AddAsync(new StockHistory
+                {
+                    ProductId = product.Id,
+                    Warehouse = newWarehouse,
+                    SourceType = "import_updated",
+                    ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                    ReferenceId = voucher.VoucherNumber,
+                    Reason = reasonDesc,
+                    BeforeWarehouseStock = beforeWhStock,
+                    Delta = delta,
+                    AfterWarehouseStock = afterWhStock,
+                    BeforeTotalStock = beforeTotal,
+                    AfterTotalStock = afterTotal,
+                    ChangeDate = newDate,
+                    CreatedAt = voucherDate
+                }, ct);
+            }
+
+            var newDiscountAmount = Math.Clamp(dto.DiscountAmount, 0, newSubtotal);
+            var newTotalAmount = Math.Max(0, newSubtotal - newDiscountAmount);
+            var newPaidAmount = Math.Min(newTotalAmount, Math.Max(0, dto.PaidAmount));
+            var newUnpaidAmount = Math.Max(0, newTotalAmount - newPaidAmount);
+
+            voucher.SubtotalAmount = newSubtotal;
+            voucher.DiscountAmount = newDiscountAmount;
+            voucher.TotalAmount = newTotalAmount;
+            voucher.PaidAmount = newPaidAmount;
+            voucher.UnpaidAmount = newUnpaidAmount;
+
+            // 6. APPLY NEW DEBT & PAYMENT
+            if (isNewCustomer)
+            {
+                if (newTotalAmount > 0)
+                {
+                    var delta = -newTotalAmount;
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplyCustomerDebtAsync(_uow, newCustomer!.Id, newWarehouse, delta, ct);
+
+                    await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                    {
+                        CustomerId = newCustomer.Id,
+                        Warehouse = newWarehouse,
+                        SourceType = "import_updated",
+                        ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                        ReferenceId = voucher.VoucherNumber,
+                        Reason = $"Cập nhật công nợ theo phiếu nhập {voucher.VoucherNumber}",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = delta,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = newDate
+                    }, ct);
+                }
+
+                if (newPaidAmount > 0)
+                {
+                    var paymentNumber = $"PC{newDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                    var payment = new Payment
+                    {
+                        PaymentNumber = paymentNumber,
+                        Date = newDate,
+                        Warehouse = newWarehouse,
+                        CustomerId = newCustomer!.Id,
+                        Customer = newCustomer,
+                        Amount = newPaidAmount,
+                        Method = "cash",
+                        Status = DomainConstants.VoucherStatuses.Confirmed,
+                        RelatedVoucherType = "import_voucher",
+                        RelatedVoucherId = voucher.VoucherNumber,
+                        Notes = $"Hoàn tiền nhập hàng theo phiếu {voucher.VoucherNumber} (Đã sửa)",
+                        CreatedAt = newDate
+                    };
+                    await _uow.Payments.AddAsync(payment, ct);
+
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplyCustomerDebtAsync(_uow, newCustomer.Id, newWarehouse, newPaidAmount, ct);
+
+                    await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                    {
+                        CustomerId = newCustomer.Id,
+                        Warehouse = newWarehouse,
+                        SourceType = DomainConstants.SourceTypes.Payment,
+                        ReferenceType = DomainConstants.ReferenceTypes.Payment,
+                        ReferenceId = paymentNumber,
+                        Reason = $"Hoàn tiền nhập hàng theo phiếu {voucher.VoucherNumber} (Đã sửa)",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = newPaidAmount,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = newDate.AddMilliseconds(1)
+                    }, ct);
+                }
+            }
+            else
+            {
+                if (newTotalAmount > 0)
+                {
+                    var delta = -newTotalAmount;
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplySupplierDebtAsync(_uow, newSupplier!.Id, newWarehouse, delta, ct);
+
+                    await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
+                    {
+                        SupplierId = newSupplier.Id,
+                        Warehouse = newWarehouse,
+                        SourceType = "import_updated",
+                        ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                        ReferenceId = voucher.VoucherNumber,
+                        Reason = $"Cập nhật nợ phải trả theo phiếu nhập {voucher.VoucherNumber}",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = delta,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = newDate
+                    }, ct);
+                }
+
+                if (newPaidAmount > 0)
+                {
+                    var paymentNumber = $"PC{newDate:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                    var payment = new Payment
+                    {
+                        PaymentNumber = paymentNumber,
+                        Date = newDate,
+                        Warehouse = newWarehouse,
+                        SupplierId = newSupplier!.Id,
+                        Supplier = newSupplier,
+                        Amount = newPaidAmount,
+                        Method = "bank_transfer",
+                        Status = DomainConstants.VoucherStatuses.Confirmed,
+                        RelatedVoucherType = "import_voucher",
+                        RelatedVoucherId = voucher.VoucherNumber,
+                        Notes = $"Thanh toán tiền nhập hàng theo phiếu {voucher.VoucherNumber} (Đã sửa)",
+                        CreatedAt = newDate
+                    };
+                    await _uow.Payments.AddAsync(payment, ct);
+
+                    var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                        await DebtHelper.ApplySupplierDebtAsync(_uow, newSupplier.Id, newWarehouse, newPaidAmount, ct);
+
+                    await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
+                    {
+                        SupplierId = newSupplier.Id,
+                        Warehouse = newWarehouse,
+                        SourceType = DomainConstants.SourceTypes.Payment,
+                        ReferenceType = DomainConstants.ReferenceTypes.Payment,
+                        ReferenceId = paymentNumber,
+                        Reason = $"Thanh toán tiền nhập hàng theo phiếu {voucher.VoucherNumber} (Đã sửa)",
+                        BeforeDebt = beforeTotalDebt,
+                        Delta = newPaidAmount,
+                        AfterDebt = afterTotalDebt,
+                        CreatedAt = newDate.AddMilliseconds(1)
+                    }, ct);
+                }
+            }
+
+            _uow.ImportVouchers.Update(voucher);
             await _uow.SaveChangesAsync(ct);
             await _uow.CommitAsync(ct);
 
@@ -390,6 +849,7 @@ public class ImportService : IImportService
     {
         var voucher = await _uow.ImportVouchers.Query()
             .Include(v => v.Supplier)
+            .Include(v => v.Customer)
             .Include(v => v.Items)
             .FirstOrDefaultAsync(v => v.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy phiếu nhập có ID {id}");
@@ -398,6 +858,8 @@ public class ImportService : IImportService
         {
             throw new BusinessRuleException($"Hành động '{action}' không được hỗ trợ");
         }
+
+        var isCustomer = voucher.PartnerType == "customer" || (!voucher.SupplierId.HasValue && voucher.CustomerId.HasValue);
 
         await _uow.BeginTransactionAsync(ct);
         var voucherDate = DateTime.UtcNow;
@@ -444,18 +906,59 @@ public class ImportService : IImportService
                     }, ct);
                 }
 
-                // Reverse Supplier Debt
-                if (voucher.SupplierId > 0)
+                // Reverse Debt
+                if (isCustomer && voucher.CustomerId.HasValue)
                 {
-                    // Hoàn lại tiền hàng: giảm nợ phải trả (+TotalAmount)
                     if (voucher.TotalAmount > 0)
                     {
                         var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
-                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId, voucher.Warehouse, voucher.TotalAmount, ct);
+                            await DebtHelper.ApplyCustomerDebtAsync(_uow, voucher.CustomerId.Value, voucher.Warehouse, voucher.TotalAmount, ct);
+
+                        await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                        {
+                            CustomerId = voucher.CustomerId.Value,
+                            Warehouse = voucher.Warehouse,
+                            SourceType = "import_cancelled",
+                            ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                            ReferenceId = voucher.VoucherNumber,
+                            Reason = $"Hủy nợ do hủy phiếu nhập {voucher.VoucherNumber}",
+                            BeforeDebt = beforeTotalDebt,
+                            Delta = voucher.TotalAmount,
+                            AfterDebt = afterTotalDebt,
+                            CreatedAt = voucherDate
+                        }, ct);
+                    }
+
+                    if (voucher.PaidAmount > 0)
+                    {
+                        var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                            await DebtHelper.ApplyCustomerDebtAsync(_uow, voucher.CustomerId.Value, voucher.Warehouse, -voucher.PaidAmount, ct);
+
+                        await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                        {
+                            CustomerId = voucher.CustomerId.Value,
+                            Warehouse = voucher.Warehouse,
+                            SourceType = "payment_cancelled",
+                            ReferenceType = DomainConstants.ReferenceTypes.Payment,
+                            ReferenceId = voucher.VoucherNumber,
+                            Reason = $"Hủy hoàn tiền do hủy phiếu nhập {voucher.VoucherNumber}",
+                            BeforeDebt = beforeTotalDebt,
+                            Delta = -voucher.PaidAmount,
+                            AfterDebt = afterTotalDebt,
+                            CreatedAt = voucherDate.AddMilliseconds(1)
+                        }, ct);
+                    }
+                }
+                else if (voucher.SupplierId.HasValue)
+                {
+                    if (voucher.TotalAmount > 0)
+                    {
+                        var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId.Value, voucher.Warehouse, voucher.TotalAmount, ct);
 
                         await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                         {
-                            SupplierId = voucher.SupplierId,
+                            SupplierId = voucher.SupplierId.Value,
                             Warehouse = voucher.Warehouse,
                             SourceType = "import_cancelled",
                             ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
@@ -468,15 +971,14 @@ public class ImportService : IImportService
                         }, ct);
                     }
 
-                    // Hoàn lại khoản chi trả ngay: tăng lại nợ phải trả (-PaidAmount)
                     if (voucher.PaidAmount > 0)
                     {
                         var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
-                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId, voucher.Warehouse, -voucher.PaidAmount, ct);
+                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId.Value, voucher.Warehouse, -voucher.PaidAmount, ct);
 
                         await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                         {
-                            SupplierId = voucher.SupplierId,
+                            SupplierId = voucher.SupplierId.Value,
                             Warehouse = voucher.Warehouse,
                             SourceType = "payment_cancelled",
                             ReferenceType = DomainConstants.ReferenceTypes.Payment,
@@ -545,17 +1047,67 @@ public class ImportService : IImportService
                     }, ct);
                 }
 
-                // Re-add Supplier Debt
-                if (voucher.SupplierId > 0)
+                // Re-add Debt
+                if (isCustomer && voucher.CustomerId.HasValue)
                 {
                     if (voucher.TotalAmount > 0)
                     {
                         var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
-                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId, voucher.Warehouse, -voucher.TotalAmount, ct);
+                            await DebtHelper.ApplyCustomerDebtAsync(_uow, voucher.CustomerId.Value, voucher.Warehouse, -voucher.TotalAmount, ct);
+
+                        await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                        {
+                            CustomerId = voucher.CustomerId.Value,
+                            Warehouse = voucher.Warehouse,
+                            SourceType = "import_restored",
+                            ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
+                            ReferenceId = voucher.VoucherNumber,
+                            Reason = $"Khôi phục nợ theo phiếu nhập {voucher.VoucherNumber}",
+                            BeforeDebt = beforeTotalDebt,
+                            Delta = -voucher.TotalAmount,
+                            AfterDebt = afterTotalDebt,
+                            CreatedAt = voucherDate
+                        }, ct);
+                    }
+
+                    if (voucher.PaidAmount > 0)
+                    {
+                        var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                            await DebtHelper.ApplyCustomerDebtAsync(_uow, voucher.CustomerId.Value, voucher.Warehouse, voucher.PaidAmount, ct);
+
+                        var paymentNumber = $"PC{voucher.Date:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
+                        var existingPayment = await _uow.Payments.Query()
+                            .FirstOrDefaultAsync(p => p.RelatedVoucherId == voucher.VoucherNumber && p.RelatedVoucherType == "import_voucher", ct);
+                        if (existingPayment != null)
+                        {
+                            paymentNumber = existingPayment.PaymentNumber;
+                        }
+
+                        await _uow.CustomerDebtHistories.AddAsync(new CustomerDebtHistory
+                        {
+                            CustomerId = voucher.CustomerId.Value,
+                            Warehouse = voucher.Warehouse,
+                            SourceType = DomainConstants.SourceTypes.Payment,
+                            ReferenceType = DomainConstants.ReferenceTypes.Payment,
+                            ReferenceId = paymentNumber,
+                            Reason = $"Khôi phục hoàn tiền theo phiếu nhập {voucher.VoucherNumber}",
+                            BeforeDebt = beforeTotalDebt,
+                            Delta = voucher.PaidAmount,
+                            AfterDebt = afterTotalDebt,
+                            CreatedAt = voucherDate.AddMilliseconds(1)
+                        }, ct);
+                    }
+                }
+                else if (voucher.SupplierId.HasValue)
+                {
+                    if (voucher.TotalAmount > 0)
+                    {
+                        var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
+                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId.Value, voucher.Warehouse, -voucher.TotalAmount, ct);
 
                         await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                         {
-                            SupplierId = voucher.SupplierId,
+                            SupplierId = voucher.SupplierId.Value,
                             Warehouse = voucher.Warehouse,
                             SourceType = "import_restored",
                             ReferenceType = DomainConstants.ReferenceTypes.ImportVoucher,
@@ -571,7 +1123,7 @@ public class ImportService : IImportService
                     if (voucher.PaidAmount > 0)
                     {
                         var (beforeTotalDebt, afterTotalDebt, beforeWhDebt, afterWhDebt) =
-                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId, voucher.Warehouse, voucher.PaidAmount, ct);
+                            await DebtHelper.ApplySupplierDebtAsync(_uow, voucher.SupplierId.Value, voucher.Warehouse, voucher.PaidAmount, ct);
 
                         var paymentNumber = $"PC{voucher.Date:yyyyMMdd}-{(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000):D6}";
                         var existingPayment = await _uow.Payments.Query()
@@ -583,7 +1135,7 @@ public class ImportService : IImportService
 
                         await _uow.SupplierDebtHistories.AddAsync(new SupplierDebtHistory
                         {
-                            SupplierId = voucher.SupplierId,
+                            SupplierId = voucher.SupplierId.Value,
                             Warehouse = voucher.Warehouse,
                             SourceType = DomainConstants.SourceTypes.Payment,
                             ReferenceType = DomainConstants.ReferenceTypes.Payment,
@@ -628,6 +1180,7 @@ public class ImportService : IImportService
     {
         var voucher = await _uow.ImportVouchers.Query()
             .Include(v => v.Supplier)
+            .Include(v => v.Customer)
             .Include(v => v.Items)
             .FirstOrDefaultAsync(v => v.Id == id, ct)
             ?? throw new NotFoundException($"Không tìm thấy phiếu nhập có ID {id}");
@@ -661,36 +1214,47 @@ public class ImportService : IImportService
         }
     }
 
-    private static ImportVoucherDto MapToDto(ImportVoucher v) => new()
+    private static ImportVoucherDto MapToDto(ImportVoucher v)
     {
-        Id = v.Id,
-        VoucherNumber = v.VoucherNumber,
-        Date = v.Date,
-        Warehouse = v.Warehouse,
-        SupplierId = v.SupplierId,
-        SupplierName = v.Supplier?.Name ?? string.Empty,
-        SubtotalAmount = v.SubtotalAmount,
-        DiscountAmount = v.DiscountAmount,
-        TotalAmount = v.TotalAmount,
-        PaidAmount = v.PaidAmount,
-        UnpaidAmount = v.UnpaidAmount,
-        Status = v.Status,
-        CancelledAt = v.CancelledAt,
-        Notes = v.Notes,
-        CreatedAt = v.CreatedAt,
-        Items = v.Items.Select(i => new ImportVoucherItemDto
+        var isCustomer = v.PartnerType == "customer" || (!v.SupplierId.HasValue && v.CustomerId.HasValue);
+        var partnerType = isCustomer ? "customer" : "supplier";
+        var partnerName = isCustomer ? (v.Customer?.Name ?? string.Empty) : (v.Supplier?.Name ?? string.Empty);
+
+        return new()
         {
-            Id = i.Id,
-            ProductId = i.ProductId,
-            ProductName = i.ProductName,
-            Sku = i.Sku,
-            Quantity = i.Quantity,
-            UnitName = i.UnitName,
-            ConversionRate = i.ConversionRate,
-            BaseQuantity = i.BaseQuantity,
-            UnitPrice = i.UnitPrice,
-            LineTotal = i.LineTotal,
-            Uom = i.Product?.Uom ?? string.Empty
-        }).ToList()
-    };
+            Id = v.Id,
+            VoucherNumber = v.VoucherNumber,
+            Date = v.Date,
+            Warehouse = v.Warehouse,
+            PartnerType = partnerType,
+            SupplierId = v.SupplierId,
+            SupplierName = v.Supplier?.Name ?? string.Empty,
+            CustomerId = v.CustomerId,
+            CustomerName = v.Customer?.Name ?? string.Empty,
+            PartnerName = partnerName,
+            SubtotalAmount = v.SubtotalAmount,
+            DiscountAmount = v.DiscountAmount,
+            TotalAmount = v.TotalAmount,
+            PaidAmount = v.PaidAmount,
+            UnpaidAmount = v.UnpaidAmount,
+            Status = v.Status,
+            CancelledAt = v.CancelledAt,
+            Notes = v.Notes,
+            CreatedAt = v.CreatedAt,
+            Items = v.Items.Select(i => new ImportVoucherItemDto
+            {
+                Id = i.Id,
+                ProductId = i.ProductId,
+                ProductName = i.ProductName,
+                Sku = i.Sku,
+                Quantity = i.Quantity,
+                UnitName = i.UnitName,
+                ConversionRate = i.ConversionRate,
+                BaseQuantity = i.BaseQuantity,
+                UnitPrice = i.UnitPrice,
+                LineTotal = i.LineTotal,
+                Uom = i.Product?.Uom ?? string.Empty
+            }).ToList()
+        };
+    }
 }

@@ -12,6 +12,7 @@ import {
   Printer,
   Filter,
   FileSpreadsheet,
+  Pencil,
 } from 'lucide-react';
 import { formatVND, formatNumber, formatDate, getCurrentMonthStr, getCurrentDateStr } from '../utils/formatters';
 import { useNotification } from '../context/NotificationContext';
@@ -38,6 +39,7 @@ export default function Imports({ initialOpenCreate = false }) {
   const [ledgerSupplier, setLedgerSupplier] = useState(null);
   const [importsList, setImportsList] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState(() => warehouseService.getWarehousesSync());
   const [ownerInfo, setOwnerInfo] = useState(null);
@@ -65,6 +67,7 @@ export default function Imports({ initialOpenCreate = false }) {
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(initialOpenCreate);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
@@ -73,7 +76,24 @@ export default function Imports({ initialOpenCreate = false }) {
 
   // Create Form State
   const [createForm, setCreateForm] = useState({
+    partnerType: 'supplier', // 'supplier' | 'customer'
     supplierId: '',
+    customerId: '',
+    warehouse: 'warehouse1',
+    date: new Date().toISOString().slice(0, 10),
+    discountAmount: '',
+    paidAmount: '',
+    notes: '',
+    items: [],
+  });
+
+  // Edit Form State
+  const [editForm, setEditForm] = useState({
+    id: null,
+    voucherNumber: '',
+    partnerType: 'supplier',
+    supplierId: '',
+    customerId: '',
     warehouse: 'warehouse1',
     date: new Date().toISOString().slice(0, 10),
     discountAmount: '',
@@ -124,11 +144,12 @@ export default function Imports({ initialOpenCreate = false }) {
   // Load Dependencies via importService & warehouseService
   const loadDependencies = async () => {
     try {
-      const [{ suppliers: supps, products: prods, ownerInfo: owner }, whList] = await Promise.all([
+      const [{ suppliers: supps, customers: custs, products: prods, ownerInfo: owner }, whList] = await Promise.all([
         importService.getDependencies(),
         warehouseService.getWarehouses(),
       ]);
       setSuppliers(supps || []);
+      setCustomers(custs || []);
       setProducts(prods || []);
       setOwnerInfo(owner || null);
       if (whList && Array.isArray(whList)) setWarehouses(whList);
@@ -140,7 +161,9 @@ export default function Imports({ initialOpenCreate = false }) {
   const handlePrint = (item = null) => {
     const target = item || selectedImport;
     if (!target) return;
-    const supp = suppliers.find((s) => Number(s.id) === Number(target.supplierId) || s.name === target.supplierName);
+    const supp = target.partnerType === 'customer'
+      ? customers.find((c) => Number(c.id) === Number(target.customerId) || c.name === target.customerName)
+      : suppliers.find((s) => Number(s.id) === Number(target.supplierId) || s.name === target.supplierName);
     const html = generateImportHtml({ importData: target, ownerInfo, supplier: supp });
     printInNewTab(html);
   };
@@ -172,6 +195,16 @@ export default function Imports({ initialOpenCreate = false }) {
     return () => window.removeEventListener('warehouses-updated', handleWarehousesUpdated);
   }, []);
 
+  const getAvailableProducts = (partnerType, supplierId) => {
+    if (partnerType === 'customer') {
+      return products;
+    }
+    if (supplierId) {
+      return products.filter((p) => String(p.supplierId) === String(supplierId));
+    }
+    return products;
+  };
+
   // Open Create Modal
   const handleOpenCreate = () => {
     loadDependencies();
@@ -189,7 +222,9 @@ export default function Imports({ initialOpenCreate = false }) {
       : (firstP?.unitCost || '');
 
     setCreateForm({
+      partnerType: 'supplier',
       supplierId: firstSupplierId,
+      customerId: '',
       warehouse: currentWhs[0]?.id || 'warehouse1',
       date: new Date().toISOString().slice(0, 10),
       discountAmount: '',
@@ -210,11 +245,9 @@ export default function Imports({ initialOpenCreate = false }) {
 
   // Add Item Row
   const handleAddItem = () => {
-    if (products.length === 0) return;
-    const suppProds = createForm.supplierId
-      ? products.filter((p) => String(p.supplierId) === String(createForm.supplierId))
-      : products;
-    const firstP = suppProds.length > 0 ? suppProds[0] : products[0];
+    const availProds = getAvailableProducts(createForm.partnerType, createForm.supplierId);
+    if (availProds.length === 0 && products.length === 0) return;
+    const firstP = availProds.length > 0 ? availProds[0] : products[0];
     const units = firstP ? getProductUnits(firstP) : [];
     const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
     const conv = Number(defUnit?.conversionRate || 1);
@@ -281,15 +314,15 @@ export default function Imports({ initialOpenCreate = false }) {
     paidAmount: Number(createForm.paidAmount || 0),
   });
 
-  const selectedSupplierObj = suppliers.find((s) => s.id === Number(createForm.supplierId));
-
   // Submit Create Import via importService
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       const result = await importService.create({
-        supplierId: createForm.supplierId,
+        partnerType: createForm.partnerType,
+        supplierId: createForm.partnerType === 'supplier' ? createForm.supplierId : undefined,
+        customerId: createForm.partnerType === 'customer' ? createForm.customerId : undefined,
         warehouse: createForm.warehouse,
         date: createForm.date,
         discountType: 'amount',
@@ -311,6 +344,147 @@ export default function Imports({ initialOpenCreate = false }) {
       loadDependencies();
     } catch (err) {
       notify.error(err.message || 'Lỗi khi tạo phiếu nhập kho');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Open Edit Modal
+  const handleOpenEdit = async (item) => {
+    try {
+      const full = await importService.getById(item.id);
+      const target = full || item;
+      const pType = target.partnerType || (target.customerId ? 'customer' : 'supplier');
+      setEditForm({
+        id: target.id,
+        voucherNumber: target.voucherNumber,
+        partnerType: pType,
+        supplierId: target.supplierId ? String(target.supplierId) : '',
+        customerId: target.customerId ? String(target.customerId) : '',
+        warehouse: target.warehouse || 'warehouse1',
+        date: target.date ? target.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        discountAmount: target.discountValue || target.discountAmount || '',
+        paidAmount: target.paidAmount || '',
+        notes: target.notes || '',
+        items: (target.items || []).map((it) => {
+          const p = products.find((prod) => prod.id === it.productId);
+          return {
+            productId: it.productId,
+            quantity: it.quantity,
+            unitName: it.unitName || p?.uom || 'Cái',
+            conversionRate: it.conversionRate || 1,
+            unitPrice: it.unitPrice || 0,
+          };
+        }),
+      });
+      setIsEditOpen(true);
+    } catch (err) {
+      notify.error(err.message || 'Không thể tải chi tiết phiếu nhập để chỉnh sửa');
+    }
+  };
+
+  // Add Item in Edit Modal
+  const handleAddEditItem = () => {
+    const availProds = getAvailableProducts(editForm.partnerType, editForm.supplierId);
+    if (availProds.length === 0 && products.length === 0) return;
+    const firstP = availProds.length > 0 ? availProds[0] : products[0];
+    const units = firstP ? getProductUnits(firstP) : [];
+    const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
+    const conv = Number(defUnit?.conversionRate || 1);
+    const cost = conv > 1 ? (firstP?.unitCost || 0) * conv : (firstP?.unitCost || '');
+    setEditForm((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          productId: firstP ? firstP.id : '',
+          quantity: '',
+          unitName: defUnit?.unitName || firstP?.uom || 'Cái',
+          conversionRate: conv,
+          unitPrice: cost || '',
+        },
+      ],
+    }));
+  };
+
+  // Remove Item in Edit Modal
+  const handleRemoveEditItem = (index) => {
+    setEditForm((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Update Item in Edit Modal
+  const handleUpdateEditItem = (index, field, value) => {
+    setEditForm((prev) => {
+      const newItems = [...prev.items];
+      const item = { ...newItems[index] };
+
+      if (field === 'productId') {
+        const prod = products.find((p) => p.id === Number(value));
+        item.productId = Number(value);
+        if (prod) {
+          const units = getProductUnits(prod);
+          const defUnit = getPrimaryDisplayUnit(prod) || units.find((u) => u.isBaseUnit) || units[0];
+          const conv = Number(defUnit?.conversionRate || 1);
+          item.unitName = defUnit?.unitName || prod.uom || 'Cái';
+          item.conversionRate = conv;
+          const cost = conv > 1 ? (prod.unitCost || 0) * conv : (prod.unitCost || 0);
+          item.unitPrice = cost || '';
+        }
+      } else if (field === 'quantity' || field === 'unitPrice') {
+        item[field] = value === '' ? '' : (isNaN(value) ? value : Number(value));
+      } else {
+        item[field] = value;
+      }
+
+      newItems[index] = item;
+      return { ...prev, items: newItems };
+    });
+  };
+
+  // Subtotal & Financials for Edit Form
+  const { subtotal: editSubtotal, discountAmount: editDiscountAmount, totalCost: editTotalAmount, unpaidAmount: editUnpaidAmount } = importService.calculateImportTotals({
+    items: editForm.items.map((it) => ({ quantity: Number(it.quantity || 0), unitCost: Number(it.unitPrice || 0) })),
+    discountType: 'amount',
+    discountValue: Number(editForm.discountAmount || 0),
+    paidAmount: Number(editForm.paidAmount || 0),
+  });
+
+  // Submit Edit Import
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const result = await importService.update(editForm.id, {
+        partnerType: editForm.partnerType,
+        supplierId: editForm.partnerType === 'supplier' ? editForm.supplierId : undefined,
+        customerId: editForm.partnerType === 'customer' ? editForm.customerId : undefined,
+        warehouse: editForm.warehouse,
+        date: editForm.date,
+        discountType: 'amount',
+        discountValue: editForm.discountAmount,
+        paidAmount: editForm.paidAmount,
+        notes: editForm.notes,
+        items: editForm.items.map((it) => ({
+          productId: it.productId,
+          quantity: Number(it.quantity || 0),
+          unitCost: Number(it.unitPrice || 0),
+          unitName: it.unitName,
+          conversionRate: Number(it.conversionRate || 1),
+        })),
+      });
+
+      notify.success(`Cập nhật phiếu nhập ${result.voucherNumber || editForm.voucherNumber} thành công! Công nợ và tồn kho đã được đồng bộ.`);
+      setIsEditOpen(false);
+      if (isDetailOpen) {
+        setSelectedImport(result);
+      }
+      loadImports();
+      loadDependencies();
+    } catch (err) {
+      notify.error(err.message || 'Lỗi khi cập nhật phiếu nhập kho');
     } finally {
       setSubmitting(false);
     }
@@ -521,13 +695,13 @@ export default function Imports({ initialOpenCreate = false }) {
               <tr>
                 <th>Số Phiếu</th>
                 <th>Thời Gian Nhập</th>
-                <th>Nhà Cung Cấp</th>
+                <th>Đối Tác (NCC / KH)</th>
                 <th>Kho Nhận</th>
                 <th style={{ textAlign: 'right' }}>Tiền Hàng</th>
                 <th style={{ textAlign: 'right' }}>Chiết Khấu</th>
                 <th style={{ textAlign: 'right' }}>Tổng Tiền</th>
-                {showPaid && <th style={{ textAlign: 'right' }}>Đã Trả NCC</th>}
-                {showDebt && <th style={{ textAlign: 'right' }}>Còn Nợ NCC</th>}
+                {showPaid && <th style={{ textAlign: 'right' }}>Đã Thanh Toán</th>}
+                {showDebt && <th style={{ textAlign: 'right' }}>Còn Nợ</th>}
                 <th style={{ textAlign: 'center' }}>Trạng Thái</th>
                 <th style={{ textAlign: 'center' }}>Thao Tác</th>
               </tr>
@@ -557,18 +731,23 @@ export default function Imports({ initialOpenCreate = false }) {
                   </td>
                   <td style={{ fontSize: '0.8125rem' }}>{formatDate(imp.date || imp.createdAt, true)}</td>
                   <td
-                    style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
-                    title="Bấm để xem sổ chi tiết Nhập / Xuất / Thu / Chi của nhà cung cấp này"
+                    style={{ fontWeight: 600, color: 'var(--primary)', cursor: imp.supplierId ? 'pointer' : 'default', textDecoration: imp.supplierId ? 'underline' : 'none' }}
+                    title={imp.supplierId ? "Bấm để xem sổ chi tiết" : ""}
                     onClick={() => {
-                      const s = suppliers.find((x) => x.id === imp.supplierId);
-                      setLedgerSupplier({
-                        id: imp.supplierId,
-                        name: imp.supplierName,
-                        code: s?.code || `NCC_${imp.supplierId}`,
-                      });
+                      if (imp.supplierId) {
+                        const s = suppliers.find((x) => x.id === imp.supplierId);
+                        setLedgerSupplier({
+                          id: imp.supplierId,
+                          name: imp.supplierName || imp.partnerName,
+                          code: s?.code || `NCC_${imp.supplierId}`,
+                        });
+                      }
                     }}
                   >
-                    {imp.supplierName}
+                    <div>{imp.partnerName || (imp.partnerType === 'customer' ? imp.customerName : imp.supplierName) || '—'}</div>
+                    <span className="badge badge-neutral" style={{ fontSize: '0.6875rem', marginTop: '2px' }}>
+                      {imp.partnerType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp'}
+                    </span>
                   </td>
                   <td>
                     <span className="badge badge-neutral">{warehouseService.getWarehouseName(imp.warehouse, warehouses)}</span>
@@ -615,6 +794,16 @@ export default function Imports({ initialOpenCreate = false }) {
                       >
                         <Printer size={15} />
                       </button>
+                      {imp.status !== 'cancelled' && (
+                        <button
+                          className="btn btn-outline btn-icon"
+                          style={{ width: '32px', height: '32px', color: 'var(--primary)' }}
+                          title="Chỉnh sửa phiếu nhập (giá, sản phẩm, số lượng, chiết khấu...)"
+                          onClick={() => handleOpenEdit(imp)}
+                        >
+                          <Pencil size={15} />
+                        </button>
+                      )}
                       {imp.status !== 'cancelled' && (
                         <button
                           className="btn btn-outline btn-icon"
@@ -667,47 +856,130 @@ export default function Imports({ initialOpenCreate = false }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label">
-                Nhà Cung Cấp <span className="req">*</span>
+                Đối Tác <span className="req">*</span>
               </label>
-              <SearchableSelect
-                options={suppliers.map((s) => ({
-                  id: s.id,
-                  value: s.id,
-                  label: s.name,
-                  code: s.code,
-                  phone: s.phone || '',
-                  debt: s.debt || 0,
-                  subLabel: `Nợ: ${formatVND(s.debt)}`,
-                }))}
-                value={createForm.supplierId}
-                onChange={(val) => {
-                  if (val !== createForm.supplierId) {
-                    const suppProds = products.filter((p) => String(p.supplierId) === String(val));
-                    const firstP = suppProds.length > 0 ? suppProds[0] : null;
-                    const units = firstP ? getProductUnits(firstP) : [];
-                    const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
-                    const conv = Number(defUnit?.conversionRate || 1);
-                    const cost = conv > 1
-                      ? (firstP?.unitCost || 0) * conv
-                      : (firstP?.unitCost || '');
-                    setCreateForm({ 
-                      ...createForm, 
-                      supplierId: val,
-                      items: [{
-                        productId: firstP ? firstP.id : '',
-                        quantity: '',
-                        unitName: defUnit?.unitName || firstP?.uom || 'Cái',
-                        conversionRate: conv,
-                        unitPrice: cost || '',
-                      }] 
-                    });
-                  }
-                }}
-                placeholder="-- Chọn nhà cung cấp --"
-                searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
-                searchFields={['label', 'code', 'phone']}
-                required
-              />
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', marginBottom: '0.45rem' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="radio"
+                    name="createPartnerType"
+                    checked={createForm.partnerType === 'supplier'}
+                    onChange={() => {
+                      const firstS = suppliers[0]?.id ? String(suppliers[0].id) : '';
+                      const suppProds = firstS ? products.filter((p) => String(p.supplierId) === String(firstS)) : products;
+                      const firstP = suppProds[0] || null;
+                      const units = firstP ? getProductUnits(firstP) : [];
+                      const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
+                      const conv = Number(defUnit?.conversionRate || 1);
+                      const cost = conv > 1 ? (firstP?.unitCost || 0) * conv : (firstP?.unitCost || '');
+                      setCreateForm({
+                        ...createForm,
+                        partnerType: 'supplier',
+                        supplierId: firstS,
+                        customerId: '',
+                        items: [{
+                          productId: firstP ? firstP.id : '',
+                          quantity: '',
+                          unitName: defUnit?.unitName || firstP?.uom || 'Cái',
+                          conversionRate: conv,
+                          unitPrice: cost || '',
+                        }],
+                      });
+                    }}
+                  />
+                  <span>Nhà cung cấp</span>
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="radio"
+                    name="createPartnerType"
+                    checked={createForm.partnerType === 'customer'}
+                    onChange={() => {
+                      const firstC = customers[0]?.id ? String(customers[0].id) : '';
+                      // Khi chọn Khách hàng, xóa bộ lọc NCC với sản phẩm -> hiện toàn bộ sản phẩm
+                      const firstP = products[0] || null;
+                      const units = firstP ? getProductUnits(firstP) : [];
+                      const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
+                      const conv = Number(defUnit?.conversionRate || 1);
+                      const cost = conv > 1 ? (firstP?.unitCost || 0) * conv : (firstP?.unitCost || '');
+                      setCreateForm({
+                        ...createForm,
+                        partnerType: 'customer',
+                        customerId: firstC,
+                        supplierId: '',
+                        items: [{
+                          productId: firstP ? firstP.id : '',
+                          quantity: '',
+                          unitName: defUnit?.unitName || firstP?.uom || 'Cái',
+                          conversionRate: conv,
+                          unitPrice: cost || '',
+                        }],
+                      });
+                    }}
+                  />
+                  <span>Khách hàng</span>
+                </label>
+              </div>
+
+              {createForm.partnerType === 'supplier' ? (
+                <SearchableSelect
+                  options={suppliers.map((s) => ({
+                    id: s.id,
+                    value: s.id,
+                    label: s.name,
+                    code: s.code,
+                    phone: s.phone || '',
+                    debt: s.debt || 0,
+                    subLabel: `Nợ: ${formatVND(s.debt)}`,
+                  }))}
+                  value={createForm.supplierId}
+                  onChange={(val) => {
+                    if (val !== createForm.supplierId) {
+                      const suppProds = products.filter((p) => String(p.supplierId) === String(val));
+                      const firstP = suppProds.length > 0 ? suppProds[0] : null;
+                      const units = firstP ? getProductUnits(firstP) : [];
+                      const defUnit = (firstP ? getPrimaryDisplayUnit(firstP) : null) || units.find((u) => u.isBaseUnit) || units[0];
+                      const conv = Number(defUnit?.conversionRate || 1);
+                      const cost = conv > 1
+                        ? (firstP?.unitCost || 0) * conv
+                        : (firstP?.unitCost || '');
+                      setCreateForm({ 
+                        ...createForm, 
+                        supplierId: val,
+                        items: [{
+                          productId: firstP ? firstP.id : '',
+                          quantity: '',
+                          unitName: defUnit?.unitName || firstP?.uom || 'Cái',
+                          conversionRate: conv,
+                          unitPrice: cost || '',
+                        }] 
+                      });
+                    }
+                  }}
+                  placeholder="-- Chọn nhà cung cấp --"
+                  searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
+                  searchFields={['label', 'code', 'phone']}
+                  required
+                />
+              ) : (
+                <SearchableSelect
+                  options={customers.map((c) => ({
+                    id: c.id,
+                    value: c.id,
+                    label: c.name,
+                    code: c.code,
+                    phone: c.phone || '',
+                    debt: c.debt || 0,
+                    subLabel: `Nợ: ${formatVND(c.debt)}`,
+                  }))}
+                  value={createForm.customerId}
+                  onChange={(val) => setCreateForm({ ...createForm, customerId: val })}
+                  placeholder="-- Chọn khách hàng --"
+                  searchPlaceholder="Tìm theo tên, mã KH, SĐT..."
+                  searchFields={['label', 'code', 'phone']}
+                  required
+                />
+              )}
             </div>
 
             <div className="form-group">
@@ -774,9 +1046,8 @@ export default function Imports({ initialOpenCreate = false }) {
                       <tr key={idx}>
                         <td>
                           <SearchableSelect
-                            disabled={!createForm.supplierId}
-                            options={products
-                              .filter((p) => String(p.supplierId) === String(createForm.supplierId))
+                            disabled={createForm.partnerType === 'supplier' && !createForm.supplierId}
+                            options={getAvailableProducts(createForm.partnerType, createForm.supplierId)
                               .map((p) => {
                                 const whStock = getProductStockForWarehouse(p, createForm.warehouse);
                                 const total = Number(p.totalStock ?? 0);
@@ -793,7 +1064,7 @@ export default function Imports({ initialOpenCreate = false }) {
                               })}
                             value={item.productId}
                             onChange={(val) => handleUpdateItem(idx, 'productId', val)}
-                            placeholder={createForm.supplierId ? "-- Chọn sản phẩm --" : "-- Vui lòng chọn Nhà CC --"}
+                            placeholder={createForm.partnerType === 'supplier' && !createForm.supplierId ? "-- Vui lòng chọn Nhà CC --" : "-- Chọn sản phẩm --"}
                             searchPlaceholder="Tìm theo mã SKU, tên SP..."
                             searchFields={['label', 'code']}
                           />
@@ -979,6 +1250,372 @@ export default function Imports({ initialOpenCreate = false }) {
         </form>
       </Modal>
 
+      {/* Modal Chỉnh Sửa Phiếu Nhập */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        title={`Chỉnh Sửa Phiếu Nhập: ${editForm.voucherNumber || ''}`}
+        size="xl"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setIsEditOpen(false)} disabled={submitting}>
+              Hủy bỏ
+            </button>
+            <button className="btn btn-primary" onClick={handleEditSubmit} disabled={submitting}>
+              {submitting ? 'Đang lưu thay đổi...' : 'Lưu Thay Đổi & Cập Nhật'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleEditSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label">
+                Đối Tác <span className="req">*</span>
+              </label>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', marginBottom: '0.45rem' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="radio"
+                    name="editPartnerType"
+                    checked={editForm.partnerType === 'supplier'}
+                    onChange={() => {
+                      const firstS = suppliers[0]?.id ? String(suppliers[0].id) : '';
+                      setEditForm((prev) => ({
+                        ...prev,
+                        partnerType: 'supplier',
+                        supplierId: firstS,
+                        customerId: '',
+                      }));
+                    }}
+                  />
+                  <span>Nhà cung cấp</span>
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="radio"
+                    name="editPartnerType"
+                    checked={editForm.partnerType === 'customer'}
+                    onChange={() => {
+                      const firstC = customers[0]?.id ? String(customers[0].id) : '';
+                      setEditForm((prev) => ({
+                        ...prev,
+                        partnerType: 'customer',
+                        customerId: firstC,
+                        supplierId: '',
+                      }));
+                    }}
+                  />
+                  <span>Khách hàng</span>
+                </label>
+              </div>
+
+              {editForm.partnerType === 'supplier' ? (
+                <SearchableSelect
+                  options={suppliers.map((s) => ({
+                    id: s.id,
+                    value: s.id,
+                    label: s.name,
+                    code: s.code,
+                    phone: s.phone || '',
+                    debt: s.debt || 0,
+                    subLabel: `Nợ: ${formatVND(s.debt)}`,
+                  }))}
+                  value={editForm.supplierId}
+                  onChange={(val) => setEditForm({ ...editForm, supplierId: val })}
+                  placeholder="-- Chọn nhà cung cấp --"
+                  searchPlaceholder="Tìm theo tên, mã NCC, SĐT..."
+                  searchFields={['label', 'code', 'phone']}
+                  required
+                />
+              ) : (
+                <SearchableSelect
+                  options={customers.map((c) => ({
+                    id: c.id,
+                    value: c.id,
+                    label: c.name,
+                    code: c.code,
+                    phone: c.phone || '',
+                    debt: c.debt || 0,
+                    subLabel: `Nợ: ${formatVND(c.debt)}`,
+                  }))}
+                  value={editForm.customerId}
+                  onChange={(val) => setEditForm({ ...editForm, customerId: val })}
+                  placeholder="-- Chọn khách hàng --"
+                  searchPlaceholder="Tìm theo tên, mã KH, SĐT..."
+                  searchFields={['label', 'code', 'phone']}
+                  required
+                />
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Kho Tiếp Nhận <span className="req">*</span>
+              </label>
+              <select
+                className="form-select"
+                value={editForm.warehouse}
+                onChange={(e) => setEditForm({ ...editForm, warehouse: e.target.value })}
+                required
+              >
+                {warehouses.map((wh) => (
+                  <option key={wh.id} value={wh.id}>
+                    {wh.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Ngày Nhập Kho</label>
+              <input
+                type="date"
+                className="form-input mono"
+                value={editForm.date}
+                onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Items Section */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <h4 style={{ fontSize: '0.9375rem', fontWeight: 700 }}>Danh Sách Hàng Nhập Kho</h4>
+              <button type="button" className="btn btn-outline btn-sm" onClick={handleAddEditItem}>
+                <Plus size={14} />
+                <span>Thêm dòng sản phẩm</span>
+              </button>
+            </div>
+
+            <div className="table-responsive" style={{ overflow: 'visible' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '30%' }}>Sản Phẩm</th>
+                    <th style={{ width: '12%' }}>ĐVT Nhập</th>
+                    <th style={{ width: '14%', textAlign: 'center' }}>Tồn Tại Kho</th>
+                    <th style={{ width: '12%', textAlign: 'right' }}>Số Lượng Nhập</th>
+                    <th style={{ width: '15%', textAlign: 'right' }}>Đơn Giá Nhập</th>
+                    <th style={{ width: '12%', textAlign: 'right' }}>Thành Tiền</th>
+                    <th style={{ width: '5%', textAlign: 'center' }}>Xóa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {editForm.items.map((item, idx) => {
+                    const prod = products.find((p) => p.id === Number(item.productId));
+                    const currentWhStock = getProductStockForWarehouse(prod, editForm.warehouse);
+                    const convRate = Number(item.conversionRate || 1);
+                    const currentUnitStock = getStockInUnit(currentWhStock, convRate);
+                    const lineTotal = Number(item.quantity || 0) * Number(item.unitPrice || 0);
+
+                    return (
+                      <tr key={idx}>
+                        <td>
+                          <SearchableSelect
+                            disabled={editForm.partnerType === 'supplier' && !editForm.supplierId}
+                            options={getAvailableProducts(editForm.partnerType, editForm.supplierId)
+                              .map((p) => {
+                                const whStock = getProductStockForWarehouse(p, editForm.warehouse);
+                                const targetWh = warehouses.find((w) => w.id === editForm.warehouse);
+                                const whLabel = targetWh?.shortName || targetWh?.name || 'kho này';
+                                return {
+                                  id: p.id,
+                                  value: p.id,
+                                  label: p.name,
+                                  code: p.sku || p.code,
+                                  uom: p.uom || 'ĐVT',
+                                  subLabel: `ĐVT: ${p.uom || 'ĐVT'} | Tồn ${whLabel}: ${formatStockDisplay(whStock, p.units, p.uom)} | Giá nhập: ${formatVND(p.unitCost || 0)}`,
+                                };
+                              })}
+                            value={item.productId}
+                            onChange={(val) => handleUpdateEditItem(idx, 'productId', val)}
+                            placeholder={editForm.partnerType === 'supplier' && !editForm.supplierId ? "-- Vui lòng chọn Nhà CC --" : "-- Chọn sản phẩm --"}
+                            searchPlaceholder="Tìm theo mã SKU, tên SP..."
+                            searchFields={['label', 'code']}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            className="form-select"
+                            value={item.unitName || prod?.uom || 'Cái'}
+                            onChange={(e) => {
+                              const uName = e.target.value;
+                              const uList = getProductUnits(prod);
+                              const targetU = uList.find((u) => u.unitName === uName) || uList[0];
+                              const conv = Number(targetU?.conversionRate || 1);
+                              const cost = Number(prod?.unitCost || 0) * conv;
+                              setEditForm((prev) => {
+                                const nextItems = [...prev.items];
+                                nextItems[idx] = {
+                                  ...nextItems[idx],
+                                  unitName: targetU?.unitName || uName,
+                                  conversionRate: conv,
+                                  unitPrice: cost || nextItems[idx].unitPrice
+                                };
+                                return { ...prev, items: nextItems };
+                              });
+                            }}
+                          >
+                            {getProductUnits(prod).map((u) => (
+                              <option key={u.unitName} value={u.unitName}>
+                                {u.unitName} {u.conversionRate > 1 ? `(x${u.conversionRate})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="badge badge-neutral mono">
+                            {formatNumber(currentUnitStock)} {item.unitName || prod?.uom || ''}
+                          </span>
+                          {prod && prod.units && prod.units.length > 1 && (
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              {formatStockDisplay(currentWhStock, prod.units, prod.uom)}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0.001"
+                            step="any"
+                            className="form-input mono"
+                            style={{ textAlign: 'right' }}
+                            placeholder="0"
+                            value={item.quantity ?? ''}
+                            onChange={(e) => handleUpdateEditItem(idx, 'quantity', e.target.value)}
+                            required
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            className="form-input mono"
+                            style={{ textAlign: 'right' }}
+                            placeholder="0"
+                            value={item.unitPrice ?? ''}
+                            onChange={(e) => handleUpdateEditItem(idx, 'unitPrice', e.target.value)}
+                            required
+                          />
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }} className="mono">
+                          {formatVND(lineTotal)}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-icon"
+                            style={{ width: '28px', height: '28px', color: 'var(--danger)' }}
+                            onClick={() => handleRemoveEditItem(idx)}
+                            disabled={editForm.items.length <= 1}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Financial Calculation Panel */}
+          <div
+            style={{
+              background: 'var(--bg-tertiary)',
+              padding: '1.25rem',
+              borderRadius: 'var(--radius-lg)',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '1.25rem',
+            }}
+          >
+            <div>
+              <div className="form-group">
+                <label className="form-label">Chiết Khấu</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className="form-input mono"
+                  placeholder="0"
+                  value={editForm.discountAmount ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, discountAmount: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Ghi Chú Phiếu Nhập</label>
+                <textarea
+                  className="form-textarea"
+                  rows={2}
+                  placeholder="Ghi chú điều chỉnh..."
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Tiền hàng tạm tính:</span>
+                <span className="mono" style={{ fontWeight: 600 }}>{formatVND(editSubtotal)}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Chiết khấu:</span>
+                <span className="mono" style={{ color: 'var(--danger)' }}>-{formatVND(editDiscountAmount)}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.0625rem', fontWeight: 800 }}>
+                <span>Tổng tiền nhập hàng:</span>
+                <span className="mono" style={{ color: 'var(--primary)' }}>{formatVND(editTotalAmount)}</span>
+              </div>
+
+              <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '0.25rem 0' }} />
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }}>
+                    Tiền Chi Trả Ngay:
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: '0 0.5rem', fontSize: '0.75rem' }}
+                    onClick={() => setEditForm({ ...editForm, paidAmount: editTotalAmount })}
+                  >
+                    Trả đủ 100%
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className="form-input mono"
+                  style={{ textAlign: 'right', fontWeight: 700, fontSize: '1.0625rem' }}
+                  placeholder="0"
+                  value={editForm.paidAmount ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, paidAmount: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 700 }}>
+                <span style={{ color: editUnpaidAmount > 0 ? 'var(--warning-text)' : 'var(--success)' }}>
+                  {editUnpaidAmount > 0 ? 'Ghi nợ phát sinh:' : 'Thanh toán hoàn tất:'}
+                </span>
+                <span className="mono" style={{ color: editUnpaidAmount > 0 ? 'var(--warning-text)' : 'var(--success)' }}>
+                  {formatVND(editUnpaidAmount)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
       {/* Modal Chi Tiết Phiếu Nhập */}
       <Modal
         isOpen={isDetailOpen}
@@ -991,6 +1628,19 @@ export default function Imports({ initialOpenCreate = false }) {
               <Printer size={16} />
               <span>In Phiếu Nhập</span>
             </button>
+            {selectedImport?.status !== 'cancelled' && (
+              <button
+                className="btn btn-outline"
+                style={{ color: 'var(--primary)' }}
+                onClick={() => {
+                  setIsDetailOpen(false);
+                  handleOpenEdit(selectedImport);
+                }}
+              >
+                <Pencil size={16} />
+                <span>Chỉnh Sửa Phiếu</span>
+              </button>
+            )}
             <button className="btn btn-primary" onClick={() => setIsDetailOpen(false)}>
               Đóng
             </button>
@@ -1003,7 +1653,12 @@ export default function Imports({ initialOpenCreate = false }) {
               <div>
                 <h3 style={{ fontSize: '1.1875rem', fontWeight: 800 }}>PHIẾU NHẬP KHO HÀNG HÓA</h3>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Mã phiếu: <strong>{selectedImport.voucherNumber}</strong></p>
-                <p style={{ fontSize: '0.8125rem' }}>Nhà cung cấp: <strong>{selectedImport.supplierName}</strong></p>
+                <p style={{ fontSize: '0.8125rem' }}>
+                  Đối tác: <strong>{selectedImport.partnerName || (selectedImport.partnerType === 'customer' ? selectedImport.customerName : selectedImport.supplierName) || '—'}</strong>
+                  <span className="badge badge-neutral" style={{ marginLeft: '6px', fontSize: '0.6875rem' }}>
+                    {selectedImport.partnerType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp'}
+                  </span>
+                </p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '0.8125rem' }}>Thời gian nhập: <strong>{formatDate(selectedImport.date || selectedImport.createdAt, true)}</strong></p>

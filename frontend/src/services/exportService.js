@@ -49,10 +49,14 @@ export const exportService = {
    */
   validateExport(formData, products = []) {
     const errors = {};
+    const partnerType = formData.partnerType || 'customer';
 
-    if (!formData.customerId) {
+    if (partnerType === 'customer' && !formData.customerId) {
       errors.customerId = 'Vui lòng chọn khách hàng';
+    } else if (partnerType === 'supplier' && !formData.supplierId) {
+      errors.supplierId = 'Vui lòng chọn nhà cung cấp';
     }
+
     if (!formData.warehouse) {
       errors.warehouse = 'Vui lòng chọn kho xuất hàng';
     }
@@ -88,9 +92,12 @@ export const exportService = {
       discountValue: formData.discountValue,
       paidAmount: formData.paidAmount,
     });
+    const partnerType = formData.partnerType || 'customer';
 
     return {
-      customerId: Number(formData.customerId),
+      partnerType,
+      customerId: partnerType === 'customer' ? Number(formData.customerId) : undefined,
+      supplierId: partnerType === 'supplier' ? Number(formData.supplierId) : undefined,
       employeeId: formData.employeeId ? Number(formData.employeeId) : null,
       employeeName: formData.employeeName?.trim() || undefined,
       warehouse: formData.warehouse || 'warehouse1',
@@ -131,7 +138,25 @@ export const exportService = {
       entityName: 'ExportVoucher',
       entityId: result?.voucherNumber || result?.id || 'Mới',
       entityDisplayName: `Phiếu xuất #${result?.voucherNumber || result?.id}`,
-      details: `Lập phiếu bán hàng xuất kho${result?.employeeName ? ` (NV: ${result.employeeName})` : ''}, Tổng tiền: ${(result?.totalSale || formData.totalSale || 0).toLocaleString()}₫`,
+      details: `Lập phiếu xuất kho (${payload.partnerType === 'supplier' ? 'NCC' : 'Khách hàng'})${result?.employeeName ? ` (NV: ${result.employeeName})` : ''}, Tổng tiền: ${(result?.totalSale || formData.totalSale || 0).toLocaleString()}₫`,
+    });
+    return result;
+  },
+
+  async update(id, formData, products = []) {
+    const validation = this.validateExport(formData, products);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      throw new Error(firstError);
+    }
+    const payload = this.formatExportPayload(formData);
+    const result = await exportsApi.update(id, payload);
+    auditService.logAction({
+      action: 'UPDATE',
+      entityName: 'ExportVoucher',
+      entityId: result?.voucherNumber || String(id),
+      entityDisplayName: `Phiếu xuất #${result?.voucherNumber || id}`,
+      details: `Chỉnh sửa phiếu xuất kho, Tổng tiền mới: ${(result?.totalSale || 0).toLocaleString()}₫`,
     });
     return result;
   },

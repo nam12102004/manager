@@ -18,6 +18,7 @@ public class ExportsController : BaseApiController
     [HttpGet]
     public async Task<IActionResult> GetExports(
         [FromQuery] int? customerId,
+        [FromQuery] int? supplierId,
         [FromQuery] int? employeeId,
         [FromQuery] string? month,
         [FromQuery] string? date,
@@ -32,11 +33,11 @@ public class ExportsController : BaseApiController
     {
         if (page.HasValue && !all)
         {
-            var paged = await _exportService.GetPagedExportsAsync(customerId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, employeeId, ct);
+            var paged = await _exportService.GetPagedExportsAsync(customerId, month, date, fromDate, toDate, q, warehouse, page.Value, pageSize, employeeId, supplierId, ct);
             return Success(paged);
         }
 
-        var list = await _exportService.GetExportsAsync(customerId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, employeeId, q, ct);
+        var list = await _exportService.GetExportsAsync(customerId, !string.IsNullOrWhiteSpace(date) ? date : month, fromDate, toDate, warehouse, employeeId, q, supplierId, ct);
         return Success(list);
     }
 
@@ -53,6 +54,16 @@ public class ExportsController : BaseApiController
     {
         var voucher = await _exportService.CreateExportAsync(dto, ct);
         return Created(nameof(GetById), new { id = voucher.Id }, voucher, "Tạo phiếu xuất thành công");
+    }
+
+    [HttpPut("{id:long}")]
+    public async Task<ActionResult<ApiResponse<ExportVoucherDto>>> UpdateExport(
+        long id,
+        [FromBody] UpdateExportDto dto,
+        CancellationToken ct)
+    {
+        var voucher = await _exportService.UpdateExportAsync(id, dto, ct);
+        return Success(voucher, "Cập nhật phiếu xuất thành công");
     }
 
     [HttpPatch("{id:long}/status")]

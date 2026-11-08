@@ -1,8 +1,8 @@
-import { importsApi, suppliersApi, productsApi, ownersApi } from '../api/endpoints';
+import { importsApi, suppliersApi, customersApi, productsApi, ownersApi } from '../api/endpoints';
 import { auditService } from './auditService';
 
 /**
- * Frontend Business Logic & Service for Import Vouchers (Mua hàng, Nhập kho & Nợ Nhà cung cấp)
+ * Frontend Business Logic & Service for Import Vouchers (Mua hàng, Nhập kho & Nợ Nhà cung cấp / Khách hàng)
  */
 export const importService = {
   /**
@@ -40,7 +40,7 @@ export const importService = {
       discountAmount,
       totalCost,
       paidAmount: paid,
-      unpaidAmount, // Khoản nợ phát sinh với NCC
+      unpaidAmount, // Khoản nợ phát sinh với NCC / KH
     };
   },
 
@@ -49,10 +49,14 @@ export const importService = {
    */
   validateImport(formData) {
     const errors = {};
+    const partnerType = formData.partnerType || 'supplier';
 
-    if (!formData.supplierId) {
+    if (partnerType === 'supplier' && !formData.supplierId) {
       errors.supplierId = 'Vui lòng chọn nhà cung cấp';
+    } else if (partnerType === 'customer' && !formData.customerId) {
+      errors.customerId = 'Vui lòng chọn khách hàng';
     }
+
     if (!formData.warehouse) {
       errors.warehouse = 'Vui lòng chọn kho nhập hàng';
     }
@@ -90,9 +94,12 @@ export const importService = {
       discountValue: formData.discountValue,
       paidAmount: formData.paidAmount,
     });
+    const partnerType = formData.partnerType || 'supplier';
 
     return {
-      supplierId: Number(formData.supplierId),
+      partnerType,
+      supplierId: partnerType === 'supplier' ? Number(formData.supplierId) : undefined,
+      customerId: partnerType === 'customer' ? Number(formData.customerId) : undefined,
       warehouse: formData.warehouse || 'warehouse1',
       date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
       discountPercent: formData.discountType === 'percent' ? Number(formData.discountValue || 0) : undefined,
@@ -131,7 +138,25 @@ export const importService = {
       entityName: 'ImportVoucher',
       entityId: result?.voucherNumber || result?.id || 'Mới',
       entityDisplayName: `Phiếu nhập #${result?.voucherNumber || result?.id}`,
-      details: `Lập phiếu mua hàng nhập kho, Tổng tiền: ${(result?.totalAmount || formData.totalAmount || 0).toLocaleString()}₫`,
+      details: `Lập phiếu nhập kho (${payload.partnerType === 'customer' ? 'Khách hàng' : 'NCC'}), Tổng tiền: ${(result?.totalAmount || formData.totalAmount || 0).toLocaleString()}₫`,
+    });
+    return result;
+  },
+
+  async update(id, formData) {
+    const validation = this.validateImport(formData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      throw new Error(firstError);
+    }
+    const payload = this.formatImportPayload(formData);
+    const result = await importsApi.update(id, payload);
+    auditService.logAction({
+      action: 'UPDATE',
+      entityName: 'ImportVoucher',
+      entityId: result?.voucherNumber || String(id),
+      entityDisplayName: `Phiếu nhập #${result?.voucherNumber || id}`,
+      details: `Chỉnh sửa phiếu nhập kho, Tổng tiền mới: ${(result?.totalAmount || 0).toLocaleString()}₫`,
     });
     return result;
   },
@@ -161,14 +186,16 @@ export const importService = {
   },
 
   async getDependencies() {
-    const [supps, prods, owner] = await Promise.allSettled([
+    const [supps, custs, prods, owner] = await Promise.allSettled([
       suppliersApi.getAll({ all: true }),
+      customersApi.getAll({ all: true }),
       productsApi.getAll({ all: true }),
       ownersApi.get(),
     ]);
 
     return {
       suppliers: supps.status === 'fulfilled' && Array.isArray(supps.value) ? supps.value : [],
+      customers: custs.status === 'fulfilled' && Array.isArray(custs.value) ? custs.value : [],
       products: prods.status === 'fulfilled' && Array.isArray(prods.value) ? prods.value : [],
       ownerInfo: owner.status === 'fulfilled' ? owner.value : null,
     };
